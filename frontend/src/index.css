@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background-darker text-slate-100 antialiased;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl;
+}
+
+.btn-primary {
+  @apply bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors font-medium;
+}
+
+.btn-secondary {
+  @apply bg-secondary hover:bg-secondary-dark text-white px-4 py-2 rounded-lg transition-colors font-medium;
+}
+
+.btn-accent {
+  @apply bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-lg transition-colors font-medium;
+}
+
+@theme {
+  --color-primary: #1E40AF;
+  --color-primary-dark: #1E3A8A;
+  --color-primary-light: #3B82F6;
+  
+  --color-secondary: #06B6D4;
+  --color-secondary-dark: #0891B2;
+  --color-secondary-light: #22D3EE;
+  
+  --color-accent: #EF4444;
+  --color-accent-dark: #B91C1C;
+  --color-accent-light: #F87171;
+  
+  --color-background-darker: #020617;
+  --color-background-default: #0F172A;
+}
