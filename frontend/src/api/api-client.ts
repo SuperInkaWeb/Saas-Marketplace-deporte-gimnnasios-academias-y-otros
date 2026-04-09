@@ -7,42 +7,35 @@ const api = axios.create({
   },
 });
 
-// ─── Auth0 Token Injector ─────────────────────────────────────────────────────
-// Called once by MainLayout after Auth0 is ready.
-// All subsequent API calls will carry the correct Bearer token automatically.
-
-type TokenGetter = () => Promise<string>;
-let _getToken: TokenGetter | null = null;
-
-export const setAuth0TokenGetter = (getter: TokenGetter) => {
-  _getToken = getter;
-};
-
+// Request interceptor for JWT
 api.interceptors.request.use(
-  async (config) => {
-    if (_getToken) {
-      try {
-        const token = await _getToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      } catch {
-        // Not authenticated yet — request proceeds without token
-      }
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error),
 );
 
-// ─── Response error handling ──────────────────────────────────────────────────
-
+// Response interceptor for errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Only redirect if it's a 401 and not a login attempt
+    if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
+      console.warn('Sesión expirada o inválida. Redirigiendo a login...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?expired=true';
+    }
+
+    // Log 403 errors (Forbidden - wrong role)
     if (error.response?.status === 403) {
       console.error('Permiso denegado:', error.response.data?.message);
     }
+
     return Promise.reject(error);
   },
 );

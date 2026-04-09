@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useAuth } from '../../context/auth-context';
-import { setAuth0TokenGetter } from '../../api/api-client';
 import { 
   LayoutDashboard, 
   Dumbbell, 
@@ -44,18 +42,13 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
 
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
-  const { getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Register Auth0 token getter so every API call gets the correct Bearer token
-  useEffect(() => {
-    setAuth0TokenGetter(getAccessTokenSilently);
-  }, [getAccessTokenSilently]);
-
   const handleLogout = () => {
     logout();
+    navigate('/login');
   };
 
   const navItems = [
