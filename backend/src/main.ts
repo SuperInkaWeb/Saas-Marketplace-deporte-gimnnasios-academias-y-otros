@@ -25,12 +25,14 @@ async function bootstrap() {
     process.env.FRONTEND_URL,
     'http://localhost:5173',
     'http://localhost:3000',
-    /\.onrender\.com$/,   // any *.onrender.com subdomain (frontend preview)
+    /\.onrender\.com$/,   // Subdominios de Render
+    /\.vercel\.app$/,     // Subdominios de Vercel (¡Esto arregla tu error!)
   ].filter(Boolean);
 
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
   // Global validation pipe
