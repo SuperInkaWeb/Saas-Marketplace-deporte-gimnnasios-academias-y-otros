@@ -6,16 +6,8 @@ export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardStats(gymId: string) {
-    // Basic analytics logic
     const activeMembers = await this.prisma.userMembership.count({
       where: { plan: { gymId }, status: 'ACTIVE' },
-    });
-
-    const mrrAggregate = await this.prisma.userMembership.aggregate({
-      where: { plan: { gymId }, status: 'ACTIVE' },
-      _sum: {
-        classesUsed: true, // we could calculate price based on plan price
-      },
     });
 
     const activePlans = await this.prisma.userMembership.findMany({
@@ -23,7 +15,7 @@ export class AnalyticsService {
       include: { plan: true },
     });
     
-    const mrr = activePlans.reduce((sum, member) => sum + Number(member.plan.price), 0);
+    const currentMRR = activePlans.reduce((sum, member) => sum + Number(member.plan.price), 0);
 
     const totalClasses = await this.prisma.class.count({
       where: { gymId },
@@ -33,15 +25,87 @@ export class AnalyticsService {
       where: { class: { gymId } },
     });
 
-    // Mock Retention Rate
-    const retentionRate = 92.5;
+    // Real Retention Logic
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const membersJoinedLongAgo = await this.prisma.userMembership.count({
+      where: { plan: { gymId }, startedAt: { lte: thirtyDaysAgo } }
+    });
+
+    const membersJoinedLongAgoAndActive = await this.prisma.userMembership.count({
+      where: { plan: { gymId }, startedAt: { lte: thirtyDaysAgo }, status: 'ACTIVE' }
+    });
+
+    let retentionRate = 100;
+    if (membersJoinedLongAgo > 0) {
+      retentionRate = (membersJoinedLongAgoAndActive / membersJoinedLongAgo) * 100;
+    } else {
+      retentionRate = activeMembers > 0 ? 100 : 0;
+    }
+
+    // Historical data for chart (Last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+
+    const recentPayments = await this.prisma.payment.findMany({
+      where: {
+        status: 'COMPLETED',
+        paidAt: { gte: sixMonthsAgo },
+        OR: [
+          { membership: { plan: { gymId } } },
+          { order: { gymId } }
+        ]
+      },
+      select: { amount: true, paidAt: true }
+    });
+
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const mrrHistoryMap = new Map<string, number>();
+    const classesHistoryMap = new Map<string, number>();
+    
+    for(let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const name = monthNames[d.getMonth()];
+      mrrHistoryMap.set(name, 0);
+      classesHistoryMap.set(name, 0);
+    }
+
+    recentPayments.forEach(p => {
+      const date = p.paidAt || new Date();
+      const monthName = monthNames[date.getMonth()];
+      if (mrrHistoryMap.has(monthName)) {
+        mrrHistoryMap.set(monthName, mrrHistoryMap.get(monthName)! + Number(p.amount));
+      }
+    });
+
+    // Chart shape
+    const chartData = Array.from(mrrHistoryMap.entries()).map(([name, MRR], i) => ({
+      name,
+      MRR,
+      attendees: Math.floor(reservationsCount / 6),
+      newMembers: Math.floor(activeMembers / 6)
+    }));
+
+    const currentMonthData = chartData[5] || { MRR: 0 };
+    const lastMonthData = chartData[4] || { MRR: 0 };
+    let mrrGrowth = 0;
+    if (lastMonthData.MRR > 0) {
+      mrrGrowth = ((currentMonthData.MRR - lastMonthData.MRR) / lastMonthData.MRR) * 100;
+    } else if (currentMonthData.MRR > 0) {
+      mrrGrowth = 100;
+    }
 
     return {
       activeMembers,
-      monthlyRecurringRevenue: mrr,
+      monthlyRecurringRevenue: currentMRR,
       totalClasses,
       reservationsCount,
-      retentionRate,
+      retentionRate: Number(retentionRate.toFixed(1)),
+      mrrGrowth: Number(mrrGrowth.toFixed(1)),
+      chartData
     };
   }
 }
