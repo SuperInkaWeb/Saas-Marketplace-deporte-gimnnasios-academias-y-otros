@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Send, Mail, Bell, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, Mail, Bell, CheckCircle, Loader2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 
@@ -9,12 +9,15 @@ const CRMView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [gymId, setGymId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     subject: '',
     type: 'EMAIL',
-    content: ''
+    content: '',
+    toEmail: '',
+    sendToAll: false
   });
 
   useEffect(() => {
@@ -26,7 +29,10 @@ const CRMView: React.FC = () => {
         
         if (currentGymId) {
           setGymId(currentGymId);
-          await loadCampaigns(currentGymId);
+          await Promise.all([
+            loadCampaigns(currentGymId),
+            loadMembers(currentGymId)
+          ]);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -46,6 +52,15 @@ const CRMView: React.FC = () => {
     }
   };
 
+  const loadMembers = async (id: string) => {
+    try {
+      const { data } = await api.get(`/gyms/${id}/members`);
+      setMembers(data);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gymId) return;
@@ -56,11 +71,13 @@ const CRMView: React.FC = () => {
         title: formData.subject,
         subject: formData.subject,
         type: formData.type,
-        content: formData.content
+        content: formData.content,
+        sendToAll: formData.sendToAll,
+        toEmail: !formData.sendToAll && formData.type === 'EMAIL' ? formData.toEmail || undefined : undefined
       });
       
       setSuccess(true);
-      setFormData({ subject: '', type: 'EMAIL', content: '' });
+      setFormData({ subject: '', type: 'EMAIL', content: '', toEmail: '', sendToAll: false });
       await loadCampaigns(gymId);
       
       setTimeout(() => setSuccess(false), 3000);
@@ -90,6 +107,16 @@ const CRMView: React.FC = () => {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-2xl mb-4 group cursor-pointer" onClick={() => setFormData({...formData, sendToAll: !formData.sendToAll})}>
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-primary-light" />
+                <span className="text-white text-sm font-bold">Enviar a todos los miembros</span>
+              </div>
+              <div className={`w-10 h-5 rounded-full transition-all relative ${formData.sendToAll ? 'bg-primary' : 'bg-slate-700'}`}>
+                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.sendToAll ? 'left-6' : 'left-1'}`} />
+              </div>
+            </div>
+
             <div>
               <label className="text-slate-400 text-xs font-bold uppercase mb-1 block">Asunto</label>
               <input 
@@ -108,10 +135,31 @@ const CRMView: React.FC = () => {
                 onChange={e => setFormData({...formData, type: e.target.value})}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-primary-light appearance-none"
               >
-                <option value="EMAIL">Correo Electrónico a todos</option>
+                <option value="EMAIL">Correo Electrónico Directo</option>
                 <option value="PUSH">Notificación Push a la app</option>
               </select>
             </div>
+            
+            {formData.type === 'EMAIL' && (
+              <div className={`animate-in fade-in slide-in-from-top-2 transition-all ${formData.sendToAll ? 'opacity-50 grayscale pointer-events-none scale-95' : ''}`}>
+                <label className="text-slate-400 text-xs font-bold uppercase mb-1 block flex items-center gap-2">
+                  Destinatario {formData.sendToAll ? '(Masivo)' : '(Email Demo)'}
+                  <span className="bg-primary/20 text-primary-light px-2 py-0.5 rounded-full text-[10px]">REAL</span>
+                </label>
+                <input 
+                  type="email" 
+                  value={formData.toEmail}
+                  onChange={e => setFormData({...formData, toEmail: e.target.value})}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-primary-light transition-colors" 
+                  placeholder={formData.sendToAll ? 'Todos los miembros activos' : 'ejemplo@correo.com'}
+                  required={!formData.sendToAll}
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {formData.sendToAll ? 'Se enviará a todos los miembros con membresía activa.' : 'Llegará a esta bandeja de entrada real mediante SMTP (Nodemailer).'}
+                </p>
+              </div>
+            )}
+            
             <div>
               <label className="text-slate-400 text-xs font-bold uppercase mb-1 block">Contenido</label>
               <textarea 
@@ -139,7 +187,42 @@ const CRMView: React.FC = () => {
           </form>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-sm">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-primary-light" /> Miembros del Gimnasio
+            </h2>
+            
+            {loading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-slate-500 mx-auto" />
+            ) : members.length === 0 ? (
+              <p className="text-slate-500 text-center text-sm">No hay miembros registrados.</p>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {members.map(member => (
+                  <button
+                    key={member.id}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, toEmail: member.email, type: 'EMAIL' }));
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border border-white/5 hover:bg-white/10 transition-all flex items-center gap-3 group ${formData.toEmail === member.email ? 'bg-primary/20 border-primary/40' : 'bg-black/20'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-xs text-primary-light uppercase">
+                      {member.name.charAt(0)}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="text-white text-sm font-bold truncate">{member.name}</p>
+                      <p className="text-slate-500 text-[10px] truncate">{member.email}</p>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${formData.toEmail === member.email ? 'bg-primary animate-pulse' : 'bg-slate-700'}`} />
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-slate-500 mt-4 italic text-center">Toca un miembro para auto-completar el destinatario.</p>
+          </div>
+
+          <div className="space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Bell className="w-5 h-5 text-secondary-light" /> Historial de Campañas
           </h2>
@@ -175,6 +258,7 @@ const CRMView: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -80,4 +80,21 @@ export class ClassesController {
   markAttendance(@Param('id') reservationId: string, @CurrentUser() user: any) {
     return this.classesService.markAttendance(reservationId, user.id);
   }
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar una clase' })
+  update(@Param('id') id: string, @CurrentUser() user: any, @Body() updateClassDto: UpdateClassDto) {
+    return this.classesService.update(id, user.id, updateClassDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Eliminar una clase' })
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.classesService.remove(id, user.id);
+  }
 }

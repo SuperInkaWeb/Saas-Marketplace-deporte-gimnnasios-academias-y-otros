@@ -7,10 +7,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
 import { ReservationStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ClassesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async create(gymId: string, currentUserId: string, dto: CreateClassDto) {
     // 1. Verify gym and permissions
@@ -49,7 +53,7 @@ export class ClassesService {
       },
 
       include: {
-        gym: { select: { name: true, city: true } },
+        gym: { select: { name: true, city: true, ownerId: true } },
         trainer: {
           include: {
             user: { select: { name: true, avatarUrl: true } },
@@ -122,7 +126,7 @@ export class ClassesService {
     }
 
     // 3. Create or update reservation
-    return this.prisma.reservation.upsert({
+    const reservation = await this.prisma.reservation.upsert({
       where: {
         classId_userId: { classId, userId },
       },
@@ -132,7 +136,22 @@ export class ClassesService {
         userId,
         status: ReservationStatus.CONFIRMED,
       },
+      include: {
+        user: { select: { name: true } },
+        class: { include: { gym: true } }
+      }
     });
+
+    // 4. Notify Gym Owner
+    if (reservation.class.gym?.ownerId) {
+      await this.notificationsService.create(reservation.class.gym.ownerId, {
+        title: 'Nueva Reserva de Clase',
+        description: `${reservation.user.name} ha reservado la clase: ${reservation.class.title}`,
+        type: 'RESERVATION'
+      });
+    }
+
+    return reservation;
   }
 
   async cancelBooking(userId: string, classId: string) {
@@ -163,6 +182,29 @@ export class ClassesService {
     return this.prisma.reservation.update({
       where: { id: reservationId },
       data: { status: ReservationStatus.ATTENDED },
+    });
+  }
+  async update(id: string, currentUserId: string, dto: UpdateClassDto) {
+    const classItem = await this.findOne(id);
+    if (classItem.gym.ownerId !== currentUserId) {
+        throw new ForbiddenException('No tienes permiso para actualizar esta clase');
+    }
+    return this.prisma.class.update({
+      where: { id },
+      data: {
+        ...dto,
+        ...(dto.scheduledAt && { scheduledAt: new Date(dto.scheduledAt) })
+      }
+    });
+  }
+
+  async remove(id: string, currentUserId: string) {
+    const classItem = await this.findOne(id);
+    if (classItem.gym.ownerId !== currentUserId) {
+        throw new ForbiddenException('No tienes permiso para eliminar esta clase');
+    }
+    return this.prisma.class.delete({
+       where: { id }
     });
   }
 }

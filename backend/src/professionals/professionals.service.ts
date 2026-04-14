@@ -51,10 +51,41 @@ export class ProfessionalsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, currentUserId: string, isAdmin: boolean) {
+    const service = await this.findOne(id);
+    if (!isAdmin && service.providerId !== currentUserId) {
+        throw new ForbiddenException('No tienes permiso para eliminar este servicio');
+    }
     return this.prisma.professionalService.update({
       where: { id },
       data: { isActive: false },
+    });
+  }
+
+  async bookService(userId: string, serviceId: string, notes?: string) {
+    const service = await this.findOne(serviceId);
+    return this.prisma.professionalBooking.create({
+      data: {
+        userId,
+        serviceId,
+        notes,
+        status: 'CONFIRMED', // Para la demo asumo confirmación inmediata
+      },
+      include: {
+        service: true,
+      },
+    });
+  }
+
+  async getMyBookings(userId: string) {
+    return this.prisma.professionalBooking.findMany({
+      where: { userId },
+      include: {
+        service: {
+          include: { provider: true }
+        }
+      },
+      orderBy: { bookedAt: 'desc' },
     });
   }
 }

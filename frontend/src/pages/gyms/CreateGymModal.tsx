@@ -6,15 +6,16 @@ import { motion } from 'framer-motion';
 interface CreateGymModalProps {
   onClose: () => void;
   onCreated: () => void;
+  initialData?: any;
 }
 
-const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated }) => {
+const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, initialData }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    address: '',
-    phone: '',
-    website: '',
+    name: initialData?.name || '',
+    description: initialData?.description || '',
+    address: initialData?.address || '',
+    phone: initialData?.phone || '',
+    website: initialData?.website || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,11 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated }) =
     setError('');
 
     try {
-      await api.post('/gyms', formData);
+      if (initialData) {
+        await api.patch(`/gyms/${initialData.id}`, formData);
+      } else {
+        await api.post('/gyms', formData);
+      }
       onCreated();
       onClose();
     } catch (err: any) {
@@ -48,7 +53,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated }) =
         </button>
 
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-          <Dumbbell className="text-primary-light" /> Registrar Mi Gimnasio
+          <Dumbbell className="text-primary-light" /> {initialData ? 'Editar Gimnasio' : 'Registrar Mi Gimnasio'}
         </h2>
 
         {error && (
@@ -125,7 +130,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated }) =
             disabled={loading}
             className="btn-primary w-full py-4 mt-6 flex items-center justify-center gap-2 relative overflow-hidden active:scale-[0.98]"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Plus className="w-5 h-5" /> <span>Crear Gimnasio</span> </>}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Plus className="w-5 h-5" /> <span>{initialData ? 'Guardar Cambios' : 'Crear Gimnasio'}</span> </>}
           </button>
         </form>
       </motion.div>

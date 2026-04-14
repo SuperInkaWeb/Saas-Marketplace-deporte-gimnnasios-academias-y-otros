@@ -19,9 +19,10 @@ import { AddProductModal } from '../../components/marketplace/AddProductModal';
 const ProductCard: React.FC<{ 
   product: any; 
   onAddToCart: (p: any) => void;
+  onEdit?: (p: any) => void;
   onDelete?: (id: string) => void;
   user: any;
-}> = ({ product, onAddToCart, onDelete, user }) => {
+}> = ({ product, onAddToCart, onEdit, onDelete, user }) => {
   const isOwner = user?.id === product.gym?.ownerId;
 
   return (
@@ -29,14 +30,27 @@ const ProductCard: React.FC<{
       whileHover={{ y: -5 }}
       className="glass-card overflow-hidden border-white/5 hover:border-secondary/30 transition-all group relative"
     >
-      {isOwner && onDelete && (
-        <button 
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(product.id); }}
-          className="absolute top-3 left-3 bg-red-500/80 hover:bg-red-500 text-white p-2 rounded-xl z-30 transition-all shadow-lg active:scale-95 border border-white/10"
-          title="Eliminar este producto"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+      {isOwner && (
+        <div className="absolute top-3 left-3 z-30 flex gap-2">
+          {onEdit && (
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(product); }}
+              className="bg-slate-800/80 hover:bg-slate-700 text-white p-2 rounded-xl transition-all shadow-lg active:scale-95 border border-white/10"
+              title="Editar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(product.id); }}
+              className="bg-red-500/80 hover:bg-red-500 text-white p-2 rounded-xl transition-all shadow-lg active:scale-95 border border-white/10"
+              title="Eliminar"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
 
       <div className="h-48 bg-slate-800 relative overflow-hidden flex items-center justify-center">
@@ -79,6 +93,7 @@ export const MarketplacePage: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isPayMeOpen, setIsPayMeOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const { user } = useAuth();
@@ -214,6 +229,7 @@ export const MarketplacePage: React.FC = () => {
               key={p.id} 
               product={p} 
               onAddToCart={addToCart} 
+              onEdit={setEditingProduct}
               onDelete={handleDeleteProduct}
               user={user}
             />
@@ -288,12 +304,14 @@ export const MarketplacePage: React.FC = () => {
       />
 
       <AddProductModal 
-        isOpen={isAddProductOpen}
-        onClose={() => setIsAddProductOpen(false)}
+        isOpen={isAddProductOpen || !!editingProduct}
+        initialData={editingProduct}
+        onClose={() => { setIsAddProductOpen(false); setEditingProduct(null); }}
         onSuccess={() => {
           fetchProducts();
-          setMessage('¡Producto añadido exitosamente a la tienda!');
+          setMessage(editingProduct ? '¡Producto editado exitosamente!' : '¡Producto añadido exitosamente a la tienda!');
           setTimeout(() => setMessage(null), 3500);
+          setEditingProduct(null);
         }}
       />
     </div>

@@ -7,19 +7,20 @@ interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
 }
 
-export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [loading, setLoading] = useState(false);
   const [gyms, setGyms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    gymId: '',
-    name: '',
-    description: '',
-    price: '',
-    stock: '',
-    category: 'Suplementos',
-    imageUrl: '',
+    gymId: initialData?.gymId || '',
+    name: initialData?.name || '',
+    description: initialData?.description || '',
+    price: initialData?.price || '',
+    stock: initialData?.stock || '',
+    category: initialData?.category || 'Suplementos',
+    imageUrl: initialData?.imageUrl || '',
   });
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         try {
           const { data } = await api.get('/gyms'); // Backend checks ownership/admin usually or returns all user related gyms
           setGyms(data);
-          if (data.length > 0) {
+          if (data.length > 0 && !initialData) {
             setFormData(prev => ({ ...prev, gymId: data[0].id }));
           }
         } catch (err) {
@@ -47,14 +48,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     }
     setLoading(true);
     try {
-      await api.post(`/marketplace/products/${formData.gymId}`, {
+      const payload = {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
         stock: Number(formData.stock),
         category: formData.category,
         imageUrl: formData.imageUrl
-      });
+      };
+
+      if (initialData) {
+        await api.patch(`/marketplace/products/${initialData.id}`, payload);
+      } else {
+        await api.post(`/marketplace/products/${formData.gymId}`, payload);
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -76,7 +83,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
           >
             <div className="p-6 border-b border-white/10 flex justify-between items-center bg-slate-800/50">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Package className="text-secondary-light w-6 h-6" /> Nuevo Producto
+                <Package className="text-secondary-light w-6 h-6" /> {initialData ? 'Editar Producto' : 'Nuevo Producto'}
               </h2>
               <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
@@ -185,7 +192,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
                       Cancelar
                     </button>
                     <button type="submit" disabled={loading} className="flex-1 py-3 px-4 btn-secondary rounded-xl flex items-center justify-center gap-2">
-                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Añadir Producto'}
+                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (initialData ? 'Guardar Cambios' : 'Añadir Producto')}
                     </button>
                   </div>
 

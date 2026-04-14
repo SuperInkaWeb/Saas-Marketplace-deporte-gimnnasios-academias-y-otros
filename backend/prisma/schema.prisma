@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -31,6 +32,8 @@ model User {
   eventsOrganized      Event[]
   wearableMetrics      WearableMetric[]
   invoices             Invoice[]
+  notifications        Notification[]
+  professionalBookings ProfessionalBooking[]
 
   @@map("users")
 }
@@ -61,6 +64,7 @@ model Gym {
   marketingCampaigns MarketingCampaign[]
   invoices           Invoice[]
 
+  @@index([ownerId])
   @@map("gyms")
 }
 
@@ -115,6 +119,8 @@ model Class {
   trainer      TrainerProfile? @relation(fields: [trainerId], references: [id])
   reservations Reservation[]
 
+  @@index([gymId, scheduledAt])
+  @@index([trainerId])
   @@map("classes")
 }
 
@@ -130,6 +136,8 @@ model Reservation {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([classId, userId])
+  @@index([userId])
+  @@index([status])
   @@map("reservations")
 }
 
@@ -148,6 +156,7 @@ model MembershipPlan {
   gym                 Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
   userMemberships     UserMembership[]
 
+  @@index([gymId])
   @@map("membership_plans")
 }
 
@@ -164,6 +173,8 @@ model UserMembership {
   plan        MembershipPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, status])
+  @@index([planId])
   @@map("user_memberships")
 }
 
@@ -185,6 +196,10 @@ model Payment {
   user         User            @relation(fields: [userId], references: [id])
   invoice      Invoice?
 
+  @@index([userId])
+  @@index([status, paidAt])
+  @@index([orderId])
+  @@index([membershipId])
   @@map("payments")
 }
 
@@ -316,8 +331,22 @@ model ProfessionalService {
   isActive    Boolean     @default(true) @map("is_active")
   createdAt   DateTime    @default(now()) @map("created_at")
   provider    User        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  bookings    ProfessionalBooking[]
 
   @@map("professional_services")
+}
+
+model ProfessionalBooking {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  serviceId   String      @map("service_id")
+  status      String      @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  bookedAt    DateTime    @default(now()) @map("booked_at")
+  notes       String?
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service     ProfessionalService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("professional_bookings")
 }
 
 model Event {
@@ -400,6 +429,7 @@ model MarketingCampaign {
   updatedAt   DateTime       @updatedAt @map("updated_at")
   gym         Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
+  @@index([gymId])
   @@map("marketing_campaigns")
 }
 
@@ -424,3 +454,16 @@ model Invoice {
   @@map("invoices")
 }
 
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  title       String   @db.VarChar(200)
+  description String   @db.Text
+  type        String   @default("INFO") // 'CAMPAIGN', 'RESERVATION', 'SYSTEM', etc.
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

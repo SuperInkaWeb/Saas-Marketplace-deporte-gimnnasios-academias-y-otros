@@ -111,11 +111,47 @@ export class GymsService {
     });
   }
 
-  async remove(id: string) {
-    // Soft delete by changing status
+  async remove(id: string, currentUserId: string, isAdmin: boolean) {
+    const gym = await this.findOne(id);
+    if (gym.ownerId !== currentUserId && !isAdmin) {
+      throw new ForbiddenException('No tienes permiso para eliminar este gimnasio');
+    }
     return this.prisma.gym.update({
       where: { id },
       data: { status: GymStatus.INACTIVE },
     });
+  }
+
+  async findMembers(gymId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        userMemberships: {
+          some: {
+            plan: { gymId },
+            status: 'ACTIVE'
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        avatarUrl: true
+      }
+    });
+  }
+
+  async validateOwnership(gymId: string, ownerId: string) {
+    const gym = await this.prisma.gym.findUnique({
+      where: { id: gymId },
+      select: { ownerId: true }
+    });
+    
+    if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+    if (gym.ownerId !== ownerId) {
+      throw new ForbiddenException('No tienes permiso sobre este gimnasio');
+    }
+    return true;
   }
 }

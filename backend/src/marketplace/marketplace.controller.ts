@@ -7,6 +7,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { MarketplaceService } from './marketplace.service';
 import { CreateProductDto, CreateOrderDto } from './dto/marketplace.dto';
@@ -54,6 +55,15 @@ export class MarketplaceController {
   @ApiOperation({ summary: 'Eliminar un producto de la tienda' })
   deleteProduct(@Param('id') id: string, @CurrentUser() user: any) {
     return this.marketplaceService.deleteProduct(id, user.id);
+  }
+
+  @Patch('products/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar un producto de la tienda' })
+  updateProduct(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: any) {
+    return this.marketplaceService.updateProduct(id, user.id, dto);
   }
 
   @Post('orders')

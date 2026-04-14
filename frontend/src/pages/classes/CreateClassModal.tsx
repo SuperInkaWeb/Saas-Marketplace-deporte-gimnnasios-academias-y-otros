@@ -7,20 +7,21 @@ import { motion } from 'framer-motion';
 interface CreateClassModalProps {
   onClose: () => void;
   onCreated: () => void;
+  initialData?: any;
 }
 
-const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated }) => {
+const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated, initialData }) => {
   const [gyms, setGyms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    capacity: 20,
-    price: 0,
-    scheduledAt: '',
-    durationMin: 60,
-    classType: 'IN_PERSON',
-    location: '',
-    gymId: '',
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    capacity: initialData?.capacity || 20,
+    price: initialData?.price || 0,
+    scheduledAt: initialData?.scheduledAt ? new Date(initialData.scheduledAt).toISOString().slice(0, 16) : '',
+    durationMin: initialData?.durationMin || 60,
+    classType: initialData?.classType || 'IN_PERSON',
+    location: initialData?.location || '',
+    gymId: initialData?.gymId || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,13 +46,19 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated 
 
     try {
       const { gymId, ...data } = formData;
-      await api.post(`/classes/${gymId}`, {
+      const payload = {
         ...data,
         price: Number(formData.price),
         capacity: Number(formData.capacity),
         durationMin: Number(formData.durationMin),
         scheduledAt: new Date(formData.scheduledAt).toISOString(),
-      });
+      };
+      
+      if (initialData) {
+        await api.patch(`/classes/${initialData.id}`, payload);
+      } else {
+        await api.post(`/classes/${gymId}`, payload);
+      }
 
       onCreated();
       onClose();
@@ -74,7 +81,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated 
         </button>
 
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-          <Calendar className="text-primary-light" /> Nueva Clase
+          <Calendar className="text-primary-light" /> {initialData ? 'Editar Clase' : 'Nueva Clase'}
         </h2>
 
         {error && <div className="bg-red-500/10 border-red-500/20 p-4 border rounded-xl text-red-400 text-sm mb-6">{error}</div>}
@@ -198,7 +205,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated 
               disabled={loading}
               className="btn-primary w-full py-4 mt-6 flex items-center justify-center gap-2 relative overflow-hidden active:scale-[0.98]"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Plus className="w-5 h-5" /> <span>Crear Clase</span> </>}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Plus className="w-5 h-5" /> <span>{initialData ? 'Guardar Cambios' : 'Crear Clase'}</span> </>}
             </button>
           </div>
         </form>

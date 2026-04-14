@@ -15,7 +15,12 @@ import {
 import { motion } from 'framer-motion';
 import CreateGymModal from './CreateGymModal';
 
-const GymCard: React.FC<{ gym: any }> = ({ gym }) => (
+const GymCard: React.FC<{ 
+  gym: any; 
+  isOwner: boolean; 
+  onEdit: (gym: any) => void;
+  onDelete: (id: string) => void;
+}> = ({ gym, isOwner, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -5 }}
     className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all"
@@ -45,9 +50,28 @@ const GymCard: React.FC<{ gym: any }> = ({ gym }) => (
           <Star className="text-yellow-400 fill-yellow-400 w-4 h-4" />
           <span className="text-white font-bold text-sm">NUEVO</span>
         </div>
-        <button className="text-primary-light font-bold text-sm hover:underline">
-          Ver Detalles
-        </button>
+        
+        <div className="flex items-center gap-3">
+          {isOwner && (
+            <>
+              <button 
+                 onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
+                 className="text-slate-400 hover:text-white transition-colors text-sm"
+              >
+                Editar
+              </button>
+              <button 
+                 onClick={(e) => { e.stopPropagation(); onDelete(gym.id); }}
+                 className="text-red-400 hover:text-red-300 transition-colors text-sm font-bold"
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+          <button className="text-primary-light font-bold text-sm hover:underline">
+            Ver Detalles
+          </button>
+        </div>
       </div>
     </div>
   </motion.div>
@@ -58,6 +82,7 @@ const GymsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingGym, setEditingGym] = useState<any>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const { user } = useAuth();
 
@@ -76,6 +101,19 @@ const GymsPage: React.FC = () => {
   useEffect(() => {
     fetchGyms();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este gimnasio?')) {
+      try {
+        await api.delete(`/gyms/${id}`);
+        setMessage({ type: 'success', text: 'Gimnasio eliminado exitosamente.' });
+        fetchGyms();
+        setTimeout(() => setMessage(null), 3000);
+      } catch (err: any) {
+        setMessage({ type: 'error', text: err.response?.data?.message || 'Error al eliminar.' });
+      }
+    }
+  };
 
   const filteredGyms = gyms.filter(g => 
     g.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -100,12 +138,17 @@ const GymsPage: React.FC = () => {
         )}
       </header>
 
-      {showCreateModal && (
+      {(showCreateModal || editingGym) && (
         <CreateGymModal 
-          onClose={() => setShowCreateModal(false)} 
+          initialData={editingGym}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingGym(null);
+          }} 
           onCreated={() => {
             fetchGyms();
-            setMessage({ type: 'success', text: '¡Gimnasio registrado exitosamente!' });
+            setMessage({ type: 'success', text: editingGym ? '¡Gimnasio actualizado!' : '¡Gimnasio registrado exitosamente!' });
+            setEditingGym(null);
             setTimeout(() => setMessage(null), 3000);
           }} 
         />
@@ -149,7 +192,13 @@ const GymsPage: React.FC = () => {
       ) : filteredGyms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredGyms.map(gym => (
-            <GymCard key={gym.id} gym={gym} />
+            <GymCard 
+              key={gym.id} 
+              gym={gym} 
+              isOwner={user?.role === 'ADMIN' || (user?.role === 'GYM_OWNER' && gym.ownerId === user?.id)}
+              onEdit={setEditingGym}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       ) : (

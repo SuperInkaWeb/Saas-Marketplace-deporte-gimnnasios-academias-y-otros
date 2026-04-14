@@ -24,13 +24,15 @@ const ClassCard: React.FC<{
   onBook: (id: string) => void;
   onViewTicket: (res: any, classItem: any) => void;
   onScanModal: (classItem: any) => void;
+  onEdit: (classItem: any) => void;
+  onDelete: (id: string) => void;
   user: any;
-}> = ({ classItem, onBook, onViewTicket, onScanModal, user }) => {
+}> = ({ classItem, onBook, onViewTicket, onScanModal, onEdit, onDelete, user }) => {
   const isOnline = classItem.classType === 'ONLINE';
   
   const userReservation = classItem.reservations?.find((r: any) => r.userId === user?.id);
   const isTrainerAssigned = user?.role === 'TRAINER' && classItem.trainer?.user?.name === user?.name; // Simple check for demo
-  const isOwner = user?.role === 'GYM_OWNER';
+  const isOwnerClass = user?.role === 'ADMIN' || (user?.role === 'GYM_OWNER' && classItem.gym?.ownerId === user?.id);
   
   return (
     <motion.div 
@@ -77,33 +79,52 @@ const ClassCard: React.FC<{
         </div>
       </div>
 
-      <div className="p-6 pt-0 mt-auto border-t border-white/5 flex items-center justify-between">
+      <div className="p-6 pt-0 mt-auto border-t border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-xl font-bold text-white">${Number(classItem.price).toFixed(2)}</div>
         
-        {isTrainerAssigned || isOwner ? (
-          <button 
-            onClick={() => onScanModal(classItem)}
-            className="bg-accent hover:bg-accent-light text-white py-2 px-4 rounded-xl text-sm transition-all shadow-lg active:scale-95 flex items-center gap-1"
-          >
-            <Scan className="w-4 h-4" /> Escanear Asistencia
-          </button>
-        ) : userReservation ? (
-          <button 
-            onClick={() => onViewTicket(userReservation, classItem)}
-            className={`${userReservation.status === 'ATTENDED' ? 'bg-slate-700/50 text-slate-400' : 'bg-[#00a3ff] hover:bg-[#0082cc] text-white shadow-[#00a3ff]/20 shadow-lg'} py-2 px-4 rounded-xl text-sm transition-all active:scale-95 flex items-center gap-1 font-bold`}
-          >
-            <QrCode className="w-4 h-4" /> 
-            {userReservation.status === 'ATTENDED' ? 'Ticket Usado' : 'Ver Ticket'}
-          </button>
-        ) : (
-          <button 
-            onClick={() => onBook(classItem.id)}
-            className="btn-primary py-2 px-6 text-sm active:scale-95"
-            disabled={classItem._count?.reservations >= classItem.capacity}
-          >
-            {classItem._count?.reservations >= classItem.capacity ? 'Agotado' : 'Reservar'}
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {isOwnerClass && (
+            <>
+              <button 
+                onClick={() => onEdit(classItem)}
+                className="text-slate-400 hover:text-white text-xs font-bold transition-all px-2"
+              >
+                Editar
+              </button>
+              <button 
+                onClick={() => onDelete(classItem.id)}
+                className="text-red-400 hover:text-red-300 text-xs font-bold transition-all px-2"
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+
+          {isTrainerAssigned || isOwnerClass ? (
+            <button 
+              onClick={() => onScanModal(classItem)}
+              className="bg-accent hover:bg-accent-light text-white py-2 px-4 rounded-xl text-sm transition-all shadow-lg active:scale-95 flex items-center gap-1"
+            >
+              <Scan className="w-4 h-4" /> Escanear Asistencia
+            </button>
+          ) : userReservation ? (
+            <button 
+              onClick={() => onViewTicket(userReservation, classItem)}
+              className={`${userReservation.status === 'ATTENDED' ? 'bg-slate-700/50 text-slate-400' : 'bg-[#00a3ff] hover:bg-[#0082cc] text-white shadow-[#00a3ff]/20 shadow-lg'} py-2 px-4 rounded-xl text-sm transition-all active:scale-95 flex items-center gap-1 font-bold`}
+            >
+              <QrCode className="w-4 h-4" /> 
+              {userReservation.status === 'ATTENDED' ? 'Ticket Usado' : 'Ver Ticket'}
+            </button>
+          ) : (
+            <button 
+              onClick={() => onBook(classItem.id)}
+              className="btn-primary py-2 px-6 text-sm active:scale-95"
+              disabled={classItem._count?.reservations >= classItem.capacity}
+            >
+              {classItem._count?.reservations >= classItem.capacity ? 'Agotado' : 'Reservar'}
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -112,6 +133,7 @@ const ClassCard: React.FC<{
 const ClassesPage: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingClass, setEditingClass] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const { user } = useAuth();
@@ -144,6 +166,19 @@ const ClassesPage: React.FC = () => {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Error al reservar' });
     }
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta clase?')) {
+      try {
+        await api.delete(`/classes/${id}`);
+        setMessage({ type: 'success', text: 'Clase eliminada exitosamente.' });
+        fetchClasses();
+      } catch (err: any) {
+        setMessage({ type: 'error', text: err.response?.data?.message || 'Error al eliminar.' });
+      }
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   const handleOpenTicket = (reservation: any, classItem: any) => {
@@ -187,12 +222,17 @@ const ClassesPage: React.FC = () => {
         )}
       </header>
 
-      {showCreateModal && (
+      {(showCreateModal || editingClass) && (
         <CreateClassModal 
-          onClose={() => setShowCreateModal(false)} 
+          initialData={editingClass}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingClass(null);
+          }} 
           onCreated={() => {
             fetchClasses();
-            setMessage({ type: 'success', text: '¡Clase creada exitosamente!' });
+            setMessage({ type: 'success', text: editingClass ? '¡Clase actualizada!' : '¡Clase creada exitosamente!' });
+            setEditingClass(null);
             setTimeout(() => setMessage(null), 3000);
           }} 
         />
@@ -239,6 +279,8 @@ const ClassesPage: React.FC = () => {
               onBook={handleBook} 
               onViewTicket={handleOpenTicket}
               onScanModal={handleOpenScanner}
+              onEdit={setEditingClass}
+              onDelete={handleDelete}
               user={user}
             />
           ))}

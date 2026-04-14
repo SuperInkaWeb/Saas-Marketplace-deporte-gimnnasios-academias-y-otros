@@ -60,6 +60,15 @@ export class GymsController {
     return this.gymsService.findOne(id);
   }
 
+  @Get(':id/members')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar miembros con membresía activa del gimnasio' })
+  findMembers(@Param('id') id: string) {
+    return this.gymsService.findMembers(id);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
@@ -76,10 +85,11 @@ export class GymsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Desactivar un gimnasio (Admin)' })
-  remove(@Param('id') id: string) {
-    return this.gymsService.remove(id);
+  @ApiOperation({ summary: 'Desactivar o eliminar un gimnasio (Dueño/Admin)' })
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    const isAdmin = user.role === UserRole.ADMIN;
+    return this.gymsService.remove(id, user.id, isAdmin);
   }
 }

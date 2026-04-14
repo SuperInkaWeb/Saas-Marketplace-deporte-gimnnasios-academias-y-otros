@@ -16,6 +16,7 @@ import AnalyticsView from './pages/dashboard/AnalyticsView';
 import CRMView from './pages/dashboard/CRMView';
 import WearablesView from './pages/dashboard/WearablesView';
 import InvoicesView from './pages/dashboard/InvoicesView';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      <Toaster position="top-right" richColors theme="dark" />
     </AuthProvider>
   );
 }

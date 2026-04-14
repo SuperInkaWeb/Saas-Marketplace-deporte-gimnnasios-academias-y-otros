@@ -55,6 +55,22 @@ export class MarketplaceService {
     });
   }
 
+  async updateProduct(id: string, ownerId: string, dto: any) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { gym: true },
+    });
+    if (!product) throw new NotFoundException('Producto no encontrado');
+    if (product.gym.ownerId !== ownerId) {
+      throw new ForbiddenException('No tienes permisos para editar este producto');
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
   async createOrder(userId: string, dto: CreateOrderDto) {
     return this.prisma.$transaction(async (tx) => {
       let totalAmount = 0;

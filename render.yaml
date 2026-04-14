@@ -12,18 +12,24 @@ services:
       - key: PORT
         value: 3000
       - key: DATABASE_URL
-        sync: false          # lo pegas manualmente en el dashboard
+        sync: false
+      - key: DIRECT_URL
+        sync: false
       - key: JWT_SECRET
         sync: false
-      - key: JWT_EXPIRES_IN
-        value: 24h
-      - key: JWT_REFRESH_SECRET
-        sync: false
-      - key: JWT_REFRESH_EXPIRES_IN
-        value: 7d
       - key: FRONTEND_URL
-        sync: false          # lo agregas después con la URL del frontend
+        sync: false
       - key: GEMINI_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
         sync: false
       - key: AUTH0_DOMAIN
         value: dev-6d0mok1v1ohx5iez.us.auth0.com
@@ -39,4 +45,4 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        sync: false          # lo agregas con la URL del backend de Render
+        sync: false

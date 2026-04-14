@@ -3,12 +3,15 @@ import { ArrowLeft, FileText, Download, CheckCircle2, Loader2 } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
+import InvoiceModal from './components/InvoiceModal';
 
 const InvoicesView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -128,14 +131,11 @@ const InvoicesView: React.FC = () => {
                     <td className="px-6 py-4 text-center">
                       <button 
                         onClick={() => {
-                           if(inv.pdfUrl) {
-                              window.open(inv.pdfUrl, '_blank')
-                           } else {
-                              alert('PDF no disponible para esta factura.');
-                           }
+                           setSelectedInvoice(inv);
+                           setIsModalOpen(true);
                         }}
                         className="p-2 hover:bg-primary/20 rounded-xl text-primary-light hover:text-white transition-all active:scale-90"
-                        title="Descargar PDF"
+                        title="Ver Factura Detallada"
                       >
                         <Download className="w-5 h-5 mx-auto" />
                       </button>
@@ -147,6 +147,12 @@ const InvoicesView: React.FC = () => {
           </div>
         )}
       </div>
+
+      <InvoiceModal 
+        invoice={selectedInvoice} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 };

@@ -19,6 +19,7 @@ import { MarketingModule } from './marketing/marketing.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 
 @Module({
@@ -42,6 +43,7 @@ import { PaymentsModule } from './payments/payments.module';
     WearablesModule,
     InvoicesModule,
     PaymentsModule,
+    NotificationsModule,
   ],
 
 

@@ -44,10 +44,27 @@ export class ProfessionalsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.TRAINER, UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete a professional service' })
-  remove(@Param('id') id: string) {
-    return this.professionalsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    const isAdmin = req.user.role === UserRole.ADMIN;
+    return this.professionalsService.remove(id, req.user.id, isAdmin);
+  }
+
+  @Post(':id/book')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Book a professional service' })
+  bookService(@Param('id') id: string, @Request() req, @Body('notes') notes: string) {
+    return this.professionalsService.bookService(req.user.id, id, notes);
+  }
+
+  @Get('my-bookings')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my bookings' })
+  getMyBookings(@Request() req) {
+    return this.professionalsService.getMyBookings(req.user.id);
   }
 }

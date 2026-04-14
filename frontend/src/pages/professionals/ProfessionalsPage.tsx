@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
+import { useAuth } from '../../context/auth-context';
 import { 
   Users, 
   Search,
   Loader2,
   CheckCircle2,
   CalendarHeart,
-  Star
+  Star,
+  Plus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import CreateProfessionalModal from './CreateProfessionalModal';
 
-const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void }> = ({ professional, onBook }) => (
+const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; isOwner: boolean; onEdit: (p: any) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isOwner, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -5 }}
     className="glass-card overflow-hidden border-white/5 hover:border-accent/30 transition-all group p-5 flex flex-col items-center text-center relative"
@@ -38,14 +41,22 @@ const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void }
       {professional.description || 'Consulta personalizada y entrenamiento al más alto nivel.'}
     </div>
     
-    <div className="flex items-center justify-between w-full mt-auto pt-4 border-t border-white/5">
+    <div className="flex items-center justify-between w-full mt-auto pt-4 border-t border-white/5 gap-2">
       <span className="text-xl font-extrabold text-white">${Number(professional.price).toFixed(2)}<span className="text-xs text-slate-500 font-normal"> / {professional.durationMin}m</span></span>
-      <button 
-        onClick={() => onBook(professional)}
-        className="bg-accent hover:bg-accent-dark px-4 py-2 rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 text-white text-sm font-bold flex items-center gap-2"
-      >
-        <CalendarHeart className="w-4 h-4" /> Reservar
-      </button>
+      <div className="flex items-center gap-2">
+        {isOwner && (
+          <>
+            <button onClick={() => onEdit(professional)} className="text-slate-400 hover:text-white text-xs font-bold px-2">Editar</button>
+            <button onClick={() => onDelete(professional.id)} className="text-red-400 hover:text-red-300 text-xs font-bold px-2">Eliminar</button>
+          </>
+        )}
+        <button 
+          onClick={() => onBook(professional)}
+          className="bg-accent hover:bg-accent-dark px-4 py-2 rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 text-white text-sm font-bold flex items-center gap-2"
+        >
+          <CalendarHeart className="w-4 h-4" /> Reservar
+        </button>
+      </div>
     </div>
   </motion.div>
 );
@@ -54,7 +65,10 @@ const ProfessionalsPage: React.FC = () => {
   const [professionals, setProfessionals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProf, setEditingProf] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchProfessionals = async () => {
@@ -70,9 +84,31 @@ const ProfessionalsPage: React.FC = () => {
     fetchProfessionals();
   }, []);
 
-  const handleBook = (prof: any) => {
-    setMessage(`¡Reserva solicitada con ${prof.provider?.name || 'el profesional'} por $${prof.price}!`);
-    setTimeout(() => setMessage(null), 3000);
+  const handleBook = async (prof: any) => {
+    try {
+      setLoading(true);
+      await api.post(`/professionals/${prof.id}/book`, { notes: 'Reserva solicitada desde la plataforma principal.' });
+      setMessage({type: 'success', text: `¡Reserva confirmada con ${prof.provider?.name || 'el profesional'}! Revisa tus notificaciones.`});
+    } catch (err: any) {
+      setMessage({ type: 'error', text: 'Error al reservar: ' + (err.response?.data?.message || 'Servidor no disponible') });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(null), 4000);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Eliminar este servicio?')) {
+      try {
+        await api.delete(`/professionals/${id}`);
+        setMessage({ type: 'success', text: 'Servicio eliminado' });
+        const { data } = await api.get('/professionals');
+        setProfessionals(data);
+      } catch (err: any) {
+        setMessage({ type: 'error', text: err.response?.data?.message || 'Error' });
+      }
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   const filtered = professionals.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.serviceType.toLowerCase().includes(search.toLowerCase()));
@@ -86,6 +122,14 @@ const ProfessionalsPage: React.FC = () => {
           </h1>
           <p className="text-slate-400 mt-2">Contrata a los mejores nutricionistas, fisioterapeutas y personal trainers.</p>
         </div>
+        {(user?.role === 'ADMIN' || user?.role === 'TRAINER') && (
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold transition-all shadow-lg shadow-accent/20"
+          >
+            <Plus className="w-5 h-5" /> Ofrecer Servicio
+          </button>
+        )}
       </header>
 
       <div className="relative max-w-xl">
@@ -100,9 +144,22 @@ const ProfessionalsPage: React.FC = () => {
       </div>
 
       {message && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl text-green-400 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" /> {message}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`border p-4 rounded-xl flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          <CheckCircle2 className="w-5 h-5" /> {message.text}
         </motion.div>
+      )}
+
+      {(showCreateModal || editingProf) && (
+        <CreateProfessionalModal
+           initialData={editingProf}
+           onClose={() => { setShowCreateModal(false); setEditingProf(null); }}
+           onCreated={async () => {
+             const { data } = await api.get('/professionals');
+             setProfessionals(data);
+             setMessage({ type: 'success', text: editingProf ? 'Servicio editado' : 'Servicio publicado' });
+             setTimeout(() => setMessage(null), 3000);
+           }}
+        />
       )}
 
       {loading ? (
@@ -112,7 +169,14 @@ const ProfessionalsPage: React.FC = () => {
       ) : filtered.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map(p => (
-            <ProfessionalCard key={p.id} professional={p} onBook={handleBook} />
+            <ProfessionalCard 
+               key={p.id} 
+               professional={p} 
+               onBook={handleBook} 
+               isOwner={user?.role === 'ADMIN' || p.providerId === user?.id}
+               onEdit={setEditingProf}
+               onDelete={handleDelete}
+            />
           ))}
         </div>
       ) : (
