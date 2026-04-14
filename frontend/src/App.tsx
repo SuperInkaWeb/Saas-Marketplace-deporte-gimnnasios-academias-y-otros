@@ -6,6 +6,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import Dashboard from './pages/dashboard/Dashboard';
 import GymsPage from './pages/gyms/GymsPage';
+import GymShowroom from './pages/gyms/GymShowroom';
 import ClassesPage from './pages/classes/ClassesPage';
 import MarketplacePage from './pages/marketplace/MarketplacePage';
 import MembershipsPage from './pages/memberships/MembershipsPage';
@@ -36,6 +37,7 @@ function App() {
             <Route element={<MainLayout><WearablesView /></MainLayout>} path="/dashboard/wearables" />
             <Route element={<MainLayout><InvoicesView /></MainLayout>} path="/dashboard/invoices" />
             <Route element={<MainLayout><GymsPage /></MainLayout>} path="/gyms" />
+            <Route element={<MainLayout><GymShowroom /></MainLayout>} path="/gyms/:id" />
             <Route element={<MainLayout><ClassesPage /></MainLayout>} path="/classes" />
             <Route element={<MainLayout><MarketplacePage /></MainLayout>} path="/marketplace" />
             <Route element={<MainLayout><ProfessionalsPage /></MainLayout>} path="/professionals" />

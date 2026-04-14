@@ -68,7 +68,10 @@ const GymCard: React.FC<{
               </button>
             </>
           )}
-          <button className="text-primary-light font-bold text-sm hover:underline">
+          <button 
+             onClick={() => (window.location.href = `/gyms/${gym.id}`)}
+             className="text-primary-light font-bold text-sm hover:underline"
+          >
             Ver Detalles
           </button>
         </div>
