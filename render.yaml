@@ -4,8 +4,8 @@ services:
     name: sportnexus-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install && npm run build && npx prisma generate
-    startCommand: npx prisma migrate deploy && node dist/main
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma db push && node dist/main
     envVars:
       - key: NODE_ENV
         value: production
