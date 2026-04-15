@@ -16,18 +16,18 @@ const PlanCard: React.FC<{ plan: any; onSubscribe: (id: string) => void }> = ({ 
   <motion.div 
     whileHover={{ scale: 1.02 }}
     className={`glass-card p-8 flex flex-col border-white/5 relative overflow-hidden transition-all ${
-      plan.name === 'VIP' ? 'ring-2 ring-primary-light/50 border-primary-light/20 shadow-2xl shadow-primary/20' : ''
+      plan.name === 'Premium Élite' ? 'ring-2 ring-primary-light/50 border-primary-light/20 shadow-2xl shadow-primary/20' : ''
     }`}
   >
-    {plan.name === 'VIP' && (
+    {plan.name === 'Premium Élite' && (
       <div className="absolute top-4 right-4 bg-primary-light text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
         Más Popular
       </div>
     )}
     
     <div className="flex items-center gap-3 mb-6">
-      <div className={`p-3 rounded-xl ${plan.name === 'VIP' ? 'bg-primary/20 text-primary-light' : 'bg-white/5 text-slate-400'}`}>
-        {plan.name === 'VIP' ? <Crown /> : plan.name === 'Standard' ? <Zap /> : <ShieldCheck />}
+      <div className={`p-3 rounded-xl ${plan.name === 'Premium Élite' ? 'bg-primary/20 text-primary-light' : 'bg-white/5 text-slate-400'}`}>
+        {plan.name === 'Premium Élite' ? <Crown /> : plan.name === 'Estándar' ? <Zap /> : <ShieldCheck />}
       </div>
       <h3 className="text-xl font-bold text-white">{plan.name}</h3>
     </div>
@@ -60,7 +60,7 @@ const PlanCard: React.FC<{ plan: any; onSubscribe: (id: string) => void }> = ({ 
     <button 
       onClick={() => onSubscribe(plan.id)}
       className={`w-full py-3 rounded-xl font-bold transition-all active:scale-95 ${
-        plan.name === 'VIP' ? 'btn-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white'
+        plan.name === 'Premium Élite' ? 'btn-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white'
       }`}
     >
       Seleccionar Plan
@@ -128,7 +128,7 @@ const MembershipsPage: React.FC = () => {
         </div>
       ) : plans.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {plans.map(plan => (
+          {plans.slice(0, 3).map(plan => (
             <PlanCard key={plan.id} plan={plan} onSubscribe={handleOpenPayMe} />
           ))}
         </div>

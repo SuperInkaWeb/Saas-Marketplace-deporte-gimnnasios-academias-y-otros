@@ -24,9 +24,10 @@ async function bootstrap() {
   const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:3000',
-    /\.onrender\.com$/,   // Subdominios de Render
-    /\.vercel\.app$/,     // Subdominios de Vercel (¡Esto arregla tu error!)
+    /\.onrender\.com$/,
+    /\.vercel\.app$/,
   ].filter(Boolean);
 
   app.enableCors({

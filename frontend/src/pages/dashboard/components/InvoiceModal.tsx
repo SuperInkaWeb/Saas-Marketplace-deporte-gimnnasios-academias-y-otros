@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Printer, Download, CheckCircle2, MapPin, Globe, Mail } from 'lucide-react';
+import { X, Printer, CheckCircle2, MapPin, Globe, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface InvoiceModalProps {

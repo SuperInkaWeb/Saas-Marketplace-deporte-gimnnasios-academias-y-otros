@@ -16,7 +16,8 @@ import {
   Map,
   Trophy,
   Activity,
-  Bell
+  Bell,
+  Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIChatWidget from '../ai/AIChatWidget';
@@ -52,7 +53,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const prevNotificationsCount = useRef(0);
 
   const fetchNotifications = async (isInitial = false) => {
@@ -74,8 +74,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       prevNotificationsCount.current = data.length;
     } catch (err) {
       console.error('Error fetching notifications:', err);
-    } finally {
-      if (isInitial) setLoading(false);
     }
   };
 
@@ -114,7 +112,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] },
-    { to: '/gyms', icon: Dumbbell, label: 'Gimnasios', roles: ['USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] },
+    { to: '/gyms', icon: Building2, label: 'Mis Negocios', roles: ['USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] },
     { to: '/classes', icon: Calendar, label: 'Clases', roles: ['USER', 'TRAINER', 'GYM_OWNER', 'ADMIN'] },
     { to: '/events', icon: Trophy, label: 'Eventos', roles: ['USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] },
     { to: '/marketplace', icon: ShoppingBag, label: 'Tienda', roles: ['USER', 'GYM_OWNER', 'ADMIN'] },

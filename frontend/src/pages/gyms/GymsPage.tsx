@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
-import { 
-  Search, 
-  MapPin, 
-  Star, 
-  Plus, 
-  Filter, 
+import {
+  Search,
+  MapPin,
+  Star,
+  Plus,
+  Filter,
   Loader2,
   Dumbbell,
   CheckCircle2,
@@ -15,13 +15,13 @@ import {
 import { motion } from 'framer-motion';
 import CreateGymModal from './CreateGymModal';
 
-const GymCard: React.FC<{ 
-  gym: any; 
-  isOwner: boolean; 
+const GymCard: React.FC<{
+  gym: any;
+  isOwner: boolean;
   onEdit: (gym: any) => void;
   onDelete: (id: string) => void;
 }> = ({ gym, isOwner, onEdit, onDelete }) => (
-  <motion.div 
+  <motion.div
     whileHover={{ y: -5 }}
     className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all"
   >
@@ -33,11 +33,11 @@ const GymCard: React.FC<{
         </span>
       </div>
     </div>
-    
+
     <div className="p-6">
       <h3 className="text-xl font-bold text-white group-hover:text-primary-light transition-colors">{gym.name}</h3>
       <p className="text-slate-400 text-sm mt-2 line-clamp-2">{gym.description || 'Sin descripción disponible.'}</p>
-      
+
       <div className="mt-6 flex flex-col gap-2">
         <div className="flex items-center gap-2 text-slate-400 text-xs text-secondary-light">
           <MapPin className="w-4 h-4" />
@@ -50,27 +50,27 @@ const GymCard: React.FC<{
           <Star className="text-yellow-400 fill-yellow-400 w-4 h-4" />
           <span className="text-white font-bold text-sm">NUEVO</span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {isOwner && (
             <>
-              <button 
-                 onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
-                 className="text-slate-400 hover:text-white transition-colors text-sm"
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
+                className="text-slate-400 hover:text-white transition-colors text-sm"
               >
                 Editar
               </button>
-              <button 
-                 onClick={(e) => { e.stopPropagation(); onDelete(gym.id); }}
-                 className="text-red-400 hover:text-red-300 transition-colors text-sm font-bold"
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(gym.id); }}
+                className="text-red-400 hover:text-red-300 transition-colors text-sm font-bold"
               >
                 Eliminar
               </button>
             </>
           )}
-          <button 
-             onClick={() => (window.location.href = `/gyms/${gym.id}`)}
-             className="text-primary-light font-bold text-sm hover:underline"
+          <button
+            onClick={() => (window.location.href = `/gyms/${gym.id}`)}
+            className="text-primary-light font-bold text-sm hover:underline"
           >
             Ver Detalles
           </button>
@@ -118,8 +118,8 @@ const GymsPage: React.FC = () => {
     }
   };
 
-  const filteredGyms = gyms.filter(g => 
-    g.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredGyms = gyms.filter(g =>
+    g.name.toLowerCase().includes(search.toLowerCase()) ||
     g.address?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -131,7 +131,7 @@ const GymsPage: React.FC = () => {
           <p className="text-slate-400 mt-1">Encuentra el lugar perfecto para tu próximo entrenamiento.</p>
         </div>
         {(user?.role === 'GYM_OWNER' || user?.role === 'ADMIN') && (
-          <button 
+          <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary flex items-center gap-2"
           >
@@ -142,28 +142,27 @@ const GymsPage: React.FC = () => {
       </header>
 
       {(showCreateModal || editingGym) && (
-        <CreateGymModal 
+        <CreateGymModal
           initialData={editingGym}
           onClose={() => {
             setShowCreateModal(false);
             setEditingGym(null);
-          }} 
+          }}
           onCreated={() => {
             fetchGyms();
             setMessage({ type: 'success', text: editingGym ? '¡Gimnasio actualizado!' : '¡Gimnasio registrado exitosamente!' });
             setEditingGym(null);
             setTimeout(() => setMessage(null), 3000);
-          }} 
+          }}
         />
       )}
 
       {message && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`p-4 rounded-xl flex items-center gap-3 border ${
-            message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
-          }`}
+          className={`p-4 rounded-xl flex items-center gap-3 border ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
         >
           {message.type === 'success' ? <CheckCircle2 /> : <AlertCircle />}
           <span className="font-medium">{message.text}</span>
@@ -174,7 +173,7 @@ const GymsPage: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-grow">
           <Search className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-500 w-5 h-5" />
-          <input 
+          <input
             type="text"
             placeholder="Buscar por nombre o dirección..."
             value={search}
@@ -195,9 +194,9 @@ const GymsPage: React.FC = () => {
       ) : filteredGyms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredGyms.map(gym => (
-            <GymCard 
-              key={gym.id} 
-              gym={gym} 
+            <GymCard
+              key={gym.id}
+              gym={gym}
               isOwner={user?.role === 'ADMIN' || (user?.role === 'GYM_OWNER' && gym.ownerId === user?.id)}
               onEdit={setEditingGym}
               onDelete={handleDelete}

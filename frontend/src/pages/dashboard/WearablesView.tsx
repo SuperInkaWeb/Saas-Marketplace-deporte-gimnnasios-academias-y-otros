@@ -6,7 +6,6 @@ import api from '../../api/api-client';
 const WearablesView: React.FC = () => {
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
-  const [bluetoothSupported] = useState(!!(navigator as any).bluetooth);
   const [bleDevice, setBleDevice] = useState<string | null>(null);
   const [liveHeartRate, setLiveHeartRate] = useState<number | null>(null);
   const [metrics, setMetrics] = useState({ steps: 0, calories: 0, heartRateAvg: 0 });
@@ -70,16 +69,6 @@ const WearablesView: React.FC = () => {
       console.error('Error BLE:', error);
       alert('Se canceló la conexión BLE o no se encontraron sensores: ' + error.message);
       setSyncing(false);
-    }
-  };
-
-  const connectFitbit = async () => {
-    try {
-      const { data } = await api.get('/wearables/fitbit/auth');
-      // Redirigir a la plataforma OFICIAL de FITBIT:
-      window.location.href = data.url; 
-    } catch (error) {
-      console.error("Error contactando Fitbit", error);
     }
   };
 

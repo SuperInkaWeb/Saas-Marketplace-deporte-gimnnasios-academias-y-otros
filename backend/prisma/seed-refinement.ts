@@ -25,7 +25,7 @@ async function main() {
     console.log(`✨ Enriqueciendo: ${gym.name}...`);
 
     // 1. Agregar más variedad de Productos
-    let extraProducts = [];
+    let extraProducts: { name: string; price: number; cat: string; img: string; }[] = [];
     if (gym.name.toLowerCase().includes('gym') || gym.name.toLowerCase().includes('fitness')) {
       extraProducts = [
         { name: 'Creatina Monohidratada 500g', price: 35.0, cat: 'SUPPLEMENTS', img: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=400' },

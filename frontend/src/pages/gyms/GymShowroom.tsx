@@ -12,7 +12,8 @@ import {
   Loader2,
   CheckCircle2,
   Star,
-  Activity
+  Activity,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 

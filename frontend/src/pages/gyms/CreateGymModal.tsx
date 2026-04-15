@@ -43,7 +43,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="glass-card w-full max-w-lg bg-slate-900 border-white/10 p-8 relative"
@@ -65,7 +65,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Nombre del Gimnasio / Academia</label>
-            <input 
+            <input
               required
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -76,7 +76,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
 
           <div className="space-y-2">
             <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Descripción</label>
-            <textarea 
+            <textarea
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               className="bg-white/5 border-white/10 focus:border-primary-light w-full py-3 px-4 border rounded-xl text-white outline-none min-h-[80px]"
@@ -88,7 +88,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
             <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Dirección Física</label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-light w-4 h-4" />
-              <input 
+              <input
                 required
                 value={formData.address}
                 onChange={e => setFormData({ ...formData, address: e.target.value })}
@@ -103,7 +103,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
               <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Teléfono</label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-light w-4 h-4" />
-                <input 
+                <input
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   className="bg-white/5 border-white/10 focus:border-primary-light w-full py-3 pl-12 pr-4 border rounded-xl text-white outline-none"
@@ -115,7 +115,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
               <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Sitio Web</label>
               <div className="relative">
                 <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-light w-4 h-4" />
-                <input 
+                <input
                   value={formData.website}
                   onChange={e => setFormData({ ...formData, website: e.target.value })}
                   className="bg-white/5 border-white/10 focus:border-primary-light w-full py-3 pl-12 pr-4 border rounded-xl text-white outline-none"
@@ -125,8 +125,8 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="btn-primary w-full py-4 mt-6 flex items-center justify-center gap-2 relative overflow-hidden active:scale-[0.98]"
           >
