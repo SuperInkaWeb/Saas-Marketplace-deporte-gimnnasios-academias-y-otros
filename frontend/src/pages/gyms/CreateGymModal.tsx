@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
+import { toast } from 'sonner';
 import { X, Loader2, Dumbbell, MapPin, Phone, Globe, Plus, Clock, CalendarDays, Navigation } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -249,11 +250,17 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
     delete (payload as any).urbanization;
 
     try {
-      if (initialData) {
-        await api.patch(`/gyms/${initialData.id}`, payload);
-      } else {
-        await api.post('/gyms', payload);
+      const { data: savedGym } = initialData
+        ? await api.patch(`/gyms/${initialData.id}`, payload)
+        : await api.post('/gyms', payload);
+
+      if (savedGym?.locationPrecise === false) {
+        toast.warning('⚠️ No pudimos encontrar la dirección exacta en el mapa', {
+          description: 'Usamos una ubicación aproximada de la zona. Edita el gimnasio y ajusta el pin rojo manualmente para que aparezca en el sitio correcto.',
+          duration: 8000,
+        });
       }
+
       onCreated();
       onClose();
     } catch (err: any) {

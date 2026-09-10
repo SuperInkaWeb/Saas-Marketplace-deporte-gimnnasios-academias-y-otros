@@ -18,11 +18,12 @@ export class GymsService {
     city?: string,
     district?: string,
     province?: string,
-  ): Promise<{ latitude: number; longitude: number } | null> {
+    seedName?: string,
+  ): Promise<{ latitude: number; longitude: number; precise: boolean }> {
     try {
       const queryParts = [address, district, province, city].filter(Boolean);
       const query = queryParts.join(', ');
-      
+
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
       const response = await fetch(url, {
         headers: {
@@ -34,51 +35,73 @@ export class GymsService {
         return {
           latitude: parseFloat(data[0].lat),
           longitude: parseFloat(data[0].lon),
+          precise: true,
         };
       }
     } catch (error) {
       console.error('Error during Nominatim geocoding:', error);
     }
-    
-    return this.getDistrictCoordsFallback(district || city || '');
+
+    return {
+      ...this.getDistrictCoordsFallback(district || city || '', seedName || address),
+      precise: false,
+    };
   }
 
-  private getDistrictCoordsFallback(name: string): { latitude: number; longitude: number } {
+  /**
+   * Aproximaci\u00f3n de \u00faltima instancia cuando Nominatim no encuentra la direcci\u00f3n exacta.
+   * Aplica un offset determinista por negocio (mismo criterio que el mapa del frontend)
+   * para que varios negocios del mismo distrito NO queden apilados en el mismo punto.
+   */
+  private getDistrictCoordsFallback(name: string, seedName?: string): { latitude: number; longitude: number } {
     const normalized = name.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    if (normalized.includes('olivos')) return { latitude: -11.9614, longitude: -77.0708 };
-    if (normalized.includes('isidro')) return { latitude: -12.085, longitude: -77.03 };
-    if (normalized.includes('miraflores')) return { latitude: -12.1225, longitude: -77.0292 };
-    if (normalized.includes('chorrillos')) return { latitude: -12.1811, longitude: -77.0142 };
-    if (normalized.includes('callao')) return { latitude: -12.0566, longitude: -77.1181 };
-    if (normalized.includes('surco')) return { latitude: -12.1383, longitude: -76.9917 };
-    if (normalized.includes('molina')) return { latitude: -12.0883, longitude: -76.9383 };
-    if (normalized.includes('borja')) return { latitude: -12.0889, longitude: -77.0017 };
-    if (normalized.includes('miguel')) return { latitude: -12.0764, longitude: -77.0944 };
-    if (normalized.includes('ate')) return { latitude: -12.0267, longitude: -76.9167 };
-    if (normalized.includes('barranco')) return { latitude: -12.1492, longitude: -77.0222 };
-    if (normalized.includes('lince')) return { latitude: -12.0833, longitude: -77.0333 };
-    if (normalized.includes('maria')) return { latitude: -12.075, longitude: -77.05 };
-    if (normalized.includes('magdalena')) return { latitude: -12.0911, longitude: -77.0708 };
-    if (normalized.includes('surquillo')) return { latitude: -12.1167, longitude: -77.0167 };
-    if (normalized.includes('libre')) return { latitude: -12.0789, longitude: -77.0628 };
-    if (normalized.includes('brena')) return { latitude: -12.0583, longitude: -77.0433 };
-    if (normalized.includes('lima')) return { latitude: -12.0464, longitude: -77.0428 };
-    if (normalized.includes('lurigancho')) return { latitude: -11.9833, longitude: -77.0167 };
-    if (normalized.includes('comas')) return { latitude: -11.9333, longitude: -77.05 };
-    if (normalized.includes('carabayllo')) return { latitude: -11.85, longitude: -77.0333 };
-    if (normalized.includes('independencia')) return { latitude: -11.9833, longitude: -77.05 };
-    if (normalized.includes('rimac')) return { latitude: -12.0292, longitude: -77.0278 };
-    
-    return { latitude: -12.085, longitude: -77.03 };
+
+    let base = { latitude: -12.085, longitude: -77.03 };
+    if (normalized.includes('olivos')) base = { latitude: -11.9614, longitude: -77.0708 };
+    else if (normalized.includes('isidro')) base = { latitude: -12.085, longitude: -77.03 };
+    else if (normalized.includes('miraflores')) base = { latitude: -12.1225, longitude: -77.0292 };
+    else if (normalized.includes('chorrillos')) base = { latitude: -12.1811, longitude: -77.0142 };
+    else if (normalized.includes('callao')) base = { latitude: -12.0566, longitude: -77.1181 };
+    else if (normalized.includes('surco')) base = { latitude: -12.1383, longitude: -76.9917 };
+    else if (normalized.includes('molina')) base = { latitude: -12.0883, longitude: -76.9383 };
+    else if (normalized.includes('borja')) base = { latitude: -12.0889, longitude: -77.0017 };
+    else if (normalized.includes('miguel')) base = { latitude: -12.0764, longitude: -77.0944 };
+    else if (normalized.includes('ate')) base = { latitude: -12.0267, longitude: -76.9167 };
+    else if (normalized.includes('barranco')) base = { latitude: -12.1492, longitude: -77.0222 };
+    else if (normalized.includes('lince')) base = { latitude: -12.0833, longitude: -77.0333 };
+    else if (normalized.includes('maria')) base = { latitude: -12.075, longitude: -77.05 };
+    else if (normalized.includes('magdalena')) base = { latitude: -12.0911, longitude: -77.0708 };
+    else if (normalized.includes('surquillo')) base = { latitude: -12.1167, longitude: -77.0167 };
+    else if (normalized.includes('libre')) base = { latitude: -12.0789, longitude: -77.0628 };
+    else if (normalized.includes('brena')) base = { latitude: -12.0583, longitude: -77.0433 };
+    else if (normalized.includes('lima')) base = { latitude: -12.0464, longitude: -77.0428 };
+    else if (normalized.includes('lurigancho')) base = { latitude: -11.9833, longitude: -77.0167 };
+    else if (normalized.includes('comas')) base = { latitude: -11.9333, longitude: -77.05 };
+    else if (normalized.includes('carabayllo')) base = { latitude: -11.85, longitude: -77.0333 };
+    else if (normalized.includes('independencia')) base = { latitude: -11.9833, longitude: -77.05 };
+    else if (normalized.includes('rimac')) base = { latitude: -12.0292, longitude: -77.0278 };
+
+    if (seedName) {
+      const seed = seedName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const latOffset = ((seed % 100) - 50) * 0.0001;
+      const lngOffset = (((seed + 7) % 100) - 50) * 0.0001;
+      return {
+        latitude: base.latitude + latOffset,
+        longitude: base.longitude + lngOffset,
+      };
+    }
+
+    return base;
   }
 
   async create(ownerId: string, createGymDto: CreateGymDto) {
     let latitude: number | null = null;
     let longitude: number | null = null;
-    
+    let locationPrecise = true;
+
     if (createGymDto.latitude !== undefined && createGymDto.longitude !== undefined) {
+      // El dueño fijó el pin manualmente en el mapa: es la fuente más confiable.
       latitude = createGymDto.latitude;
       longitude = createGymDto.longitude;
     } else if (createGymDto.address) {
@@ -87,14 +110,14 @@ export class GymsService {
         createGymDto.city,
         createGymDto.district,
         createGymDto.province,
+        createGymDto.name,
       );
-      if (coords) {
-        latitude = coords.latitude;
-        longitude = coords.longitude;
-      }
+      latitude = coords.latitude;
+      longitude = coords.longitude;
+      locationPrecise = coords.precise;
     }
 
-    return this.prisma.gym.create({
+    const gym = await this.prisma.gym.create({
       data: {
         ...createGymDto,
         ownerId,
@@ -102,6 +125,9 @@ export class GymsService {
         longitude,
       },
     });
+
+    // Campo informativo, no persistido: indica al frontend si debe pedir confirmación manual del pin.
+    return { ...gym, locationPrecise };
   }
 
   async findAll(ownerId?: string, trainerUserId?: string) {
@@ -217,12 +243,14 @@ export class GymsService {
     }
 
     const updatedData: any = { ...updateGymDto };
+    let locationPrecise = true;
 
     if (updateGymDto.latitude !== undefined && updateGymDto.longitude !== undefined) {
+      // El dueño fijó/ajustó el pin manualmente: es la fuente más confiable.
       updatedData.latitude = updateGymDto.latitude;
       updatedData.longitude = updateGymDto.longitude;
     } else {
-      const hasAddressChanged = 
+      const hasAddressChanged =
         (updateGymDto.address && updateGymDto.address !== gym.address) ||
         (updateGymDto.district && updateGymDto.district !== gym.district) ||
         (updateGymDto.city && updateGymDto.city !== gym.city);
@@ -233,18 +261,20 @@ export class GymsService {
           updateGymDto.city || gym.city || undefined,
           updateGymDto.district || gym.district || undefined,
           updateGymDto.province || gym.province || undefined,
+          updateGymDto.name || gym.name,
         );
-        if (coords) {
-          updatedData.latitude = coords.latitude;
-          updatedData.longitude = coords.longitude;
-        }
+        updatedData.latitude = coords.latitude;
+        updatedData.longitude = coords.longitude;
+        locationPrecise = coords.precise;
       }
     }
 
-    return this.prisma.gym.update({
+    const updated = await this.prisma.gym.update({
       where: { id },
       data: updatedData,
     });
+
+    return { ...updated, locationPrecise };
   }
 
   async remove(id: string, currentUserId: string, isAdmin: boolean) {
