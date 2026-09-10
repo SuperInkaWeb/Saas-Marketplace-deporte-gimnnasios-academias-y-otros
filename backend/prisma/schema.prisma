@@ -63,6 +63,7 @@ model Gym {
   country         String?          @default("Colombia") @db.VarChar(100)
   latitude        Float?
   longitude       Float?
+  locationSource  GymLocationSource? @map("location_source")
   phone           String?          @db.VarChar(20)
   email           String?          @db.VarChar(255)
   logoUrl         String?          @map("logo_url") @db.Text
@@ -333,6 +334,12 @@ enum ClassType {
   IN_PERSON
   ONLINE
   HYBRID
+}
+
+enum GymLocationSource {
+  MANUAL
+  EXACT
+  APPROXIMATE
 }
 
 enum GymStatus {

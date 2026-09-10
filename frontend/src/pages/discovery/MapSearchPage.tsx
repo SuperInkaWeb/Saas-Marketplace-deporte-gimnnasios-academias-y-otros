@@ -152,17 +152,24 @@ const userLocationIcon = L.divIcon({
 });
 
 // Custom Icons with Glow Effect (Google Maps style red teardrop pin)
-const getCustomIcon = (sportLabel: string) => {
+const isApproximateLocation = (gym: any): boolean =>
+  gym.locationSource !== 'EXACT' && gym.locationSource !== 'MANUAL';
+
+const getCustomIcon = (sportLabel: string, approximate: boolean = false) => {
   const emoji = sportLabel.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\u200D|./u)?.[0] || '📍';
   
+  const pinColor = approximate ? '#f59e0b' : '#ef4444';
+  const glowColor = approximate ? 'bg-amber-500/20' : 'bg-red-500/20';
+  const dashAttr = approximate ? 'stroke-dasharray="2 2" stroke="#78350f" stroke-width="1"' : '';
+
   return L.divIcon({
     html: `
       <div class="relative flex items-center justify-center marker-glow">
         <!-- Pulse effect behind the pin -->
-        <div class="absolute w-10 h-10 bg-red-500/20 rounded-full blur-md animate-pulse"></div>
-        <!-- Google Maps style Red Teardrop Pin -->
+        <div class="absolute w-10 h-10 ${glowColor} rounded-full blur-md animate-pulse"></div>
+        <!-- Google Maps style Teardrop Pin (rojo = confirmada, ámbar punteado = aproximada) -->
         <svg width="40" height="50" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="filter drop-shadow-2xl transition-transform hover:scale-110 active:scale-95">
-          <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#ef4444"/>
+          <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="${pinColor}" ${dashAttr}/>
           <!-- Inner circle for premium look -->
           <circle cx="12" cy="12" r="7.5" fill="#0f172a" stroke="#ffffff" stroke-width="1.5"/>
         </svg>
@@ -170,6 +177,7 @@ const getCustomIcon = (sportLabel: string) => {
         <div class="absolute top-[8px] left-[10px] w-[20px] h-[20px] flex items-center justify-center select-none text-[12px] leading-none">
           ${emoji}
         </div>
+        ${approximate ? '<div class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 border border-white flex items-center justify-center text-[8px] font-bold text-white">~</div>' : ''}
       </div>
     `,
     className: 'custom-sport-icon',
@@ -635,11 +643,12 @@ const MapSearchPage: React.FC = () => {
 
             {filtered.filter(g => g.latitude && g.longitude).map(gym => {
               const displaySport = getGymDisplaySport(gym, sportFilter);
+              const approx = isApproximateLocation(gym);
               return (
-                <Marker 
-                  key={gym.id} 
+                <Marker
+                  key={gym.id}
                   position={[gym.latitude, gym.longitude]}
-                  icon={getCustomIcon(displaySport.label)}
+                  icon={getCustomIcon(displaySport.label, approx)}
                   eventHandlers={{
                     click: () => handleSelectGym(gym)
                   }}
@@ -653,21 +662,28 @@ const MapSearchPage: React.FC = () => {
                       <p className="text-slate-500 text-[11px] flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {gym.address}
                       </p>
+                      {approx && (
+                        <p className="text-amber-600 text-[10px] font-bold mt-1.5 flex items-center gap-1">
+                          ~ Ubicación aproximada de la zona
+                        </p>
+                      )}
                       <div className="grid grid-cols-2 gap-2 mt-3">
-                        <button 
-                          onClick={() => handleSelectGym(gym)} 
+                        <button
+                          onClick={() => handleSelectGym(gym)}
                           className="bg-slate-900 text-white py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary transition-colors"
                         >
                           Detalles
                         </button>
-                        <a 
-                          href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gym.latitude},${gym.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-500/20 transition-colors flex items-center justify-center gap-1"
-                        >
-                          Street View
-                        </a>
+                        {!approx && (
+                          <a
+                            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gym.latitude},${gym.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-500/20 transition-colors flex items-center justify-center gap-1"
+                          >
+                            Street View
+                          </a>
+                        )}
                       </div>
                     </div>
                   </Popup>
@@ -740,9 +756,13 @@ const MapSearchPage: React.FC = () => {
                     </div>
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                       <span className="bg-slate-800 px-2 py-0.5 rounded">⭐ 4.8</span>
-                      {(!gym.latitude || !gym.longitude) && (
+                      {(!gym.latitude || !gym.longitude) ? (
                         <span className="flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
                           <AlertTriangle className="w-3 h-3" /> Sin ubicar en el mapa
+                        </span>
+                      ) : isApproximateLocation(gym) && (
+                        <span className="flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                          ~ Ubicación aproximada
                         </span>
                       )}
                       {user?.role === 'GYM_OWNER' ? (
@@ -789,23 +809,32 @@ const MapSearchPage: React.FC = () => {
                 
                 {/* Botones de Navegación Rápida */}
                 {selectedGym.latitude && selectedGym.longitude ? (
-                  <div className="flex gap-2">
-                    <a
-                      href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedGym.latitude},${selectedGym.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-500/20 transition-all"
-                    >
-                      📍 Street View 360°
-                    </a>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${selectedGym.latitude},${selectedGym.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-primary/10 text-primary-light border border-primary/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all"
-                    >
-                      🚗 Cómo llegar
-                    </a>
+                  <div className="space-y-2">
+                    {isApproximateLocation(selectedGym) && (
+                      <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg text-amber-400 text-[11px] font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Ubicación aproximada de la zona — puede no coincidir con la dirección exacta del negocio.
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      {!isApproximateLocation(selectedGym) && (
+                        <a
+                          href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedGym.latitude},${selectedGym.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-500/20 transition-all"
+                        >
+                          📍 Street View 360°
+                        </a>
+                      )}
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${selectedGym.latitude},${selectedGym.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 bg-primary/10 text-primary-light border border-primary/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all"
+                      >
+                        {isApproximateLocation(selectedGym) ? '🚗 Ver zona aproximada' : '🚗 Cómo llegar'}
+                      </a>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg text-amber-400 text-xs font-bold">

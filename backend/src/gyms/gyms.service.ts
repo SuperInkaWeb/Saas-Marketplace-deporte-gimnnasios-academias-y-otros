@@ -6,7 +6,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
-import { GymStatus } from '@prisma/client';
+import { GymStatus, GymLocationSource } from '@prisma/client';
+
+/**
+ * Hash de cadena estable (djb2) usado para separar negocios del mismo distrito.
+ * Una suma de códigos de carácter colisiona fácilmente (anagramas, "ab" vs "ba");
+ * djb2 sobre la cadena completa reduce drásticamente esas colisiones.
+ */
+function stableHash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (((hash << 5) + hash) + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
 
 @Injectable()
 export class GymsService {
@@ -19,7 +32,7 @@ export class GymsService {
     district?: string,
     province?: string,
     seedName?: string,
-  ): Promise<{ latitude: number; longitude: number; precise: boolean }> {
+  ): Promise<{ latitude: number; longitude: number; source: GymLocationSource } | null> {
     try {
       const queryParts = [address, district, province, city].filter(Boolean);
       const query = queryParts.join(', ');
@@ -35,29 +48,36 @@ export class GymsService {
         return {
           latitude: parseFloat(data[0].lat),
           longitude: parseFloat(data[0].lon),
-          precise: true,
+          source: GymLocationSource.EXACT,
         };
       }
     } catch (error) {
       console.error('Error during Nominatim geocoding:', error);
     }
 
-    return {
-      ...this.getDistrictCoordsFallback(district || city || '', seedName || address),
-      precise: false,
-    };
+    // Nominatim no encontr\u00f3 nada: solo aproximamos si reconocemos el distrito/ciudad.
+    // Si no lo reconocemos, es m\u00e1s honesto no asignar ubicaci\u00f3n que inventar una zona.
+    const fallback = this.getDistrictCoordsFallback(district || city || '', seedName || address);
+    if (!fallback) return null;
+
+    return { ...fallback, source: GymLocationSource.APPROXIMATE };
   }
 
   /**
    * Aproximaci\u00f3n de \u00faltima instancia cuando Nominatim no encuentra la direcci\u00f3n exacta.
-   * Aplica un offset determinista por negocio (mismo criterio que el mapa del frontend)
-   * para que varios negocios del mismo distrito NO queden apilados en el mismo punto.
+   * Devuelve null si el distrito/ciudad no coincide con ninguna zona conocida \u2014 no hay
+   * que asignar una coordenada plausible a una zona que en realidad no conocemos.
+   * Cuando s\u00ed se reconoce, aplica un offset determinista por negocio (hash djb2 sobre
+   * nombre+direcci\u00f3n) para que varios negocios del mismo distrito no queden apilados.
    */
-  private getDistrictCoordsFallback(name: string, seedName?: string): { latitude: number; longitude: number } {
+  private getDistrictCoordsFallback(
+    name: string,
+    seedName?: string,
+  ): { latitude: number; longitude: number } | null {
     const normalized = name.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    let base = { latitude: -12.085, longitude: -77.03 };
+    let base: { latitude: number; longitude: number } | null = null;
     if (normalized.includes('olivos')) base = { latitude: -11.9614, longitude: -77.0708 };
     else if (normalized.includes('isidro')) base = { latitude: -12.085, longitude: -77.03 };
     else if (normalized.includes('miraflores')) base = { latitude: -12.1225, longitude: -77.0292 };
@@ -82,10 +102,13 @@ export class GymsService {
     else if (normalized.includes('independencia')) base = { latitude: -11.9833, longitude: -77.05 };
     else if (normalized.includes('rimac')) base = { latitude: -12.0292, longitude: -77.0278 };
 
+    if (!base) return null;
+
     if (seedName) {
-      const seed = seedName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const latOffset = ((seed % 100) - 50) * 0.0001;
-      const lngOffset = (((seed + 7) % 100) - 50) * 0.0001;
+      const latSeed = stableHash(`${seedName}|lat`);
+      const lngSeed = stableHash(`${seedName}|lng`);
+      const latOffset = ((latSeed % 1000) - 500) * 0.00001;
+      const lngOffset = ((lngSeed % 1000) - 500) * 0.00001;
       return {
         latitude: base.latitude + latOffset,
         longitude: base.longitude + lngOffset,
@@ -98,36 +121,39 @@ export class GymsService {
   async create(ownerId: string, createGymDto: CreateGymDto) {
     let latitude: number | null = null;
     let longitude: number | null = null;
-    let locationPrecise = true;
+    let locationSource: GymLocationSource | null = null;
 
     if (createGymDto.latitude !== undefined && createGymDto.longitude !== undefined) {
       // El dueño fijó el pin manualmente en el mapa: es la fuente más confiable.
       latitude = createGymDto.latitude;
       longitude = createGymDto.longitude;
+      locationSource = GymLocationSource.MANUAL;
     } else if (createGymDto.address) {
       const coords = await this.geocodeAddress(
         createGymDto.address,
         createGymDto.city,
         createGymDto.district,
         createGymDto.province,
-        createGymDto.name,
+        `${createGymDto.name}::${createGymDto.address}`,
       );
-      latitude = coords.latitude;
-      longitude = coords.longitude;
-      locationPrecise = coords.precise;
+      // Si no se pudo geocodificar ni aproximar (distrito desconocido), no inventamos nada:
+      // el gimnasio queda sin ubicación (latitude/longitude/locationSource en null).
+      if (coords) {
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+        locationSource = coords.source;
+      }
     }
 
-    const gym = await this.prisma.gym.create({
+    return this.prisma.gym.create({
       data: {
         ...createGymDto,
         ownerId,
         latitude,
         longitude,
+        locationSource,
       },
     });
-
-    // Campo informativo, no persistido: indica al frontend si debe pedir confirmación manual del pin.
-    return { ...gym, locationPrecise };
   }
 
   async findAll(ownerId?: string, trainerUserId?: string) {
@@ -243,38 +269,54 @@ export class GymsService {
     }
 
     const updatedData: any = { ...updateGymDto };
-    let locationPrecise = true;
 
     if (updateGymDto.latitude !== undefined && updateGymDto.longitude !== undefined) {
       // El dueño fijó/ajustó el pin manualmente: es la fuente más confiable.
       updatedData.latitude = updateGymDto.latitude;
       updatedData.longitude = updateGymDto.longitude;
+      updatedData.locationSource = GymLocationSource.MANUAL;
     } else {
       const hasAddressChanged =
-        (updateGymDto.address && updateGymDto.address !== gym.address) ||
-        (updateGymDto.district && updateGymDto.district !== gym.district) ||
-        (updateGymDto.city && updateGymDto.city !== gym.city);
+        (updateGymDto.address !== undefined && updateGymDto.address !== gym.address) ||
+        (updateGymDto.district !== undefined && updateGymDto.district !== gym.district) ||
+        (updateGymDto.city !== undefined && updateGymDto.city !== gym.city) ||
+        (updateGymDto.province !== undefined && updateGymDto.province !== gym.province);
 
       if (hasAddressChanged) {
-        const coords = await this.geocodeAddress(
-          updateGymDto.address || gym.address || '',
-          updateGymDto.city || gym.city || undefined,
-          updateGymDto.district || gym.district || undefined,
-          updateGymDto.province || gym.province || undefined,
-          updateGymDto.name || gym.name,
-        );
-        updatedData.latitude = coords.latitude;
-        updatedData.longitude = coords.longitude;
-        locationPrecise = coords.precise;
+        const nextAddress = updateGymDto.address !== undefined ? updateGymDto.address : gym.address;
+
+        if (!nextAddress) {
+          // La dirección se borró: no dejar coordenadas viejas asociadas a una dirección que ya no existe.
+          updatedData.latitude = null;
+          updatedData.longitude = null;
+          updatedData.locationSource = null;
+        } else {
+          const coords = await this.geocodeAddress(
+            nextAddress,
+            updateGymDto.city !== undefined ? updateGymDto.city : gym.city || undefined,
+            updateGymDto.district !== undefined ? updateGymDto.district : gym.district || undefined,
+            updateGymDto.province !== undefined ? updateGymDto.province : gym.province || undefined,
+            `${updateGymDto.name || gym.name}::${nextAddress}`,
+          );
+          // Dirección nueva pero no ubicable (ni exacta ni por distrito conocido): no dejar
+          // la coordenada anterior, que ya no corresponde a la dirección actual.
+          if (coords) {
+            updatedData.latitude = coords.latitude;
+            updatedData.longitude = coords.longitude;
+            updatedData.locationSource = coords.source;
+          } else {
+            updatedData.latitude = null;
+            updatedData.longitude = null;
+            updatedData.locationSource = null;
+          }
+        }
       }
     }
 
-    const updated = await this.prisma.gym.update({
+    return this.prisma.gym.update({
       where: { id },
       data: updatedData,
     });
-
-    return { ...updated, locationPrecise };
   }
 
   async remove(id: string, currentUserId: string, isAdmin: boolean) {

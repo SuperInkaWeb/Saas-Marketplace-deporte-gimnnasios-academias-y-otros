@@ -254,9 +254,14 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
         ? await api.patch(`/gyms/${initialData.id}`, payload)
         : await api.post('/gyms', payload);
 
-      if (savedGym?.locationPrecise === false) {
+      if (savedGym?.locationSource === 'APPROXIMATE') {
         toast.warning('⚠️ No pudimos encontrar la dirección exacta en el mapa', {
           description: 'Usamos una ubicación aproximada de la zona. Edita el gimnasio y ajusta el pin rojo manualmente para que aparezca en el sitio correcto.',
+          duration: 8000,
+        });
+      } else if (!savedGym?.latitude || !savedGym?.longitude) {
+        toast.warning('⚠️ No pudimos ubicar tu negocio en el mapa', {
+          description: 'La dirección o el distrito ingresados no se pudieron reconocer. Edita el gimnasio y fija el pin manualmente en el mapa para que aparezca en discovery.',
           duration: 8000,
         });
       }
