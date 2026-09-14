@@ -12,6 +12,7 @@ import {
 import { ClassesService } from './classes.service';
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AnyAuthGuard } from '../auth/guards/any-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -42,7 +43,7 @@ export class ClassesController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AnyAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar clases. Si myReservations=true, solo las del usuario.' })
   @ApiQuery({ name: 'gymId', required: false })
