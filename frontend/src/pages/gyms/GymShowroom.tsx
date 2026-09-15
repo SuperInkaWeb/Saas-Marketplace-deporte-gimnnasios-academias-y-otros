@@ -157,14 +157,12 @@ const GymShowroom: React.FC = () => {
     } catch (err) {
       console.error('Error cargando vitrina:', err);
     } finally {
-      if (isMounted) setLoading(false);
+      setLoading(false);
     }
   };
 
-  let isMounted = true;
   useEffect(() => {
     fetchData();
-    return () => { isMounted = false; };
   }, [id]);
 
   const handleBook = async (classId: string) => {
