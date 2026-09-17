@@ -7,7 +7,6 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -96,86 +95,6 @@ export class AuthController {
     @Body() dto: { email: string; role: UserRole; gymId?: string },
   ) {
     return this.authService.inviteUser(user, dto.email, dto.role, dto.gymId);
-  }
-
-  @ApiOperation({ summary: 'Secret seed for 70 athletes' })
-  @Get('seed-70-athletes-secret')
-  async seed70AthletesSecret(@Query('key') key: string) {
-    if (key !== 'Hercix2026') {
-      return { success: false, message: 'Invalid secret key' };
-    }
-    const { execSync } = require('child_process');
-    try {
-      const stdout = execSync('node seed-70-athletes-auth0.js', { 
-        encoding: 'utf8', 
-        timeout: 50000 
-      });
-      return { success: true, message: 'Sembrado completado', stdout };
-    } catch (err: any) {
-      return { 
-        success: false, 
-        message: 'Error al ejecutar el script de sembrado',
-        error: err.message,
-        stdout: err.stdout?.toString(),
-        stderr: err.stderr?.toString()
-      };
-    }
-  }
-
-  @ApiOperation({ summary: 'Secret seed for Mario DB' })
-  @Get('seed-mario-db-secret')
-  async seedMarioDbSecret(@Query('key') key: string) {
-    if (key !== 'Hercix2026') {
-      return { success: false, message: 'Invalid secret key' };
-    }
-    const { exec } = require('child_process');
-    // Launch seed in background, do not await it
-    exec('node seed-mario.js', (err: any, stdout: string, stderr: string) => {
-      if (err) {
-        console.error('Seed background error:', err);
-      } else {
-        console.log('Seed background stdout:', stdout);
-      }
-    });
-    return { 
-      success: true, 
-      message: 'Sembrado de base de datos iniciado en segundo plano. Monitorea el progreso en /api/auth/seed-status' 
-    };
-  }
-
-  @ApiOperation({ summary: 'Check status of secret seed' })
-  @Get('seed-status')
-  async seedStatus() {
-    const fs = require('fs');
-    try {
-      if (fs.existsSync('seed-progress.json')) {
-        const data = fs.readFileSync('seed-progress.json', 'utf8');
-        return JSON.parse(data);
-      }
-      return { status: 'No iniciado o en espera', percent: 0 };
-    } catch (err: any) {
-      return { status: 'Error al leer el estado', error: err.message };
-    }
-  }
-
-  @ApiOperation({ summary: 'Secret purge for Mario DB' })
-  @Get('purge-production-data-secure')
-  async purgeProductionDataSecure(@Query('key') key: string) {
-    if (key !== 'Hercix2026') {
-      return { success: false, message: 'Invalid secret key' };
-    }
-    const { exec } = require('child_process');
-    exec('node cleanup-demo-data.js', (err: any, stdout: string, stderr: string) => {
-      if (err) {
-        console.error('Purge background error:', err);
-      } else {
-        console.log('Purge background stdout:', stdout);
-      }
-    });
-    return { 
-      success: true, 
-      message: 'Limpieza de base de datos iniciada en segundo plano.' 
-    };
   }
 }
 
