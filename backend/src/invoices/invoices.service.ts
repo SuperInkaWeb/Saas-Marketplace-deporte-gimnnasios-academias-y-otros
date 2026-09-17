@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class InvoicesService {
@@ -31,13 +32,31 @@ export class InvoicesService {
     });
   }
 
-  async getInvoiceById(id: string) {
-    return this.prisma.invoice.findUnique({
+  async getInvoiceById(id: string, requesterId: string, requesterRole: UserRole) {
+    const invoice = await this.prisma.invoice.findUnique({
       where: { id },
-      include: { 
+      include: {
         user: { select: { name: true, email: true } },
-        gym: { select: { name: true, phone: true, address: true } }
+        gym: { select: { name: true, phone: true, address: true, ownerId: true } },
       },
     });
+
+    if (!invoice) {
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    const isAdmin = requesterRole === UserRole.ADMIN;
+    const isInvoiceOwner = invoice.userId === requesterId;
+    const isGymOwner = invoice.gym?.ownerId === requesterId;
+
+    if (!isAdmin && !isInvoiceOwner && !isGymOwner) {
+      throw new ForbiddenException('No tienes permiso para ver esta factura');
+    }
+
+    const { gym, ...invoiceData } = invoice;
+    return {
+      ...invoiceData,
+      gym: gym ? { name: gym.name, phone: gym.phone, address: gym.address } : null,
+    };
   }
 }
