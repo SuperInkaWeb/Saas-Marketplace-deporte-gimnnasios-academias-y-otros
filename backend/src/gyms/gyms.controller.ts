@@ -71,8 +71,9 @@ export class GymsController {
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar miembros con membresía activa del gimnasio' })
-  findMembers(@Param('id') id: string) {
-    return this.gymsService.findMembers(id);
+  findMembers(@Param('id') id: string, @CurrentUser() user: any) {
+    const isAdmin = user.role === UserRole.ADMIN;
+    return this.gymsService.findMembers(id, user.id, isAdmin);
   }
 
   @Patch(':id')
