@@ -222,42 +222,17 @@ export class AuthService {
     });
   }
 
-  async updateProfile(userId: string, data: { name: string; phone?: string; dni?: string; role?: UserRole }) {
-    const currentUser = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    let newRole = currentUser?.role;
-
-    if (data.role && data.role !== currentUser?.role) {
-      if (currentUser?.role === UserRole.USER && (data.role === UserRole.GYM_OWNER || data.role === UserRole.TRAINER)) {
-        // Create a pending role request instead of updating the role directly
-        const existingRequest = await this.prisma.roleRequest.findFirst({
-          where: { userId, status: 'PENDING' },
-        });
-        if (!existingRequest) {
-          await this.prisma.roleRequest.create({
-            data: {
-              userId,
-              requestedRole: data.role,
-              reason: 'Solicitado en el registro de perfil completo',
-              status: 'PENDING',
-            },
-          });
-        }
-        // Role remains UserRole.USER (no upgrade yet)
-      } else {
-        newRole = data.role;
-      }
-    }
-
+  async updateProfile(userId: string, data: { name: string; phone?: string; dni?: string }) {
+    // El cambio de rol NUNCA se procesa aquí: los flujos válidos son
+    // POST /users/role-requests (solicitud USER -> GYM_OWNER/TRAINER, requiere aprobación)
+    // y POST /auth/switch-role (alternar entre roles ya habilitados). Aceptar un
+    // campo `role` en este endpoint permitía auto-escalar a ADMIN sin validación.
     return this.prisma.user.update({
       where: { id: userId },
       data: {
         name: data.name,
         phone: data.phone,
         dni: data.dni,
-        role: newRole,
       },
       select: {
         id: true,
