@@ -330,7 +330,14 @@ export class GymsService {
     });
   }
 
-  async findMembers(gymId: string) {
+  async findMembers(gymId: string, currentUserId: string, isAdmin: boolean) {
+    const gym = await this.findOne(gymId);
+    if (!isAdmin && gym.ownerId !== currentUserId) {
+      throw new ForbiddenException(
+        'No tienes permiso para ver los miembros de este gimnasio',
+      );
+    }
+
     return this.prisma.user.findMany({
       where: {
         OR: [
