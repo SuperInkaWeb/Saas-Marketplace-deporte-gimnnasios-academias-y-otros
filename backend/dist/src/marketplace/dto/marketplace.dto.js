@@ -9,8 +9,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OrderItemDto = exports.CreateOrderDto = exports.UpdateProductDto = exports.CreateProductDto = void 0;
+exports.CreateOrderDto = exports.OrderItemDto = exports.UpdateProductDto = exports.CreateProductDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateProductDto {
     name;
     description;
@@ -99,6 +100,20 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], UpdateProductDto.prototype, "isActive", void 0);
+class OrderItemDto {
+    productId;
+    quantity;
+}
+exports.OrderItemDto = OrderItemDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], OrderItemDto.prototype, "productId", void 0);
+__decorate([
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], OrderItemDto.prototype, "quantity", void 0);
 class CreateOrderDto {
     gymId;
     shippingAddress;
@@ -120,18 +135,10 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "notes", void 0);
-class OrderItemDto {
-    productId;
-    quantity;
-}
-exports.OrderItemDto = OrderItemDto;
 __decorate([
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], OrderItemDto.prototype, "productId", void 0);
-__decorate([
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(1),
-    __metadata("design:type", Number)
-], OrderItemDto.prototype, "quantity", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => OrderItemDto),
+    __metadata("design:type", Array)
+], CreateOrderDto.prototype, "items", void 0);
 //# sourceMappingURL=marketplace.dto.js.map

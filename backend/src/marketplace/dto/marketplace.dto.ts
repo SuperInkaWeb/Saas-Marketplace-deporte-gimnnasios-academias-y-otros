@@ -6,12 +6,15 @@ import {
   IsInt,
   IsBoolean,
   MaxLength,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProductDto {
   @IsString()
   @MaxLength(200)
-  name: string;
+  name!: string;
 
   @IsString()
   @IsOptional()
@@ -19,7 +22,7 @@ export class CreateProductDto {
 
   @IsNumber()
   @Min(0)
-  price: number;
+  price!: number;
 
   @IsInt()
   @Min(0)
@@ -68,9 +71,18 @@ export class UpdateProductDto {
   isActive?: boolean;
 }
 
+export class OrderItemDto {
+  @IsString()
+  productId!: string;
+
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
+
 export class CreateOrderDto {
   @IsString()
-  gymId: string;
+  gymId!: string;
 
   @IsString()
   @IsOptional()
@@ -80,14 +92,8 @@ export class CreateOrderDto {
   @IsOptional()
   notes?: string;
 
-  items: OrderItemDto[];
-}
-
-export class OrderItemDto {
-  @IsString()
-  productId: string;
-
-  @IsInt()
-  @Min(1)
-  quantity: number;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemDto)
+  items!: OrderItemDto[];
 }

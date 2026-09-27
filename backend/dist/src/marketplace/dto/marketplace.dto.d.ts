@@ -15,13 +15,13 @@ export declare class UpdateProductDto {
     imageUrl?: string;
     isActive?: boolean;
 }
+export declare class OrderItemDto {
+    productId: string;
+    quantity: number;
+}
 export declare class CreateOrderDto {
     gymId: string;
     shippingAddress?: string;
     notes?: string;
     items: OrderItemDto[];
-}
-export declare class OrderItemDto {
-    productId: string;
-    quantity: number;
 }
