@@ -18,10 +18,14 @@ const invoices_service_1 = require("./invoices.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const gyms_service_1 = require("../gyms/gyms.service");
+const client_1 = require("@prisma/client");
 let InvoicesController = class InvoicesController {
     invoicesService;
-    constructor(invoicesService) {
+    gymsService;
+    constructor(invoicesService, gymsService) {
         this.invoicesService = invoicesService;
+        this.gymsService = gymsService;
     }
     async getAllInvoices() {
         return this.invoicesService.getAllInvoices();
@@ -29,11 +33,14 @@ let InvoicesController = class InvoicesController {
     async getUserInvoices(req) {
         return this.invoicesService.getUserInvoices(req.user.id);
     }
-    async getGymInvoices(gymId) {
+    async getGymInvoices(gymId, req) {
+        if (req.user.role !== client_1.UserRole.ADMIN) {
+            await this.gymsService.validateOwnership(gymId, req.user.id);
+        }
         return this.invoicesService.getGymInvoices(gymId);
     }
-    async getInvoiceDetails(id) {
-        return this.invoicesService.getInvoiceById(id);
+    async getInvoiceDetails(id, req) {
+        return this.invoicesService.getInvoiceById(id, req.user.id, req.user.role);
     }
 };
 exports.InvoicesController = InvoicesController;
@@ -55,20 +62,23 @@ __decorate([
     (0, common_1.Get)('gym/:gymId'),
     (0, roles_decorator_1.Roles)('ADMIN', 'GYM_OWNER'),
     __param(0, (0, common_1.Param)('gymId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], InvoicesController.prototype, "getGymInvoices", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], InvoicesController.prototype, "getInvoiceDetails", null);
 exports.InvoicesController = InvoicesController = __decorate([
     (0, common_1.Controller)('invoices'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    __metadata("design:paramtypes", [invoices_service_1.InvoicesService])
+    __metadata("design:paramtypes", [invoices_service_1.InvoicesService,
+        gyms_service_1.GymsService])
 ], InvoicesController);
 //# sourceMappingURL=invoices.controller.js.map

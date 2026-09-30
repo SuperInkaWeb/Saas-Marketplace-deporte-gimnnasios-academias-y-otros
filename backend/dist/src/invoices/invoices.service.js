@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InvoicesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const client_1 = require("@prisma/client");
 let InvoicesService = class InvoicesService {
     prisma;
     constructor(prisma) {
@@ -40,14 +41,28 @@ let InvoicesService = class InvoicesService {
             },
         });
     }
-    async getInvoiceById(id) {
-        return this.prisma.invoice.findUnique({
+    async getInvoiceById(id, requesterId, requesterRole) {
+        const invoice = await this.prisma.invoice.findUnique({
             where: { id },
             include: {
                 user: { select: { name: true, email: true } },
-                gym: { select: { name: true, phone: true, address: true } }
+                gym: { select: { name: true, phone: true, address: true, ownerId: true } },
             },
         });
+        if (!invoice) {
+            throw new common_1.NotFoundException('Factura no encontrada');
+        }
+        const isAdmin = requesterRole === client_1.UserRole.ADMIN;
+        const isInvoiceOwner = invoice.userId === requesterId;
+        const isGymOwner = invoice.gym?.ownerId === requesterId;
+        if (!isAdmin && !isInvoiceOwner && !isGymOwner) {
+            throw new common_1.ForbiddenException('No tienes permiso para ver esta factura');
+        }
+        const { gym, ...invoiceData } = invoice;
+        return {
+            ...invoiceData,
+            gym: gym ? { name: gym.name, phone: gym.phone, address: gym.address } : null,
+        };
     }
 };
 exports.InvoicesService = InvoicesService;

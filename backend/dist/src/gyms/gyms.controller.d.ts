@@ -19,6 +19,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -55,6 +56,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -91,6 +93,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -154,6 +157,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -161,7 +165,7 @@ export declare class GymsController {
         openDays: string | null;
         status: import("@prisma/client").$Enums.GymStatus;
     }>;
-    findMembers(id: string): Promise<{
+    findMembers(id: string, user: any): Promise<{
         id: string;
         name: string;
         email: string;
@@ -184,6 +188,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -207,6 +212,7 @@ export declare class GymsController {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;

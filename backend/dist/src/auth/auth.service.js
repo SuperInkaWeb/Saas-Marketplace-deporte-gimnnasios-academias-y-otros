@@ -212,37 +212,12 @@ let AuthService = class AuthService {
         });
     }
     async updateProfile(userId, data) {
-        const currentUser = await this.prisma.user.findUnique({
-            where: { id: userId },
-        });
-        let newRole = currentUser?.role;
-        if (data.role && data.role !== currentUser?.role) {
-            if (currentUser?.role === client_1.UserRole.USER && (data.role === client_1.UserRole.GYM_OWNER || data.role === client_1.UserRole.TRAINER)) {
-                const existingRequest = await this.prisma.roleRequest.findFirst({
-                    where: { userId, status: 'PENDING' },
-                });
-                if (!existingRequest) {
-                    await this.prisma.roleRequest.create({
-                        data: {
-                            userId,
-                            requestedRole: data.role,
-                            reason: 'Solicitado en el registro de perfil completo',
-                            status: 'PENDING',
-                        },
-                    });
-                }
-            }
-            else {
-                newRole = data.role;
-            }
-        }
         return this.prisma.user.update({
             where: { id: userId },
             data: {
                 name: data.name,
                 phone: data.phone,
                 dni: data.dni,
-                role: newRole,
             },
             select: {
                 id: true,

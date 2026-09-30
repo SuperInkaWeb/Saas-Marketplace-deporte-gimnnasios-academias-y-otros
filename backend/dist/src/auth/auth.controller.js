@@ -55,77 +55,6 @@ let AuthController = class AuthController {
     invite(user, dto) {
         return this.authService.inviteUser(user, dto.email, dto.role, dto.gymId);
     }
-    async seed70AthletesSecret(key) {
-        if (key !== 'Hercix2026') {
-            return { success: false, message: 'Invalid secret key' };
-        }
-        const { execSync } = require('child_process');
-        try {
-            const stdout = execSync('node seed-70-athletes-auth0.js', {
-                encoding: 'utf8',
-                timeout: 50000
-            });
-            return { success: true, message: 'Sembrado completado', stdout };
-        }
-        catch (err) {
-            return {
-                success: false,
-                message: 'Error al ejecutar el script de sembrado',
-                error: err.message,
-                stdout: err.stdout?.toString(),
-                stderr: err.stderr?.toString()
-            };
-        }
-    }
-    async seedMarioDbSecret(key) {
-        if (key !== 'Hercix2026') {
-            return { success: false, message: 'Invalid secret key' };
-        }
-        const { exec } = require('child_process');
-        exec('node seed-mario.js', (err, stdout, stderr) => {
-            if (err) {
-                console.error('Seed background error:', err);
-            }
-            else {
-                console.log('Seed background stdout:', stdout);
-            }
-        });
-        return {
-            success: true,
-            message: 'Sembrado de base de datos iniciado en segundo plano. Monitorea el progreso en /api/auth/seed-status'
-        };
-    }
-    async seedStatus() {
-        const fs = require('fs');
-        try {
-            if (fs.existsSync('seed-progress.json')) {
-                const data = fs.readFileSync('seed-progress.json', 'utf8');
-                return JSON.parse(data);
-            }
-            return { status: 'No iniciado o en espera', percent: 0 };
-        }
-        catch (err) {
-            return { status: 'Error al leer el estado', error: err.message };
-        }
-    }
-    async purgeProductionDataSecure(key) {
-        if (key !== 'Hercix2026') {
-            return { success: false, message: 'Invalid secret key' };
-        }
-        const { exec } = require('child_process');
-        exec('node cleanup-demo-data.js', (err, stdout, stderr) => {
-            if (err) {
-                console.error('Purge background error:', err);
-            }
-            else {
-                console.log('Purge background stdout:', stdout);
-            }
-        });
-        return {
-            success: true,
-            message: 'Limpieza de base de datos iniciada en segundo plano.'
-        };
-    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -208,37 +137,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "invite", null);
-__decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Secret seed for 70 athletes' }),
-    (0, common_1.Get)('seed-70-athletes-secret'),
-    __param(0, (0, common_1.Query)('key')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "seed70AthletesSecret", null);
-__decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Secret seed for Mario DB' }),
-    (0, common_1.Get)('seed-mario-db-secret'),
-    __param(0, (0, common_1.Query)('key')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "seedMarioDbSecret", null);
-__decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Check status of secret seed' }),
-    (0, common_1.Get)('seed-status'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "seedStatus", null);
-__decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Secret purge for Mario DB' }),
-    (0, common_1.Get)('purge-production-data-secure'),
-    __param(0, (0, common_1.Query)('key')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "purgeProductionDataSecure", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Authentication'),
     (0, common_1.Controller)('auth'),

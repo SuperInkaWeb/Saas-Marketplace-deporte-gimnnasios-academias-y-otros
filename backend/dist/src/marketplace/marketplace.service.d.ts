@@ -4,95 +4,95 @@ export declare class MarketplaceService {
     private prisma;
     constructor(prisma: PrismaService);
     createProduct(gymId: string, ownerId: string, dto: CreateProductDto): Promise<{
+        id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         stock: number;
         category: string | null;
         imageUrl: string | null;
-        isActive: boolean;
-        gymId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     findAllProducts(gymId?: string): Promise<({
         gym: {
-            name: string;
             id: string;
+            name: string;
             ownerId: string;
         };
     } & {
+        id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         stock: number;
         category: string | null;
         imageUrl: string | null;
-        isActive: boolean;
-        gymId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     deleteProduct(productId: string, ownerId: string): Promise<{
+        id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         stock: number;
         category: string | null;
         imageUrl: string | null;
-        isActive: boolean;
-        gymId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     updateProduct(id: string, ownerId: string, dto: any): Promise<{
+        id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         stock: number;
         category: string | null;
         imageUrl: string | null;
-        isActive: boolean;
-        gymId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     createOrder(userId: string, dto: CreateOrderDto): Promise<{
         orderItems: ({
             product: {
+                id: string;
+                createdAt: Date;
                 name: string;
+                isActive: boolean;
+                updatedAt: Date;
                 description: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
+                gymId: string;
                 stock: number;
                 category: string | null;
                 imageUrl: string | null;
-                isActive: boolean;
-                gymId: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
             };
         } & {
-            productId: string;
-            quantity: number;
             id: string;
+            quantity: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
+            productId: string;
             orderId: string;
         })[];
     } & {
-        gymId: string;
-        shippingAddress: string | null;
-        notes: string | null;
         id: string;
-        status: import("@prisma/client").$Enums.OrderStatus;
+        userId: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        status: import("@prisma/client").$Enums.OrderStatus;
+        gymId: string;
+        notes: string | null;
         totalAmount: import("@prisma/client/runtime/library").Decimal;
+        shippingAddress: string | null;
     }>;
     getMyOrders(userId: string): Promise<({
         gym: {
@@ -100,34 +100,34 @@ export declare class MarketplaceService {
         };
         orderItems: ({
             product: {
+                id: string;
+                createdAt: Date;
                 name: string;
+                isActive: boolean;
+                updatedAt: Date;
                 description: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
+                gymId: string;
                 stock: number;
                 category: string | null;
                 imageUrl: string | null;
-                isActive: boolean;
-                gymId: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
             };
         } & {
-            productId: string;
-            quantity: number;
             id: string;
+            quantity: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
+            productId: string;
             orderId: string;
         })[];
     } & {
-        gymId: string;
-        shippingAddress: string | null;
-        notes: string | null;
         id: string;
-        status: import("@prisma/client").$Enums.OrderStatus;
+        userId: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        status: import("@prisma/client").$Enums.OrderStatus;
+        gymId: string;
+        notes: string | null;
         totalAmount: import("@prisma/client/runtime/library").Decimal;
+        shippingAddress: string | null;
     })[]>;
 }

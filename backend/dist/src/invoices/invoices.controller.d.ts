@@ -1,7 +1,9 @@
 import { InvoicesService } from './invoices.service';
+import { GymsService } from '../gyms/gyms.service';
 export declare class InvoicesController {
     private readonly invoicesService;
-    constructor(invoicesService: InvoicesService);
+    private readonly gymsService;
+    constructor(invoicesService: InvoicesService, gymsService: GymsService);
     getAllInvoices(): Promise<({
         user: {
             name: string;
@@ -44,7 +46,7 @@ export declare class InvoicesController {
         pdfUrl: string | null;
         issuedAt: Date;
     })[]>;
-    getGymInvoices(gymId: string): Promise<({
+    getGymInvoices(gymId: string, req: any): Promise<({
         user: {
             name: string;
             email: string;
@@ -64,17 +66,16 @@ export declare class InvoicesController {
         pdfUrl: string | null;
         issuedAt: Date;
     })[]>;
-    getInvoiceDetails(id: string): Promise<({
-        user: {
-            name: string;
-            email: string;
-        };
+    getInvoiceDetails(id: string, req: any): Promise<{
         gym: {
             name: string;
             phone: string | null;
             address: string | null;
         } | null;
-    } & {
+        user: {
+            name: string;
+            email: string;
+        };
         id: string;
         userId: string;
         createdAt: Date;
@@ -88,5 +89,5 @@ export declare class InvoicesController {
         total: import("@prisma/client/runtime/library").Decimal;
         pdfUrl: string | null;
         issuedAt: Date;
-    }) | null>;
+    }>;
 }

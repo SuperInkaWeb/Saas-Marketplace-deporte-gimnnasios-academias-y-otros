@@ -9,44 +9,22 @@ export declare class ClassesService {
     constructor(prisma: PrismaService, notificationsService: NotificationsService, healthService: HealthService);
     create(gymId: string, currentUserId: string, dto: CreateClassDto): Promise<{
         id: string;
-        title: string;
-        description: string | null;
-        classType: import("@prisma/client").$Enums.ClassType;
-        capacity: number;
-        durationMin: number;
-        price: import("@prisma/client/runtime/library").Decimal;
-        scheduledAt: Date;
-        location: string | null;
-        meetingUrl: string | null;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
+        description: string | null;
+        title: string;
+        price: import("@prisma/client/runtime/library").Decimal;
+        location: string | null;
+        capacity: number;
         gymId: string;
         trainerId: string | null;
+        classType: import("@prisma/client").$Enums.ClassType;
+        durationMin: number;
+        scheduledAt: Date;
+        meetingUrl: string | null;
     }>;
     findAll(gymId?: string, userId?: string, ownerId?: string, trainerUserId?: string): Promise<({
-        gym: {
-            name: string;
-            ownerId: string;
-            city: string | null;
-        };
-        trainer: ({
-            user: {
-                name: string;
-                avatarUrl: string | null;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            bio: string | null;
-            specialties: string[];
-            certifications: string[];
-            experienceYears: number;
-            hourlyRate: import("@prisma/client/runtime/library").Decimal | null;
-            rating: import("@prisma/client/runtime/library").Decimal;
-        }) | null;
         reservations: {
             id: string;
             userId: string;
@@ -60,49 +38,13 @@ export declare class ClassesService {
             };
             status: import("@prisma/client").$Enums.ReservationStatus;
         }[];
+        gym: {
+            name: string;
+            ownerId: string;
+            city: string | null;
+        };
         _count: {
             reservations: number;
-        };
-    } & {
-        id: string;
-        title: string;
-        description: string | null;
-        classType: import("@prisma/client").$Enums.ClassType;
-        capacity: number;
-        durationMin: number;
-        price: import("@prisma/client/runtime/library").Decimal;
-        scheduledAt: Date;
-        location: string | null;
-        meetingUrl: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        gymId: string;
-        trainerId: string | null;
-    })[]>;
-    findOne(id: string): Promise<{
-        gym: {
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            status: import("@prisma/client").$Enums.GymStatus;
-            ownerId: string;
-            address: string | null;
-            city: string | null;
-            district: string | null;
-            province: string | null;
-            country: string | null;
-            latitude: number | null;
-            longitude: number | null;
-            phone: string | null;
-            email: string | null;
-            logoUrl: string | null;
-            website: string | null;
-            openTime: string | null;
-            closeTime: string | null;
-            openDays: string | null;
         };
         trainer: ({
             user: {
@@ -111,9 +53,9 @@ export declare class ClassesService {
             };
         } & {
             id: string;
+            userId: string;
             createdAt: Date;
             updatedAt: Date;
-            userId: string;
             bio: string | null;
             specialties: string[];
             certifications: string[];
@@ -121,6 +63,24 @@ export declare class ClassesService {
             hourlyRate: import("@prisma/client/runtime/library").Decimal | null;
             rating: import("@prisma/client/runtime/library").Decimal;
         }) | null;
+    } & {
+        id: string;
+        createdAt: Date;
+        isActive: boolean;
+        updatedAt: Date;
+        description: string | null;
+        title: string;
+        price: import("@prisma/client/runtime/library").Decimal;
+        location: string | null;
+        capacity: number;
+        gymId: string;
+        trainerId: string | null;
+        classType: import("@prisma/client").$Enums.ClassType;
+        durationMin: number;
+        scheduledAt: Date;
+        meetingUrl: string | null;
+    })[]>;
+    findOne(id: string): Promise<{
         reservations: ({
             user: {
                 id: string;
@@ -133,28 +93,69 @@ export declare class ClassesService {
         } & {
             id: string;
             userId: string;
-            classId: string;
             status: import("@prisma/client").$Enums.ReservationStatus;
             bookedAt: Date;
             cancelledAt: Date | null;
             notes: string | null;
+            classId: string;
         })[];
+        gym: {
+            id: string;
+            createdAt: Date;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            updatedAt: Date;
+            ownerId: string;
+            description: string | null;
+            address: string | null;
+            city: string | null;
+            district: string | null;
+            province: string | null;
+            country: string | null;
+            latitude: number | null;
+            longitude: number | null;
+            locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
+            logoUrl: string | null;
+            website: string | null;
+            openTime: string | null;
+            closeTime: string | null;
+            openDays: string | null;
+            status: import("@prisma/client").$Enums.GymStatus;
+        };
+        trainer: ({
+            user: {
+                name: string;
+                avatarUrl: string | null;
+            };
+        } & {
+            id: string;
+            userId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            bio: string | null;
+            specialties: string[];
+            certifications: string[];
+            experienceYears: number;
+            hourlyRate: import("@prisma/client/runtime/library").Decimal | null;
+            rating: import("@prisma/client/runtime/library").Decimal;
+        }) | null;
     } & {
         id: string;
-        title: string;
-        description: string | null;
-        classType: import("@prisma/client").$Enums.ClassType;
-        capacity: number;
-        durationMin: number;
-        price: import("@prisma/client/runtime/library").Decimal;
-        scheduledAt: Date;
-        location: string | null;
-        meetingUrl: string | null;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
+        description: string | null;
+        title: string;
+        price: import("@prisma/client/runtime/library").Decimal;
+        location: string | null;
+        capacity: number;
         gymId: string;
         trainerId: string | null;
+        classType: import("@prisma/client").$Enums.ClassType;
+        durationMin: number;
+        scheduledAt: Date;
+        meetingUrl: string | null;
     }>;
     book(userId: string, classId: string): Promise<{
         user: {
@@ -163,12 +164,13 @@ export declare class ClassesService {
         class: {
             gym: {
                 id: string;
-                description: string | null;
                 createdAt: Date;
-                updatedAt: Date;
                 name: string;
-                status: import("@prisma/client").$Enums.GymStatus;
+                email: string | null;
+                phone: string | null;
+                updatedAt: Date;
                 ownerId: string;
+                description: string | null;
                 address: string | null;
                 city: string | null;
                 district: string | null;
@@ -176,108 +178,108 @@ export declare class ClassesService {
                 country: string | null;
                 latitude: number | null;
                 longitude: number | null;
-                phone: string | null;
-                email: string | null;
+                locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
                 logoUrl: string | null;
                 website: string | null;
                 openTime: string | null;
                 closeTime: string | null;
                 openDays: string | null;
+                status: import("@prisma/client").$Enums.GymStatus;
             };
         } & {
             id: string;
-            title: string;
-            description: string | null;
-            classType: import("@prisma/client").$Enums.ClassType;
-            capacity: number;
-            durationMin: number;
-            price: import("@prisma/client/runtime/library").Decimal;
-            scheduledAt: Date;
-            location: string | null;
-            meetingUrl: string | null;
-            isActive: boolean;
             createdAt: Date;
+            isActive: boolean;
             updatedAt: Date;
+            description: string | null;
+            title: string;
+            price: import("@prisma/client/runtime/library").Decimal;
+            location: string | null;
+            capacity: number;
             gymId: string;
             trainerId: string | null;
+            classType: import("@prisma/client").$Enums.ClassType;
+            durationMin: number;
+            scheduledAt: Date;
+            meetingUrl: string | null;
         };
     } & {
         id: string;
         userId: string;
-        classId: string;
         status: import("@prisma/client").$Enums.ReservationStatus;
         bookedAt: Date;
         cancelledAt: Date | null;
         notes: string | null;
+        classId: string;
     }>;
     cancelBooking(userId: string, classId: string): Promise<{
         id: string;
         userId: string;
-        classId: string;
         status: import("@prisma/client").$Enums.ReservationStatus;
         bookedAt: Date;
         cancelledAt: Date | null;
         notes: string | null;
+        classId: string;
     }>;
     markAttendance(reservationId: string, currentUserId: string): Promise<{
         id: string;
         userId: string;
-        classId: string;
         status: import("@prisma/client").$Enums.ReservationStatus;
         bookedAt: Date;
         cancelledAt: Date | null;
         notes: string | null;
+        classId: string;
     }>;
     unmarkAttendance(reservationId: string, currentUserId: string): Promise<{
         id: string;
         userId: string;
-        classId: string;
         status: import("@prisma/client").$Enums.ReservationStatus;
         bookedAt: Date;
         cancelledAt: Date | null;
         notes: string | null;
+        classId: string;
     }>;
     removeReservation(reservationId: string, currentUserId: string): Promise<{
         id: string;
         userId: string;
-        classId: string;
         status: import("@prisma/client").$Enums.ReservationStatus;
         bookedAt: Date;
         cancelledAt: Date | null;
         notes: string | null;
+        classId: string;
     }>;
     update(id: string, currentUserId: string, dto: UpdateClassDto): Promise<{
         id: string;
-        title: string;
-        description: string | null;
-        classType: import("@prisma/client").$Enums.ClassType;
-        capacity: number;
-        durationMin: number;
-        price: import("@prisma/client/runtime/library").Decimal;
-        scheduledAt: Date;
-        location: string | null;
-        meetingUrl: string | null;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
+        description: string | null;
+        title: string;
+        price: import("@prisma/client/runtime/library").Decimal;
+        location: string | null;
+        capacity: number;
         gymId: string;
         trainerId: string | null;
+        classType: import("@prisma/client").$Enums.ClassType;
+        durationMin: number;
+        scheduledAt: Date;
+        meetingUrl: string | null;
     }>;
     remove(id: string, currentUserId: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
-        classType: import("@prisma/client").$Enums.ClassType;
-        capacity: number;
-        durationMin: number;
-        price: import("@prisma/client/runtime/library").Decimal;
-        scheduledAt: Date;
-        location: string | null;
-        meetingUrl: string | null;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
+        description: string | null;
+        title: string;
+        price: import("@prisma/client/runtime/library").Decimal;
+        location: string | null;
+        capacity: number;
         gymId: string;
         trainerId: string | null;
+        classType: import("@prisma/client").$Enums.ClassType;
+        durationMin: number;
+        scheduledAt: Date;
+        meetingUrl: string | null;
     }>;
 }

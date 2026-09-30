@@ -89,7 +89,6 @@ export declare class AuthService {
         name: string;
         phone?: string;
         dni?: string;
-        role?: UserRole;
     }): Promise<{
         id: string;
         name: string;

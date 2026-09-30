@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 export declare class InvoicesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
@@ -64,17 +65,16 @@ export declare class InvoicesService {
         pdfUrl: string | null;
         issuedAt: Date;
     })[]>;
-    getInvoiceById(id: string): Promise<({
-        user: {
-            name: string;
-            email: string;
-        };
+    getInvoiceById(id: string, requesterId: string, requesterRole: UserRole): Promise<{
         gym: {
             name: string;
             phone: string | null;
             address: string | null;
         } | null;
-    } & {
+        user: {
+            name: string;
+            email: string;
+        };
         id: string;
         userId: string;
         createdAt: Date;
@@ -88,5 +88,5 @@ export declare class InvoicesService {
         total: import("@prisma/client/runtime/library").Decimal;
         pdfUrl: string | null;
         issuedAt: Date;
-    }) | null>;
+    }>;
 }

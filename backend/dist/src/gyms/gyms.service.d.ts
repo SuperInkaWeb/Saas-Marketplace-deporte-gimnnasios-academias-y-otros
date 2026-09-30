@@ -22,6 +22,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -58,6 +59,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -94,6 +96,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -157,6 +160,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -180,6 +184,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -203,6 +208,7 @@ export declare class GymsService {
         country: string | null;
         latitude: number | null;
         longitude: number | null;
+        locationSource: import("@prisma/client").$Enums.GymLocationSource | null;
         logoUrl: string | null;
         website: string | null;
         openTime: string | null;
@@ -210,7 +216,7 @@ export declare class GymsService {
         openDays: string | null;
         status: import("@prisma/client").$Enums.GymStatus;
     }>;
-    findMembers(gymId: string): Promise<{
+    findMembers(gymId: string, currentUserId: string, isAdmin: boolean): Promise<{
         id: string;
         name: string;
         email: string;

@@ -39,8 +39,9 @@ let GymsController = class GymsController {
     findOne(id) {
         return this.gymsService.findOne(id);
     }
-    findMembers(id) {
-        return this.gymsService.findMembers(id);
+    findMembers(id, user) {
+        const isAdmin = user.role === client_1.UserRole.ADMIN;
+        return this.gymsService.findMembers(id, user.id, isAdmin);
     }
     update(id, user, updateGymDto) {
         const isAdmin = user.role === client_1.UserRole.ADMIN;
@@ -101,8 +102,9 @@ __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Listar miembros con membresía activa del gimnasio' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], GymsController.prototype, "findMembers", null);
 __decorate([

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const classes_service_1 = require("./classes.service");
 const class_dto_1 = require("./dto/class.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const any_auth_guard_1 = require("../auth/guards/any-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
@@ -77,7 +78,7 @@ __decorate([
 ], ClassesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(any_auth_guard_1.AnyAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Listar clases. Si myReservations=true, solo las del usuario.' }),
     (0, swagger_1.ApiQuery)({ name: 'gymId', required: false }),
