@@ -313,6 +313,7 @@ enum PaymentMethod {
   BANK_TRANSFER
   STRIPE
   PAYPAL
+  MERCADOPAGO
 }
 
 enum OrderStatus {
