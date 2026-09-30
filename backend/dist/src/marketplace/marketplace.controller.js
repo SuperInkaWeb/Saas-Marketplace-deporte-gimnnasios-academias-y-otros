@@ -97,7 +97,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.USER, client_1.UserRole.TRAINER, client_1.UserRole.TRAINER, client_1.UserRole.ADMIN),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.USER, client_1.UserRole.TRAINER, client_1.UserRole.GYM_OWNER, client_1.UserRole.ADMIN),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Realizar un pedido en la tienda' }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
