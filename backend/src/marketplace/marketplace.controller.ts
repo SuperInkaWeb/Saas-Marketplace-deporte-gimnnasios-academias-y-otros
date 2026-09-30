@@ -68,7 +68,7 @@ export class MarketplaceController {
 
   @Post('orders')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.USER, UserRole.TRAINER, UserRole.TRAINER, UserRole.ADMIN)
+  @Roles(UserRole.USER, UserRole.TRAINER, UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Realizar un pedido en la tienda' })
   createOrder(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
