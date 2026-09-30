@@ -175,14 +175,6 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onClose })
                 Esta es una factura electrónica legalmente válida para Hercix. 
                 Generada automáticamente por el motor de facturación v2.
               </div>
-              <div className="w-16 h-16 bg-white p-1.5 rounded-xl flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity shrink-0">
-                 {/* QR Placeholder */}
-                 <div className="grid grid-cols-4 gap-0.5">
-                    {[...Array(16)].map((_, i) => (
-                      <div key={i} className={`w-2.5 h-2.5 ${Math.random() > 0.5 ? 'bg-slate-900' : 'bg-white'}`} />
-                    ))}
-                 </div>
-              </div>
             </div>
           </motion.div>
         </div>
