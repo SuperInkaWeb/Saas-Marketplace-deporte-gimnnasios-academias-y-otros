@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
-import { 
-  CreditCard, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Zap, 
-  Crown, 
-  Loader2, 
+import {
+  CreditCard,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  Crown,
+  Loader2,
   Calendar,
   Users,
   DollarSign,
@@ -20,7 +20,6 @@ import {
   Database
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
 
 const formatDate = (dateStr: string) => {
@@ -38,18 +37,17 @@ const formatDate = (dateStr: string) => {
 
 // Componente Tarjeta de Plan Individual para Clientes
 const PlanCard: React.FC<{ plan: any; onSubscribe: (id: string) => void }> = ({ plan, onSubscribe }) => (
-  <motion.div 
+  <motion.div
     whileHover={{ scale: 1.02 }}
-    className={`glass-card p-8 flex flex-col border-white/5 relative overflow-hidden transition-all ${
-      plan.name === 'Premium Élite' ? 'ring-2 ring-primary-light/50 border-primary-light/20 shadow-2xl shadow-primary/20' : ''
-    }`}
+    className={`glass-card p-8 flex flex-col border-white/5 relative overflow-hidden transition-all ${plan.name === 'Premium Élite' ? 'ring-2 ring-primary-light/50 border-primary-light/20 shadow-2xl shadow-primary/20' : ''
+      }`}
   >
     {plan.name === 'Premium Élite' && (
       <div className="absolute top-4 right-4 bg-primary-light text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
         Más Popular
       </div>
     )}
-    
+
     <div className="flex items-center gap-3 mb-6">
       <div className={`p-3 rounded-xl ${plan.name === 'Premium Élite' ? 'bg-primary/20 text-primary-light' : 'bg-white/5 text-slate-400'}`}>
         {plan.name === 'Premium Élite' ? <Crown /> : plan.name === 'Estándar' ? <Zap /> : <ShieldCheck />}
@@ -87,11 +85,10 @@ const PlanCard: React.FC<{ plan: any; onSubscribe: (id: string) => void }> = ({ 
       )}
     </ul>
 
-    <button 
+    <button
       onClick={() => onSubscribe(plan.id)}
-      className={`w-full py-3 rounded-xl font-bold transition-all active:scale-95 ${
-        plan.name === 'Premium Élite' ? 'btn-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white'
-      }`}
+      className={`w-full py-3 rounded-xl font-bold transition-all active:scale-95 ${plan.name === 'Premium Élite' ? 'btn-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white'
+        }`}
     >
       Seleccionar Plan
     </button>
@@ -108,9 +105,7 @@ export const MembershipsPage: React.FC = () => {
   const [gyms, setGyms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  
-  // Client selection flow
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+
 
   // Admin Dashboard Tabs & Filters
   const [activeTab, setActiveTab] = useState<'tracking' | 'plans_config'>('tracking');
@@ -169,25 +164,19 @@ export const MembershipsPage: React.FC = () => {
     loadData();
   }, [isAdmin]);
 
-  const handleOpenPayMe = (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    if (plan) {
-      setSelectedPlan(plan);
-    }
-  };
+  const [paying, setPaying] = useState(false);
 
-  const handleConfirmSubscription = async () => {
-    if (!selectedPlan) return;
+  const handleOpenPayMe = async (planId: string) => {
+    if (paying) return;
+    setPaying(true);
     try {
-      await api.post('/memberships/subscribe', { planId: selectedPlan.id });
-      setMessage(`¡Suscripción aprobada! Tu membresía ${selectedPlan.name} ya está activa.`);
-      window.dispatchEvent(new Event('membershipUpdated'));
-      fetchPlans();
-      setTimeout(() => setMessage(null), 4000);
-      setSelectedPlan(null);
+      const { data } = await api.post('/payments/mercadopago/membership-checkout', { planId });
+      if (!data?.checkoutUrl) throw new Error('Sin checkoutUrl');
+      window.location.href = data.checkoutUrl;
     } catch (err) {
-      alert('Error al activar la membresía.');
-      setSelectedPlan(null);
+      console.error('Error creando checkout de Mercado Pago:', err);
+      alert('No se pudo iniciar el pago. Intenta de nuevo.');
+      setPaying(false);
     }
   };
 
@@ -225,8 +214,8 @@ export const MembershipsPage: React.FC = () => {
     const athleteEmail = m.user?.email || '';
     const gymName = m.plan?.gym?.name || '';
     const planName = m.plan?.name || '';
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       athleteName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       athleteEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
       gymName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -326,21 +315,19 @@ export const MembershipsPage: React.FC = () => {
         <div className="flex gap-4 border-b border-white/10 pb-2">
           <button
             onClick={() => setActiveTab('tracking')}
-            className={`pb-2 px-1 font-extrabold text-sm transition-all border-b-2 ${
-              activeTab === 'tracking'
+            className={`pb-2 px-1 font-extrabold text-sm transition-all border-b-2 ${activeTab === 'tracking'
                 ? 'border-primary-light text-white'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             📋 Historial y Seguimiento
           </button>
           <button
             onClick={() => setActiveTab('plans_config')}
-            className={`pb-2 px-1 font-extrabold text-sm transition-all border-b-2 ${
-              activeTab === 'plans_config'
+            className={`pb-2 px-1 font-extrabold text-sm transition-all border-b-2 ${activeTab === 'plans_config'
                 ? 'border-primary-light text-white'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             ⚙️ Configuración de Planes
           </button>
@@ -353,7 +340,7 @@ export const MembershipsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative md:col-span-2">
                 <Search className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-500 w-5 h-5" />
-                <input 
+                <input
                   type="text"
                   placeholder="Buscar por atleta, gimnasio o plan..."
                   value={searchQuery}
@@ -409,7 +396,7 @@ export const MembershipsPage: React.FC = () => {
                       const totalPaid = m.payments?.reduce((s: number, p: any) => p.status === 'COMPLETED' ? s + Number(p.amount) : s, 0) || 0;
                       const hasPaid = m.payments?.some((p: any) => p.status === 'COMPLETED');
                       const txId = m.payments?.[0]?.gatewayTxId || 'N/A';
-                      
+
                       return (
                         <tr key={m.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-4 px-6">
@@ -429,21 +416,19 @@ export const MembershipsPage: React.FC = () => {
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <div className={`text-xs font-extrabold inline-block px-2.5 py-1 rounded-full ${
-                              hasPaid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
-                            }`}>
+                            <div className={`text-xs font-extrabold inline-block px-2.5 py-1 rounded-full ${hasPaid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
+                              }`}>
                               ${totalPaid.toFixed(2)} - {hasPaid ? 'Completado' : 'Pendiente'}
                             </div>
                             <div className="text-[10px] text-slate-500 mt-1">Tx: {txId}</div>
                           </td>
                           <td className="py-4 px-6">
-                            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                              m.status === 'ACTIVE'
+                            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${m.status === 'ACTIVE'
                                 ? 'bg-emerald-500/20 text-emerald-400'
                                 : m.status === 'EXPIRED'
-                                ? 'bg-orange-500/20 text-orange-400'
-                                : 'bg-red-500/20 text-red-400'
-                            }`}>
+                                  ? 'bg-orange-500/20 text-orange-400'
+                                  : 'bg-red-500/20 text-red-400'
+                              }`}>
                               {m.status === 'ACTIVE' ? 'Activa' : m.status === 'EXPIRED' ? 'Expirada' : 'Cancelada'}
                             </span>
                           </td>
@@ -475,14 +460,14 @@ export const MembershipsPage: React.FC = () => {
                         {plan.gym?.name || 'Hercix'}
                       </span>
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => handleEditPlan(plan)}
                           className="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
                           title="Editar Plan"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeletePlan(plan.id)}
                           className="p-1.5 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-lg transition-colors"
                           title="Eliminar Plan"
@@ -494,7 +479,7 @@ export const MembershipsPage: React.FC = () => {
 
                     <h3 className="text-lg font-bold text-white">{plan.name}</h3>
                     <p className="text-slate-400 text-xs mt-1 min-h-[32px]">{plan.description || 'Sin descripción.'}</p>
-                    
+
                     <div className="my-4 flex items-baseline gap-1">
                       <span className="text-2xl font-extrabold text-white">${Number(plan.price).toFixed(2)}</span>
                       <span className="text-slate-500 text-xs">/ {plan.durationDays} días</span>
@@ -524,7 +509,7 @@ export const MembershipsPage: React.FC = () => {
 
         {/* Modal para Crear/Editar Planes */}
         {isAddPlanOpen && (
-          <AddPlanModal 
+          <AddPlanModal
             isOpen={isAddPlanOpen}
             onClose={() => {
               setIsAddPlanOpen(false);
@@ -590,16 +575,6 @@ export const MembershipsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Pay-Me Modal */}
-      {selectedPlan && (
-        <PayMeModal
-          isOpen={!!selectedPlan}
-          onClose={() => setSelectedPlan(null)}
-          onSuccess={handleConfirmSubscription}
-          amount={Number(selectedPlan.price)}
-          description={`Membresía ${selectedPlan.name} - ${selectedPlan.durationDays} días`}
-        />
-      )}
     </div>
   );
 };
