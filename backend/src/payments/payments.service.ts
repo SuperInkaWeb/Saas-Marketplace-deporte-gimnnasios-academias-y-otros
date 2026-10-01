@@ -58,6 +58,7 @@ export class PaymentsService {
           failure: `${process.env.FRONTEND_URL}/payment/failure?ref=${payment.id}`,
           pending: `${process.env.FRONTEND_URL}/payment/pending?ref=${payment.id}`,
         },
+        auto_return: 'approved',
         notification_url: `${process.env.BACKEND_URL}/payments/mercadopago/webhook`,
       },
     });

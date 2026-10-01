@@ -109,7 +109,7 @@ export const MembershipsPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   
   // Client selection flow
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
 
   // Admin Dashboard Tabs & Filters
   const [activeTab, setActiveTab] = useState<'tracking' | 'plans_config'>('tracking');
@@ -168,27 +168,19 @@ export const MembershipsPage: React.FC = () => {
     loadData();
   }, [isAdmin]);
 
-  const handleOpenPayMe = (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    if (plan) {
-      setSelectedPlan(plan);
-    }
-  };
-
-  const handleConfirmSubscription = async () => {
-    if (!selectedPlan) return;
-    try {
-      await api.post('/memberships/subscribe', { planId: selectedPlan.id });
-      setMessage(`¡Suscripción aprobada! Tu membresía ${selectedPlan.name} ya está activa.`);
-      window.dispatchEvent(new Event('membershipUpdated'));
-      fetchPlans();
-      setTimeout(() => setMessage(null), 4000);
-      setSelectedPlan(null);
-    } catch (err) {
-      alert('Error al activar la membresía.');
-      setSelectedPlan(null);
-    }
-  };
+const handleOpenPayMe = async (planId: string) => {
+  if (payingPlanId) return; // evita doble clic
+  setPayingPlanId(planId);
+  try {
+    const { data } = await api.post('/payments/mercadopago/membership-checkout', { planId });
+    if (!data?.checkoutUrl) throw new Error('La respuesta no trae checkoutUrl');
+    window.location.href = data.checkoutUrl;
+  } catch (err) {
+    console.error('Error iniciando checkout:', err);
+    alert('No se pudo iniciar el pago con Mercado Pago.');
+    setPayingPlanId(null);
+  }
+};
 
   // Admin Plan Management
   const handleEditPlan = (plan: any) => {
