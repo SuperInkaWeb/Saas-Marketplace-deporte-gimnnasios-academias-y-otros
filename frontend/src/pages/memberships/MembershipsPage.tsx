@@ -20,7 +20,6 @@ import {
   Database
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
 
 const formatDate = (dateStr: string) => {
@@ -589,17 +588,6 @@ export const MembershipsPage: React.FC = () => {
           <p className="text-slate-500 text-sm">Cancela o cambia de plan en cualquier momento.</p>
         </div>
       </section>
-
-      {/* Pay-Me Modal */}
-      {selectedPlan && (
-        <PayMeModal
-          isOpen={!!selectedPlan}
-          onClose={() => setSelectedPlan(null)}
-          onSuccess={handleConfirmSubscription}
-          amount={Number(selectedPlan.price)}
-          description={`Membresía ${selectedPlan.name} - ${selectedPlan.durationDays} días`}
-        />
-      )}
     </div>
   );
 };
