@@ -14,7 +14,7 @@ interface PayMeModalProps {
   onClose: () => void;
   onSuccess: () => void;
   amount: number;
-  description: string;a
+  description: string;
 }
 
 export const PayMeModal: React.FC<PayMeModalProps> = ({ isOpen, onClose, onSuccess, amount, description }) => {
