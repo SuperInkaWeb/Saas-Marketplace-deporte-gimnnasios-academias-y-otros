@@ -74,6 +74,10 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                 description: `Suscripción a ${plan.name}`,
             },
         });
+        const frontendUrl = process.env.FRONTEND_URL;
+        if (!frontendUrl)
+            throw new Error('FRONTEND_URL no está configurada');
+        const isHttps = frontendUrl.startsWith('https://');
         const preference = await new mercadopago_1.Preference(this.mp).create({
             body: {
                 items: [
@@ -89,12 +93,14 @@ let PaymentsService = PaymentsService_1 = class PaymentsService {
                 external_reference: payment.id,
                 metadata: { plan_id: plan.id, user_id: userId },
                 back_urls: {
-                    success: `${process.env.FRONTEND_URL}/payment/success?ref=${payment.id}`,
-                    failure: `${process.env.FRONTEND_URL}/payment/failure?ref=${payment.id}`,
-                    pending: `${process.env.FRONTEND_URL}/payment/pending?ref=${payment.id}`,
+                    success: `${frontendUrl}/payment/success?ref=${payment.id}`,
+                    failure: `${frontendUrl}/payment/failure?ref=${payment.id}`,
+                    pending: `${frontendUrl}/payment/pending?ref=${payment.id}`,
                 },
-                auto_return: 'approved',
-                notification_url: `${process.env.BACKEND_URL}/payments/mercadopago/webhook`,
+                ...(isHttps ? { auto_return: 'approved' } : {}),
+                ...(process.env.BACKEND_URL?.startsWith('https://')
+                    ? { notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook` }
+                    : {}),
             },
         });
         return { paymentId: payment.id, checkoutUrl: preference.init_point };

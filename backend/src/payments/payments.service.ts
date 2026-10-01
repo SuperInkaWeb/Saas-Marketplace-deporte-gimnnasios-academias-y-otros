@@ -39,29 +39,35 @@ export class PaymentsService {
       },
     });
 
-    const preference = await new Preference(this.mp).create({
-      body: {
-        items: [
-          {
-            id: plan.id,
-            title: `Suscripción a ${plan.name}`,
-            quantity: 1,
-            unit_price: Number(plan.price),
-            currency_id: 'PEN',
-          },
-        ],
-        payer: { email },
-        external_reference: payment.id,
-        metadata: { plan_id: plan.id, user_id: userId },
-        back_urls: {
-          success: `${process.env.FRONTEND_URL}/payment/success?ref=${payment.id}`,
-          failure: `${process.env.FRONTEND_URL}/payment/failure?ref=${payment.id}`,
-          pending: `${process.env.FRONTEND_URL}/payment/pending?ref=${payment.id}`,
-        },
-        auto_return: 'approved',
-        notification_url: `${process.env.BACKEND_URL}/payments/mercadopago/webhook`,
+    const frontendUrl = process.env.FRONTEND_URL; // http://localhost:5173
+    if (!frontendUrl) throw new Error('FRONTEND_URL no está configurada');
+    const isHttps = frontendUrl.startsWith('https://');
+
+const preference = await new Preference(this.mp).create({
+  body: {
+    items: [
+      {
+        id: plan.id,
+        title: `Suscripción a ${plan.name}`,
+        quantity: 1,
+        unit_price: Number(plan.price),
+        currency_id: 'PEN',
       },
-    });
+    ],
+    payer: { email },
+    external_reference: payment.id,
+    metadata: { plan_id: plan.id, user_id: userId },
+    back_urls: {
+      success: `${frontendUrl}/payment/success?ref=${payment.id}`,
+      failure: `${frontendUrl}/payment/failure?ref=${payment.id}`,
+      pending: `${frontendUrl}/payment/pending?ref=${payment.id}`,
+    },
+    ...(isHttps ? { auto_return: 'approved' as const } : {}),
+    ...(process.env.BACKEND_URL?.startsWith('https://')
+      ? { notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook` }
+      : {}),
+  },
+});
 
     return { paymentId: payment.id, checkoutUrl: preference.init_point };
   }
