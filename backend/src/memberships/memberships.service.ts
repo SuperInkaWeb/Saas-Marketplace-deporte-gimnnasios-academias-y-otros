@@ -225,6 +225,69 @@ export class MembershipsService {
     });
   }
 
+  async activateFromPayment(paymentId: string, planId: string, mpPaymentId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // "Reclama" el pago: solo uno de varios webhooks simultáneos lo logra
+      const claimed = await tx.payment.updateMany({
+        where: { id: paymentId, status: PaymentStatus.PENDING },
+        data: {
+          status: PaymentStatus.COMPLETED,
+          gatewayTxId: `MP:${mpPaymentId}`,
+          paidAt: new Date(),
+        },
+      });
+      if (claimed.count === 0) return null; 
+
+      const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+      const plan = await tx.membershipPlan.findUniqueOrThrow({ where: { id: planId } });
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
+
+      await tx.userMembership.updateMany({
+        where: {
+          userId: payment.userId,
+          status: MembershipStatus.ACTIVE,
+          plan: { gymId: plan.gymId },
+        },
+        data: { status: MembershipStatus.EXPIRED },
+      });
+
+      const membership = await tx.userMembership.create({
+        data: {
+          userId: payment.userId,
+          planId: plan.id,
+          status: MembershipStatus.ACTIVE,
+          expiresAt,
+        },
+        include: { plan: true },
+      });
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { membershipId: membership.id },
+      });
+
+      const invoiceAmount = Number(payment.amount);
+      const taxAmount = invoiceAmount * 0.19; // misma lógica que ya tenías
+      await tx.invoice.create({
+        data: {
+          paymentId: payment.id,
+          userId: payment.userId,
+          gymId: plan.gymId,
+          invoiceNum: `INV-${Date.now().toString().slice(-6)}`,
+          amount: invoiceAmount,
+          tax: taxAmount,
+          total: invoiceAmount + taxAmount,
+          status: InvoiceStatus.ISSUED,
+          pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        },
+      });
+
+      return membership;
+    });
+  }
+
   async getUserMemberships(userId: string) {
     return this.prisma.userMembership.findMany({
       where: { userId },
