@@ -5,16 +5,16 @@ export declare class MembershipsService {
     constructor(prisma: PrismaService);
     createPlan(gymId: string, ownerId: string, dto: CreateMembershipPlanDto): Promise<{
         id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         durationDays: number;
         maxClasses: number | null;
         includesMarketplace: boolean;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        gymId: string;
     }>;
     findAllPlans(gymId?: string): Promise<({
         gym: {
@@ -22,64 +22,64 @@ export declare class MembershipsService {
         };
     } & {
         id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         durationDays: number;
         maxClasses: number | null;
         includesMarketplace: boolean;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        gymId: string;
     })[]>;
     subscribe(userId: string, dto: SubscribeDto): Promise<{
         plan: {
             id: string;
+            createdAt: Date;
             name: string;
+            isActive: boolean;
+            updatedAt: Date;
             description: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
+            gymId: string;
             durationDays: number;
             maxClasses: number | null;
             includesMarketplace: boolean;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            gymId: string;
         };
     } & {
         id: string;
+        userId: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.MembershipStatus;
-        startedAt: Date;
         expiresAt: Date;
-        classesUsed: number;
-        userId: string;
         planId: string;
+        startedAt: Date;
+        classesUsed: number;
     }>;
     activateFromPayment(paymentId: string, planId: string, mpPaymentId: string): Promise<({
         plan: {
             id: string;
+            createdAt: Date;
             name: string;
+            isActive: boolean;
+            updatedAt: Date;
             description: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
+            gymId: string;
             durationDays: number;
             maxClasses: number | null;
             includesMarketplace: boolean;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            gymId: string;
         };
     } & {
         id: string;
+        userId: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.MembershipStatus;
-        startedAt: Date;
         expiresAt: Date;
-        classesUsed: number;
-        userId: string;
         planId: string;
+        startedAt: Date;
+        classesUsed: number;
     }) | null>;
     getUserMemberships(userId: string): Promise<({
         plan: {
@@ -88,26 +88,26 @@ export declare class MembershipsService {
             };
         } & {
             id: string;
+            createdAt: Date;
             name: string;
+            isActive: boolean;
+            updatedAt: Date;
             description: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
+            gymId: string;
             durationDays: number;
             maxClasses: number | null;
             includesMarketplace: boolean;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            gymId: string;
         };
     } & {
         id: string;
+        userId: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.MembershipStatus;
-        startedAt: Date;
         expiresAt: Date;
-        classesUsed: number;
-        userId: string;
         planId: string;
+        startedAt: Date;
+        classesUsed: number;
     })[]>;
     getAllMembershipsForAdmin(gymId?: string): Promise<({
         user: {
@@ -128,51 +128,51 @@ export declare class MembershipsService {
             };
         } & {
             id: string;
+            createdAt: Date;
             name: string;
+            isActive: boolean;
+            updatedAt: Date;
             description: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
+            gymId: string;
             durationDays: number;
             maxClasses: number | null;
             includesMarketplace: boolean;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            gymId: string;
         };
     } & {
         id: string;
+        userId: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.MembershipStatus;
-        startedAt: Date;
         expiresAt: Date;
-        classesUsed: number;
-        userId: string;
         planId: string;
+        startedAt: Date;
+        classesUsed: number;
     })[]>;
     updatePlan(planId: string, ownerId: string, dto: UpdateMembershipPlanDto, isAdmin?: boolean): Promise<{
         id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         durationDays: number;
         maxClasses: number | null;
         includesMarketplace: boolean;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        gymId: string;
     }>;
     deletePlan(planId: string, ownerId: string, isAdmin?: boolean): Promise<{
         id: string;
+        createdAt: Date;
         name: string;
+        isActive: boolean;
+        updatedAt: Date;
         description: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
+        gymId: string;
         durationDays: number;
         maxClasses: number | null;
         includesMarketplace: boolean;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        gymId: string;
     }>;
 }

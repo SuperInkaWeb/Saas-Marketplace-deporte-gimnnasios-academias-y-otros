@@ -24,18 +24,71 @@ let PaymentsController = class PaymentsController {
     async createIntent(data) {
         return this.paymentsService.createPaymeSignature(data.amount, data.description);
     }
+    async membershipCheckout(data, req) {
+        return this.paymentsService.createMembershipCheckout(req.user.id, req.user.email, data.planId);
+    }
+    async confirm(data, req) {
+        return this.paymentsService.processMercadoPagoPayment(String(data.paymentId), req.user.id);
+    }
+    async status(id, req) {
+        return this.paymentsService.getStatus(id, req.user.id);
+    }
+    async webhook(body, query) {
+        const type = body?.type ?? query?.type ?? query?.topic;
+        const id = body?.data?.id ?? query?.['data.id'] ?? query?.id;
+        if (type === 'payment' && id) {
+            await this.paymentsService.processMercadoPagoPayment(String(id));
+        }
+        return { ok: true };
+    }
 };
 exports.PaymentsController = PaymentsController;
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)('create-intent'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "createIntent", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('mercadopago/membership-checkout'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "membershipCheckout", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('mercadopago/confirm'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "confirm", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('status/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "status", null);
+__decorate([
+    (0, common_1.Post)('mercadopago/webhook'),
+    (0, common_1.HttpCode)(200),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "webhook", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, common_1.Controller)('payments'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [payments_service_1.PaymentsService])
 ], PaymentsController);
 //# sourceMappingURL=payments.controller.js.map
