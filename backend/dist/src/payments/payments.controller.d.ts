@@ -14,4 +14,23 @@ export declare class PaymentsController {
         purchaseVerification: string;
         description: string;
     }>;
+    membershipCheckout(data: {
+        planId: string;
+    }, req: any): Promise<{
+        paymentId: string;
+        checkoutUrl: string | undefined;
+    }>;
+    confirm(data: {
+        paymentId: string;
+    }, req: any): Promise<{
+        status: string;
+    }>;
+    status(id: string, req: any): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.PaymentStatus;
+        amount: import("@prisma/client/runtime/library").Decimal;
+    }>;
+    webhook(body: any, query: any): Promise<{
+        ok: boolean;
+    }>;
 }

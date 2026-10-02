@@ -10,6 +10,7 @@ import GymShowroom from './pages/gyms/GymShowroom';
 import ClassesPage from './pages/classes/ClassesPage';
 import MarketplacePage from './pages/marketplace/MarketplacePage';
 import MembershipsPage from './pages/memberships/MembershipsPage';
+import PaymentResultPage from './pages/payment/PaymentResultPage';
 import ProfessionalsPage from './pages/professionals/ProfessionalsPage';
 import MapSearchPage from './pages/discovery/MapSearchPage';
 import EventsPage from './pages/events/EventsPage';
@@ -108,6 +109,9 @@ function App() {
             <Route element={<MainLayout><MapSearchPage /></MainLayout>} path="/discovery" />
             <Route element={<MainLayout><EventsPage /></MainLayout>} path="/events" />
             <Route element={<MainLayout><MembershipsPage /></MainLayout>} path="/memberships" />
+            <Route element={<MainLayout><PaymentResultPage /></MainLayout>} path="/payment/success" />
+            <Route element={<MainLayout><PaymentResultPage /></MainLayout>} path="/payment/failure" />
+            <Route element={<MainLayout><PaymentResultPage /></MainLayout>} path="/payment/pending" />
           </Route>
 
           {/* Fallback */}

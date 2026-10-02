@@ -199,6 +199,61 @@ let MembershipsService = class MembershipsService {
             return membership;
         });
     }
+    async activateFromPayment(paymentId, planId, mpPaymentId) {
+        return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.payment.updateMany({
+                where: { id: paymentId, status: client_1.PaymentStatus.PENDING },
+                data: {
+                    status: client_1.PaymentStatus.COMPLETED,
+                    gatewayTxId: `MP:${mpPaymentId}`,
+                    paidAt: new Date(),
+                },
+            });
+            if (claimed.count === 0)
+                return null;
+            const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+            const plan = await tx.membershipPlan.findUniqueOrThrow({ where: { id: planId } });
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
+            await tx.userMembership.updateMany({
+                where: {
+                    userId: payment.userId,
+                    status: client_1.MembershipStatus.ACTIVE,
+                    plan: { gymId: plan.gymId },
+                },
+                data: { status: client_1.MembershipStatus.EXPIRED },
+            });
+            const membership = await tx.userMembership.create({
+                data: {
+                    userId: payment.userId,
+                    planId: plan.id,
+                    status: client_1.MembershipStatus.ACTIVE,
+                    expiresAt,
+                },
+                include: { plan: true },
+            });
+            await tx.payment.update({
+                where: { id: payment.id },
+                data: { membershipId: membership.id },
+            });
+            const invoiceAmount = Number(payment.amount);
+            const taxAmount = invoiceAmount * 0.19;
+            await tx.invoice.create({
+                data: {
+                    paymentId: payment.id,
+                    userId: payment.userId,
+                    gymId: plan.gymId,
+                    invoiceNum: `INV-${Date.now().toString().slice(-6)}`,
+                    amount: invoiceAmount,
+                    tax: taxAmount,
+                    total: invoiceAmount + taxAmount,
+                    status: client_1.InvoiceStatus.ISSUED,
+                    pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                },
+            });
+            return membership;
+        });
+    }
     async getUserMemberships(userId) {
         return this.prisma.userMembership.findMany({
             where: { userId },

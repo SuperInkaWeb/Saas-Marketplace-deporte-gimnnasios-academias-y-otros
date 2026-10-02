@@ -57,6 +57,30 @@ export declare class MembershipsService {
         startedAt: Date;
         classesUsed: number;
     }>;
+    activateFromPayment(paymentId: string, planId: string, mpPaymentId: string): Promise<({
+        plan: {
+            id: string;
+            createdAt: Date;
+            name: string;
+            isActive: boolean;
+            updatedAt: Date;
+            description: string | null;
+            price: import("@prisma/client/runtime/library").Decimal;
+            gymId: string;
+            durationDays: number;
+            maxClasses: number | null;
+            includesMarketplace: boolean;
+        };
+    } & {
+        id: string;
+        userId: string;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.MembershipStatus;
+        expiresAt: Date;
+        planId: string;
+        startedAt: Date;
+        classesUsed: number;
+    }) | null>;
     getUserMemberships(userId: string): Promise<({
         plan: {
             gym: {
