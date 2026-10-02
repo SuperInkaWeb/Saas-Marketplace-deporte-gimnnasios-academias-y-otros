@@ -26,6 +26,8 @@ export class PaymentsService {
 
   async createMembershipCheckout(userId: string, email: string, planId: string) {
     // El precio sale de la base de datos, nunca del frontend
+    console.log('CHECKOUT DEBUG:', { userId, email, planId });
+    console.log('FRONTEND_URL =', process.env.FRONTEND_URL);
     const plan = await this.prisma.membershipPlan.findUnique({ where: { id: planId } });
     if (!plan || !plan.isActive) throw new NotFoundException('Plan no disponible');
 
