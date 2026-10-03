@@ -13,7 +13,6 @@ import {
   Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
 
 const ProductCard: React.FC<{ 
@@ -98,7 +97,7 @@ export const MarketplacePage: React.FC = () => {
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isPayMeOpen, setIsPayMeOpen] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
@@ -149,29 +148,21 @@ export const MarketplacePage: React.FC = () => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleCheckoutClick = () => {
-    if (cart.length === 0) return;
-    setIsPayMeOpen(true);
-  };
-
-  const processOrderAfterPayment = async () => {
-    try {
-      const orderData = {
-        gymId: cart[0].gymId, // Assuming items from same gym for simplicity
-        items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
-      };
-      await api.post('/marketplace/orders', orderData);
-      setMessage('¡Pago aprobado por Pay-Me! Tu pedido ha sido realizado con éxito.');
-      setCart([]);
-      setIsCartOpen(false);
-      setIsPayMeOpen(false);
-      setTimeout(() => setMessage(null), 4000);
-    } catch (err) {
-      console.error('Error logic:', err);
-      alert('Error al procesar el pedido después del pago.');
-      setIsPayMeOpen(false);
-    }
-  };
+const handleCheckoutClick = async () => {
+  if (cart.length === 0 || checkingOut) return;
+  setCheckingOut(true);
+  try {
+    // Solo se envían ids y cantidades; el precio lo calcula el backend
+    const { data } = await api.post('/payments/mercadopago/order-checkout', {
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+    });
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    const msg = err.response?.data?.message;
+    alert(Array.isArray(msg) ? msg.join('\n') : msg || 'No se pudo iniciar el pago.');
+    setCheckingOut(false);
+  }
+};
 
   const uniqueCategories = Array.from(new Set(products.map(p => p.category || 'Deportes')));
   const filteredProducts = products.filter(p => {
@@ -323,12 +314,12 @@ export const MarketplacePage: React.FC = () => {
                   <span>Total estimado</span>
                   <span className="text-xl font-bold text-white">${cartTotal.toFixed(2)}</span>
                 </div>
-                <button 
+                <button
                   onClick={handleCheckoutClick}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || checkingOut}
                   className="btn-secondary w-full py-3"
-                >
-                  Pagar Pedido
+                  >
+               {checkingOut ? 'Redirigiendo a Mercado Pago...' : 'Pagar Pedido'}
                 </button>
               </div>
             </motion.aside>
@@ -336,13 +327,6 @@ export const MarketplacePage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <PayMeModal
-        isOpen={isPayMeOpen}
-        onClose={() => setIsPayMeOpen(false)}
-        onSuccess={processOrderAfterPayment}
-        amount={cartTotal}
-        description={`Pago de ${cart.length} producto(s) en Marketplace Hercix`}
-      />
 
       <AddProductModal 
         isOpen={isAddProductOpen || !!editingProduct}

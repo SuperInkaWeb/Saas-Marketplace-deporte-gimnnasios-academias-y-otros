@@ -29,6 +29,15 @@ export class PaymentsController {
     return this.paymentsService.createMembershipCheckout(req.user.id, req.user.email, data.planId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('mercadopago/order-checkout')
+  async orderCheckout(
+    @Body() data: { items: { productId: string; quantity: number }[] },
+    @Req() req: any,
+  ) {
+    return this.paymentsService.createOrderCheckout(req.user.id, req.user.email, data.items);
+  }
+
   // El usuario vuelve de Mercado Pago y el frontend confirma con el payment_id de la URL
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/confirm')
