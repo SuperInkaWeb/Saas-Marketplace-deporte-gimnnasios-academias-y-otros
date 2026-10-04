@@ -26,7 +26,6 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 
 const GymShowroom: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -53,10 +52,9 @@ const GymShowroom: React.FC = () => {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
 
-  // Payment integration state
-  const [selectedPlanForPay, setSelectedPlanForPay] = useState<any>(null);
-  const [showPayMeModal, setShowPayMeModal] = useState(false);
-  const [isCartPayment, setIsCartPayment] = useState(false);
+// Payment integration state
+const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
+const [payingCart, setPayingCart] = useState(false);
 
   const isOwner = user?.role === 'GYM_OWNER' || user?.role === 'ADMIN';
   const isMyGym = isOwner && gym && gym.ownerId === user?.id;
@@ -67,41 +65,41 @@ const GymShowroom: React.FC = () => {
     setPlans(data);
   };
 
-  const handlePaySuccess = async () => {
-    if (isCartPayment) {
-      try {
-        const orderItems = cart.map(item => ({
-          productId: item.id,
-          quantity: item.qty
-        }));
-        await api.post('/marketplace/orders', {
-          gymId: id,
-          items: orderItems,
-          notes: 'Compra desde vitrina de gimnasio con pasarela Pay-me'
-        });
-        toast.success('¡Pedido confirmado y pagado exitosamente! 🎉');
-        setCart([]);
-        setShowCart(false);
-        setShowPayMeModal(false);
-        setIsCartPayment(false);
-        fetchData();
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Error al procesar tu pedido.');
-      }
-      return;
-    }
+  const handleSubscribe = async (plan: any) => {
+  if (isOwner) {
+    toast.error('Los administradores/dueños no pueden suscribirse a planes.');
+    return;
+  }
+  if (payingPlanId) return;
+  setPayingPlanId(plan.id);
+  try {
+    const { data } = await api.post('/payments/mercadopago/membership-checkout', {
+      planId: plan.id,
+    });
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+    setPayingPlanId(null);
+  }
+};
 
-    if (!selectedPlanForPay) return;
-    try {
-      await api.post('/memberships/subscribe', { planId: selectedPlanForPay.id });
-      toast.success(`🎉 ¡Te has suscrito exitosamente al plan "${selectedPlanForPay.name}"!`);
-      setShowPayMeModal(false);
-      setSelectedPlanForPay(null);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al procesar tu suscripción.');
-    }
-  };
+const handlePayCart = async () => {
+  if (isOwner) {
+    toast.error('Los administradores/dueños no pueden realizar pedidos.');
+    return;
+  }
+  if (payingCart) return;
+  setPayingCart(true);
+  try {
+    const { data } = await api.post('/payments/mercadopago/order-checkout', {
+      items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
+    });
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+    setPayingCart(false);
+  }
+};
 
   const handleDeletePlan = async (planId: string, planName: string) => {
     if (!window.confirm(`¿Eliminar el plan de membresía "${planName}"? Esta acción no se puede deshacer.`)) return;
@@ -165,17 +163,28 @@ const GymShowroom: React.FC = () => {
     fetchData();
   }, [id]);
 
-  const handleBook = async (classId: string) => {
-    try {
-      setBookingId(classId);
-      await api.post(`/classes/${classId}/book`);
+const handleBook = async (c: any) => {
+  if (bookingId) return;
+  setBookingId(c.id);
+  try {
+    const { data } = await api.post('/payments/mercadopago/class-checkout', {
+      classId: c.id,
+    });
+
+    // Clase gratuita: el backend la reserva directo
+    if (data.free) {
       toast.success('¡Reserva confirmada exitosamente!');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al reservar la clase');
-    } finally {
-      setBookingId(null);
+      return;
     }
-  };
+
+    // Clase de pago: redirige a Mercado Pago
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || 'Error al reservar la clase');
+  } finally {
+    setBookingId(null);
+  }
+};
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
     if (!window.confirm(`¿Eliminar el producto "${productName}"? Esta acción no se puede deshacer.`)) return;
@@ -517,18 +526,11 @@ const GymShowroom: React.FC = () => {
                            ))}
                         </ul>
                         <button 
-                          onClick={() => {
-                            if (isOwner) {
-                              toast.error('Los administradores/dueños no pueden suscribirse a planes.');
-                              return;
-                            }
-                            setIsCartPayment(false);
-                            setSelectedPlanForPay(p);
-                            setShowPayMeModal(true);
-                          }}
-                          className="w-full mt-8 py-3 bg-primary hover:bg-primary-dark text-white font-black rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95"
+                          onClick={() => handleSubscribe(p)}
+                          disabled={payingPlanId === p.id}
+                          className="w-full mt-8 py-3 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95 flex items-center justify-center gap-2"
                         >
-                          Suscribirme Hoy
+                          {payingPlanId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Suscribirme Hoy'}
                         </button>
                       </div>
                     )) : (
@@ -565,9 +567,12 @@ const GymShowroom: React.FC = () => {
                         <div className="text-right">
                           <p className="text-white font-black">{new Date(c.scheduledAt).toLocaleDateString()}</p>
                           <p className="text-slate-500 text-xs uppercase font-bold">10:00 AM</p>
+                          <p className="text-green-400 font-bold text-sm">
+                            {Number(c.price) > 0 ? `S/ ${Number(c.price).toFixed(2)}` : 'Gratis'}
+                          </p>
                         </div>
                         <button 
-                          onClick={() => handleBook(c.id)}
+                          onClick={() => handleBook(c)}
                           disabled={bookingId === c.id}
                           className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-sm font-bold border border-white/10 transition-all flex items-center justify-center min-w-[120px]">
                           {bookingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reservar'}
@@ -636,18 +641,11 @@ const GymShowroom: React.FC = () => {
                   <span className="text-white font-black text-xl">${cartTotal.toFixed(2)}</span>
                 </div>
                 <button
-                  onClick={() => {
-                    if (isOwner) {
-                      toast.error('Los administradores/dueños no pueden realizar pedidos.');
-                      return;
-                    }
-                    setIsCartPayment(true);
-                    setSelectedPlanForPay(null);
-                    setShowPayMeModal(true);
-                  }}
-                  className="btn-primary w-full py-3 text-center font-black flex items-center justify-center gap-2"
+                  onClick={handlePayCart}
+                  disabled={payingCart}
+                  className="btn-primary w-full py-3 text-center font-black flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <ShoppingCart className="w-4 h-4" /> Confirmar y Pagar Pedido
+                  {payingCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Confirmar y Pagar Pedido
                 </button>
               </div>
             )}
@@ -660,13 +658,6 @@ const GymShowroom: React.FC = () => {
         onSuccess={handlePlanSuccess}
         gymId={id || ''}
         initialData={editingPlan}
-      />
-      <PayMeModal
-        isOpen={showPayMeModal}
-        onClose={() => { setShowPayMeModal(false); setSelectedPlanForPay(null); setIsCartPayment(false); }}
-        onSuccess={handlePaySuccess}
-        amount={isCartPayment ? cartTotal : (selectedPlanForPay ? Number(selectedPlanForPay.price) : 0)}
-        description={isCartPayment ? `Compra de productos deportivos - ${gym.name}` : (selectedPlanForPay ? `Membresía ${selectedPlanForPay.name} - ${gym.name}` : '')}
       />
     </div>
   );

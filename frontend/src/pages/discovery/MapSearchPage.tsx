@@ -10,7 +10,6 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 import { useAuth } from '../../context/auth-context';
 
 // ─── Tipos de Movilidad Comercial ────────────────────────────────────────────
@@ -455,14 +454,34 @@ const MapSearchPage: React.FC = () => {
     );
   };
 
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
-  const [classToBook, setClassToBook] = useState<{id: string, title: string, price: number} | null>(null);
+const [bookingId, setBookingId] = useState<string | null>(null);
 
-  const initiateBooking = (classId: string, classTitle: string, price: number) => {
-    setClassToBook({ id: classId, title: classTitle, price });
-    setShowPayment(true);
-  };
+const initiateBooking = async (cls: any) => {
+  if (String(cls.id).startsWith('injected-')) {
+    toast.info('Esta es una clase de demostración.');
+    return;
+  }
+  setBookingId(cls.id);
+  try {
+    const { data } = await api.post('/payments/mercadopago/class-checkout', {
+      classId: cls.id,
+    });
+
+    // Clase gratuita: el backend la reserva directo
+    if (data.free) {
+      toast.success(`✅ ¡Reserva confirmada! "${cls.title}" está en Mis Reservas.`);
+      if (selectedGym) await loadClassesForGym(selectedGym);
+      return;
+    }
+
+    // Clase de pago: redirige a Checkout Pro de Mercado Pago
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    toast.error(`❌ ${err.response?.data?.message || 'No se pudo iniciar el pago'}`);
+  } finally {
+    setBookingId(null);
+  }
+};
 
   const loadClassesForGym = async (gym: any) => {
     setLoadingClasses(true);
@@ -473,28 +492,6 @@ const MapSearchPage: React.FC = () => {
       setGymClasses([]); 
     } finally { 
       setLoadingClasses(false); 
-    }
-  };
-
-  const handleBookSuccess = async () => {
-    if (!classToBook) return;
-    setBookingId(classToBook.id);
-    setShowPayment(false);
-    try {
-      if (classToBook.id.startsWith('injected-')) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      } else {
-        await api.post(`/classes/${classToBook.id}/book`);
-      }
-      toast.success(`✅ ¡Reserva confirmada! "${classToBook.title}" está en Mis Reservas.`);
-      if (selectedGym) {
-        await loadClassesForGym(selectedGym);
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Error al reservar';
-      toast.error(`❌ ${msg}`);
-    } finally {
-      setBookingId(null);
     }
   };
 
@@ -1044,10 +1041,12 @@ const MapSearchPage: React.FC = () => {
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-green-400 font-bold">${Number(cls.price).toFixed(0)}</p>
-                            {(!user || user.role === 'USER') && (
-                              <button
-                                onClick={() => initiateBooking(cls.id, cls.title, Number(cls.price))}
+                            <p className="text-green-400 font-bold">
+                            {Number(cls.price) > 0 ? `S/ ${Number(cls.price).toFixed(2)}` : 'Gratis'}
+                          </p>
+                          {(!user || user.role === 'USER') && (
+                            <button
+                            onClick={() => initiateBooking(cls)}
                                 disabled={bookingId === cls.id}
                                 className="mt-2 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center gap-1">
                                 {bookingId === cls.id ? (
@@ -1068,13 +1067,6 @@ const MapSearchPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <PayMeModal 
-        isOpen={showPayment}
-        onClose={() => setShowPayment(false)}
-        onSuccess={handleBookSuccess}
-        amount={classToBook?.price || 0}
-        description={`Clase: ${classToBook?.title || ''}`}
-      />
 
       {/* Localized styles for dynamic delivery-style maps path animation */}
       <style>{`

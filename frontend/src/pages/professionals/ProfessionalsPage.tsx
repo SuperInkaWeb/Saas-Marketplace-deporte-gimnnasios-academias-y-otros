@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CreateProfessionalModal from './CreateProfessionalModal';
-import { PayMeModal } from '../../components/payment/PayMeModal';
 
-const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; isOwner: boolean; onEdit: (p: any) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isOwner, onEdit, onDelete }) => (
+
+const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; isBooking: boolean; isOwner: boolean; onEdit: (p: any) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isBooking, isOwner, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -5 }}
     className="glass-card overflow-hidden border-white/5 hover:border-accent/30 transition-all group p-5 flex flex-col items-center text-center relative"
@@ -48,7 +48,7 @@ const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; 
     </div>
     
     <div className="flex items-center justify-between w-full mt-auto pt-4 border-t border-white/5 gap-2">
-      <span className="text-xl font-extrabold text-white">${Number(professional.price).toFixed(2)}<span className="text-xs text-slate-500 font-normal"> / {professional.durationMin}m</span></span>
+      <span className="text-xl font-extrabold text-white">S/ {Number(professional.price).toFixed(2)}<span className="text-xs text-slate-500 font-normal"> / {professional.durationMin}m</span></span>
       <div className="flex items-center gap-2">
         {isOwner && (
           <>
@@ -57,10 +57,11 @@ const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; 
           </>
         )}
         <button 
-          onClick={() => onBook(professional)}
-          className="bg-accent hover:bg-accent-dark px-4 py-2 rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 text-white text-sm font-bold flex items-center gap-2"
+            onClick={() => onBook(professional)}
+            disabled={isBooking}
+            className="bg-accent hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 text-white text-sm font-bold flex items-center gap-2"
         >
-          <CalendarHeart className="w-4 h-4" /> Reservar
+            {isBooking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarHeart className="w-4 h-4" />} Reservar
         </button>
       </div>
     </div>
@@ -75,8 +76,7 @@ const ProfessionalsPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProf, setEditingProf] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [isPayMeOpen, setIsPayMeOpen] = useState(false);
-  const [profToBook, setProfToBook] = useState<any>(null);
+const [bookingServiceId, setBookingServiceId] = useState<string | null>(null);
   
   // New States for Trainer / Received Bookings
   const [activeViewTab, setActiveViewTab] = useState<'catalog' | 'received_bookings'>('catalog');
@@ -123,26 +123,37 @@ const ProfessionalsPage: React.FC = () => {
     }
   };
 
-  const handleBookClick = (prof: any) => {
-    setProfToBook(prof);
-    setIsPayMeOpen(true);
-  };
+const handleBookClick = async (prof: any) => {
+  if (bookingServiceId) return;
+  setBookingServiceId(prof.id);
+  try {
+    const { data } = await api.post('/payments/mercadopago/service-checkout', {
+      serviceId: prof.id,
+      notes: 'Reserva solicitada desde la plataforma principal.',
+    });
 
-  const processBooking = async () => {
-    if (!profToBook) return;
-    try {
-      setLoading(true);
-      await api.post(`/professionals/${profToBook.id}/book`, { notes: 'Reserva pagada y solicitada desde la plataforma principal.' });
-      setMessage({type: 'success', text: `¡Reserva confirmada con ${profToBook.provider?.name || 'el profesional'}! Revisa tus notificaciones.`});
-    } catch (err: any) {
-      setMessage({ type: 'error', text: 'Error al reservar: ' + (err.response?.data?.message || 'Servidor no disponible') });
-    } finally {
-      setLoading(false);
-      setIsPayMeOpen(false);
-      setProfToBook(null);
+    // Servicio gratuito: el backend crea la reserva directo
+    if (data.free) {
+      setMessage({
+        type: 'success',
+        text: `¡Reserva enviada a ${prof.provider?.name || 'el profesional'}! Revisa tus notificaciones.`,
+      });
       setTimeout(() => setMessage(null), 4000);
+      return;
     }
-  };
+
+    // Servicio de pago: redirige a Checkout Pro de Mercado Pago
+    window.location.href = data.checkoutUrl;
+  } catch (err: any) {
+    setMessage({
+      type: 'error',
+      text: 'Error al reservar: ' + (err.response?.data?.message || 'Servidor no disponible'),
+    });
+    setTimeout(() => setMessage(null), 4000);
+  } finally {
+    setBookingServiceId(null);
+  }
+};
 
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Eliminar este servicio?')) {
@@ -367,12 +378,13 @@ const ProfessionalsPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filtered.map(p => (
                 <ProfessionalCard 
-                   key={p.id} 
-                   professional={p} 
-                   onBook={handleBookClick} 
-                   isOwner={user?.role === 'ADMIN' || p.providerId === user?.id}
-                   onEdit={setEditingProf}
-                   onDelete={handleDelete}
+                  key={p.id} 
+                  professional={p} 
+                  onBook={handleBookClick}
+                  isBooking={bookingServiceId === p.id}
+                  isOwner={user?.role === 'ADMIN' || p.providerId === user?.id}
+                  onEdit={setEditingProf}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -384,16 +396,6 @@ const ProfessionalsPage: React.FC = () => {
             </div>
           )}
         </>
-      )}
-
-      {profToBook && (
-        <PayMeModal
-          isOpen={isPayMeOpen}
-          onClose={() => { setIsPayMeOpen(false); setProfToBook(null); }}
-          onSuccess={processBooking}
-          amount={Number(profToBook.price)}
-          description={`Reserva de ${profToBook.title} con ${profToBook.provider?.name || 'Profesional'}`}
-        />
       )}
     </div>
   );

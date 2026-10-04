@@ -1,14 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
-import { NotificationsService } from '../notifications/notifications.service';
+  import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+  import { Prisma } from '@prisma/client';
+  import { PrismaService } from '../prisma/prisma.service'; 
+  import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
+  import { NotificationsService } from '../notifications/notifications.service';
 
-@Injectable()
-export class ProfessionalsService {
-  constructor(
-    private prisma: PrismaService,
-    private notificationsService: NotificationsService
-  ) {}
+
+  @Injectable()
+  export class ProfessionalsService {
+    constructor(
+      private prisma: PrismaService,
+      private notificationsService: NotificationsService
+    ) {}
 
   async create(providerId: string, createDto: CreateProfessionalDto) {
     return this.prisma.professionalService.create({
@@ -66,8 +68,47 @@ export class ProfessionalsService {
     });
   }
 
+    async createPaidBooking(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    serviceId: string,
+    notes?: string | null,
+  ) {
+    const service = await tx.professionalService.findUnique({ where: { id: serviceId } });
+    if (!service || !service.isActive) throw new BadRequestException('Servicio no disponible');
+
+    return tx.professionalBooking.create({
+      data: { userId, serviceId, notes: notes ?? undefined, status: 'PENDING' },
+      include: { service: { include: { provider: true } }, user: true },
+    });
+  }
+
+  async notifyBookingCreated(booking: {
+    userId: string;
+    user?: { name: string } | null;
+    service: { title: string; providerId: string };
+  }) {
+    try {
+      await this.notificationsService.create(booking.service.providerId, {
+        title: 'Nueva Reserva Pagada',
+        description: `${booking.user?.name || 'Un atleta'} reservó y pagó tu servicio: ${booking.service.title}. Confírmala.`,
+        type: 'RESERVATION',
+      });
+      await this.notificationsService.create(booking.userId, {
+        title: 'Pago recibido',
+        description: `Pagaste el servicio: ${booking.service.title}. Espera la confirmación del profesional.`,
+        type: 'RESERVATION',
+      });
+    } catch (err) {
+      console.error('Error notificando cita:', err);
+    }
+  }
+
   async bookService(userId: string, serviceId: string, notes?: string) {
     const service = await this.findOne(serviceId);
+        if (Number(service.price) > 0) {
+      throw new BadRequestException('Este servicio requiere pago con Mercado Pago');
+    }
     const booking = await this.prisma.professionalBooking.create({
       data: {
         userId,

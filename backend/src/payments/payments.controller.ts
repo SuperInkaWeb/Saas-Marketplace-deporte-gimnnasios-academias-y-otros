@@ -16,12 +16,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // Viejo (PayMe) - borrar al terminar
-  @UseGuards(JwtAuthGuard)
-  @Post('create-intent')
-  async createIntent(@Body() data: { amount: number; description?: string }) {
-    return this.paymentsService.createPaymeSignature(data.amount, data.description);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/membership-checkout')
@@ -36,6 +30,26 @@ export class PaymentsController {
     @Req() req: any,
   ) {
     return this.paymentsService.createOrderCheckout(req.user.id, req.user.email, data.items);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('mercadopago/class-checkout')
+  async classCheckout(@Body() data: { classId: string }, @Req() req: any) {
+    return this.paymentsService.createClassCheckout(req.user.id, req.user.email, data.classId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('mercadopago/service-checkout')
+  async serviceCheckout(
+    @Body() data: { serviceId: string; notes?: string },
+    @Req() req: any,
+  ) {
+    return this.paymentsService.createServiceCheckout(
+      req.user.id,
+      req.user.email,
+      data.serviceId,
+      data.notes,
+    );
   }
 
   // El usuario vuelve de Mercado Pago y el frontend confirma con el payment_id de la URL

@@ -4,7 +4,34 @@ import { CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
 import api from '../../api/api-client';
 
 type Result = 'loading' | 'COMPLETED' | 'FAILED' | 'PENDING' | 'REVIEW' | 'ERROR';
-type Kind = 'ORDER' | 'MEMBERSHIP';
+type Kind = 'ORDER' | 'MEMBERSHIP' | 'CLASS' | 'SERVICE';
+
+const KIND_TEXT: Record<Kind, { done: string; pending: string; button: string; to: string }> = {
+  ORDER: {
+    done: 'Tu compra fue registrada.',
+    pending: 'Cuando se acredite, tu pedido se confirmará automáticamente.',
+    button: 'Volver a la tienda',
+    to: '/marketplace',
+  },
+  MEMBERSHIP: {
+    done: 'Tu membresía ya está activa.',
+    pending: 'Cuando se acredite, tu membresía se activará automáticamente.',
+    button: 'Ir a mis membresías',
+    to: '/memberships',
+  },
+  CLASS: {
+    done: 'Tu reserva de clase está confirmada.',
+    pending: 'Cuando se acredite, tu reserva se confirmará automáticamente.',
+    button: 'Ir a mis reservas',
+    to: '/classes', // AJUSTA
+  },
+  SERVICE: {
+    done: 'Tu pago fue recibido. El profesional confirmará tu cita.',
+    pending: 'Cuando se acredite, tu cita quedará registrada automáticamente.',
+    button: 'Ver mis citas',
+    to: '/professionals', // AJUSTA
+  },
+};
 
 export default function PaymentResultPage() {
   const [params] = useSearchParams();
@@ -38,7 +65,6 @@ export default function PaymentResultPage() {
           type = data.type;
         }
 
-        // Para saber si fue orden o membresía (y como respaldo si no hay payment_id)
         if (ref && (!status || !type)) {
           const { data } = await api.get(`/payments/status/${ref}`);
           status = status ?? data.status;
@@ -61,14 +87,14 @@ export default function PaymentResultPage() {
     };
   }, [mpPaymentId, ref]);
 
-  const isOrder = kind === 'ORDER';
+  const t = KIND_TEXT[kind];
 
   const view = {
     loading: { icon: <Loader2 className="w-12 h-12 animate-spin text-slate-400" />, title: 'Verificando tu pago...', text: 'Un momento, estamos confirmando con Mercado Pago.' },
-    COMPLETED: { icon: <CheckCircle2 className="w-12 h-12 text-green-500" />, title: '¡Pago exitoso!', text: isOrder ? 'Tu compra fue registrada.' : 'Tu membresía ya está activa.' },
+    COMPLETED: { icon: <CheckCircle2 className="w-12 h-12 text-green-500" />, title: '¡Pago exitoso!', text: t.done },
     FAILED: { icon: <XCircle className="w-12 h-12 text-red-500" />, title: 'El pago no se completó', text: 'No se realizó ningún cobro. Puedes intentarlo de nuevo.' },
-    PENDING: { icon: <Clock className="w-12 h-12 text-amber-500" />, title: 'Pago pendiente', text: isOrder ? 'Cuando se acredite, tu pedido se confirmará automáticamente.' : 'Cuando se acredite, tu membresía se activará automáticamente.' },
-    REVIEW: { icon: <Clock className="w-12 h-12 text-amber-500" />, title: 'Recibimos tu pago', text: 'Estamos confirmando tu pedido. Si hay algún problema, te lo resolveremos o te reembolsaremos.' },
+    PENDING: { icon: <Clock className="w-12 h-12 text-amber-500" />, title: 'Pago pendiente', text: t.pending },
+    REVIEW: { icon: <Clock className="w-12 h-12 text-amber-500" />, title: 'Recibimos tu pago', text: 'Estamos confirmando tu reserva. Si hay algún problema (por ejemplo, la clase se llenó), te lo resolveremos o te reembolsaremos.' },
     ERROR: { icon: <XCircle className="w-12 h-12 text-red-500" />, title: 'No pudimos verificar el pago', text: 'Si te cobraron, contáctanos con tu comprobante.' },
   }[result];
 
@@ -79,10 +105,10 @@ export default function PaymentResultPage() {
       <p className="text-slate-400 max-w-md">{view.text}</p>
       {result !== 'loading' && (
         <button
-          onClick={() => navigate(isOrder ? '/marketplace' : '/memberships')}
+          onClick={() => navigate(t.to)}
           className="mt-2 px-6 py-3 rounded-xl bg-primary text-white font-semibold"
         >
-          {isOrder ? 'Volver a la tienda' : 'Ir a mis membresías'}
+          {t.button}
         </button>
       )}
     </div>

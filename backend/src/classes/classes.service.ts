@@ -3,10 +3,11 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, ReservationStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service'; 
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
-import { ReservationStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { HealthService } from '../health/health.service';
 
@@ -158,6 +159,7 @@ export class ClassesService {
 
     if (!classItem) throw new NotFoundException('Clase no encontrada');
     if (!classItem.isActive) throw new BadRequestException('Esta clase no está activa');
+    if (Number(classItem.price) > 0) {throw new BadRequestException('Esta clase requiere pago');}
     if (classItem._count.reservations >= classItem.capacity) {
       throw new BadRequestException('La clase está llena');
     }
@@ -202,6 +204,56 @@ export class ClassesService {
     }
 
     return reservation;
+  }
+
+    async reservePaidSeat(tx: Prisma.TransactionClient, userId: string, classId: string) {
+    await tx.$queryRaw`SELECT id FROM classes WHERE id = ${classId} FOR UPDATE`;
+
+    const cls = await tx.class.findUnique({
+      where: { id: classId },
+      include: {
+        _count: {
+          select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
+        },
+      },
+    });
+    if (!cls || !cls.isActive) throw new BadRequestException('Clase no disponible');
+
+    const existing = await tx.reservation.findUnique({
+      where: { classId_userId: { classId, userId } },
+    });
+    if (existing?.status === ReservationStatus.CONFIRMED) return null;
+
+    if (cls._count.reservations >= cls.capacity) {
+      throw new ConflictException('La clase se llenó');
+    }
+
+    return tx.reservation.upsert({
+      where: { classId_userId: { classId, userId } },
+      update: { status: ReservationStatus.CONFIRMED, bookedAt: new Date(), cancelledAt: null },
+      create: { classId, userId, status: ReservationStatus.CONFIRMED },
+      include: {
+        user: { select: { name: true } },
+        class: { include: { gym: true } },
+      },
+    });
+  }
+
+  async notifyNewReservation(r: {
+    user: { name: string };
+    class: { title: string; gym?: { ownerId: string } | null };
+  }) {
+    const ownerId = r.class.gym?.ownerId;
+    if (!ownerId) return;
+    try {
+      await this.notificationsService.create(ownerId, {
+        title: 'Nueva Reserva de Clase',
+        description: `${r.user.name} ha reservado la clase: ${r.class.title}`,
+        type: 'RESERVATION',
+      });
+    } catch (err) {
+      console.error('Error notificando reserva:', err);
+    }
   }
 
   async cancelBooking(userId: string, classId: string) {
