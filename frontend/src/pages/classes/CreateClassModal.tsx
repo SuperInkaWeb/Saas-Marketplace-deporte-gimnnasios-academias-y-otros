@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
-import { X, Loader2, Calendar, MapPin, Plus, Video } from 'lucide-react';
+import { X, Loader2, Calendar, MapPin, Plus, Video, Save } from 'lucide-react';
 
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/auth-context';
@@ -11,6 +11,13 @@ interface CreateClassModalProps {
   initialData?: any;
 }
 
+const toLocalInputValue = (iso: string) => {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+
 const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated, initialData }) => {
   const { user } = useAuth();
   const [gyms, setGyms] = useState<any[]>([]);
@@ -20,7 +27,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated,
     description: initialData?.description || '',
     capacity: initialData?.capacity || 20,
     price: initialData?.price || 0,
-    scheduledAt: initialData?.scheduledAt ? new Date(initialData.scheduledAt).toISOString().slice(0, 16) : '',
+    scheduledAt: initialData?.scheduledAt ? toLocalInputValue(initialData.scheduledAt) : '',
     durationMin: initialData?.durationMin || 60,
     classType: initialData?.classType || 'IN_PERSON',
     location: initialData?.location || '',
@@ -259,7 +266,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated,
                 gyms.length === 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5' : 'btn-primary'
               }`}
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> <Plus className="w-5 h-5" /> <span>{initialData ? 'Guardar Cambios' : 'Crear Clase'}</span> </>}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> {initialData ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />} <span>{initialData ? 'Guardar Cambios' : 'Crear Clase'}</span> </>}
             </button>
           </div>
         </form>

@@ -82,7 +82,7 @@ const ClassCard: React.FC<{
           </div>
           <div className="flex items-center gap-2 text-slate-300 text-xs">
             <Clock className="w-3.5 h-3.5 text-primary-light" />
-            <span>{new Date(classItem.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>{new Date(classItem.scheduledAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-300 text-xs">
             <Users className="w-3.5 h-3.5 text-primary-light" />
@@ -282,7 +282,7 @@ const ClassesPage: React.FC = () => {
       classTitle: classItem.title,
       gymName: classItem.gym.name,
       date: new Date(classItem.scheduledAt).toLocaleDateString(),
-      time: new Date(classItem.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(classItem.scheduledAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }),
       userName: user?.name,
     });
   };
