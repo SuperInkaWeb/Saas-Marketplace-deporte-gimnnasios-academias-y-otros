@@ -83,9 +83,12 @@ export class MarketplaceService {
         });
 
         if (!product) throw new NotFoundException(`Producto ${item.productId} no encontrado`);
-        if (product.stock < item.quantity) {
-          throw new BadRequestException(`Stock insuficiente para ${product.name}`);
+        if (Number(product.price) > 0) {
+          throw new BadRequestException(
+            `"${product.name}" requiere pago con Mercado Pago`,
+          );
         }
+        
 
         // Update stock
         await tx.product.update({

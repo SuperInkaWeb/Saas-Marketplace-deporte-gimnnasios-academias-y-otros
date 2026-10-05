@@ -148,7 +148,9 @@ export class MembershipsService {
 
     if (!plan) throw new NotFoundException('Plan no encontrado');
     if (!plan.isActive) throw new BadRequestException('Este plan no está disponible');
-
+    if (Number(plan.price) > 0) {
+      throw new BadRequestException('Este plan requiere pago con Mercado Pago');
+    }
     // 2. Calculate expiration
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
