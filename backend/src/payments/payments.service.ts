@@ -207,6 +207,9 @@ export class PaymentsService {
       },
     });
     if (!cls || !cls.isActive) throw new NotFoundException('Clase no disponible');
+    if (cls.scheduledAt <= new Date()) {
+      throw new BadRequestException('Esta clase ya comenzó o ya pasó');
+    }
     if (cls._count.reservations >= cls.capacity) {
       throw new BadRequestException('La clase está llena');
     }

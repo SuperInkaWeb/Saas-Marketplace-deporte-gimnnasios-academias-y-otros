@@ -76,7 +76,9 @@ const ProfessionalsPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProf, setEditingProf] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-const [bookingServiceId, setBookingServiceId] = useState<string | null>(null);
+  const [bookingServiceId, setBookingServiceId] = useState<string | null>(null);
+  const [profToBook, setProfToBook] = useState<any>(null);
+  const [bookingNotes, setBookingNotes] = useState('');
   
   // New States for Trainer / Received Bookings
   const [activeViewTab, setActiveViewTab] = useState<'catalog' | 'received_bookings'>('catalog');
@@ -123,17 +125,26 @@ const [bookingServiceId, setBookingServiceId] = useState<string | null>(null);
     }
   };
 
-const handleBookClick = async (prof: any) => {
-  if (bookingServiceId) return;
+const handleBookClick = (prof: any) => {
+  setBookingNotes('');
+  setProfToBook(prof);
+};
+
+const confirmBooking = async () => {
+  if (!profToBook || bookingServiceId) return;
+  const prof = profToBook;
+  const notes = bookingNotes.trim();
+
   setBookingServiceId(prof.id);
   try {
     const { data } = await api.post('/payments/mercadopago/service-checkout', {
       serviceId: prof.id,
-      notes: 'Reserva solicitada desde la plataforma principal.',
+      notes: notes || undefined,
     });
 
     // Servicio gratuito: el backend crea la reserva directo
     if (data.free) {
+      setProfToBook(null);
       setMessage({
         type: 'success',
         text: `¡Reserva enviada a ${prof.provider?.name || 'el profesional'}! Revisa tus notificaciones.`,
@@ -142,7 +153,7 @@ const handleBookClick = async (prof: any) => {
       return;
     }
 
-    // Servicio de pago: redirige a Checkout Pro de Mercado Pago
+    // Servicio de pago: redirige a Mercado Pago
     window.location.href = data.checkoutUrl;
   } catch (err: any) {
     setMessage({
@@ -397,6 +408,60 @@ const handleBookClick = async (prof: any) => {
           )}
         </>
       )}
+      {profToBook && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      onClick={() => !bookingServiceId && setProfToBook(null)}
+      className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+    />
+    <div className="relative bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-white">{profToBook.title}</h2>
+        <p className="text-slate-400 text-sm mt-1">
+          Con {profToBook.provider?.name || 'el profesional'} ·{' '}
+          <span className="text-white font-bold">S/ {Number(profToBook.price).toFixed(2)}</span>{' '}
+          / {profToBook.durationMin} min
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-slate-300 text-sm font-medium mb-1">
+          ¿Cuándo te gustaría tu cita?
+        </label>
+        <textarea
+          rows={4}
+          maxLength={500}
+          value={bookingNotes}
+          onChange={(e) => setBookingNotes(e.target.value)}
+          placeholder="Ej: Prefiero martes o jueves por la tarde. Mi WhatsApp: 999 999 999"
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-accent outline-none resize-none"
+        />
+        <div className="flex justify-between text-xs text-slate-500 mt-1">
+          <span>El profesional coordinará la fecha final contigo.</span>
+          <span>{bookingNotes.length}/500</span>
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={() => setProfToBook(null)}
+          disabled={!!bookingServiceId}
+          className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+  onClick={confirmBooking}
+  disabled={!bookingNotes.trim() || !!bookingServiceId}
+  className="flex-1 py-3 bg-accent hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+>
+  {bookingServiceId ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarHeart className="w-4 h-4" />}
+  Continuar al pago
+</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
