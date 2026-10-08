@@ -19,6 +19,7 @@ import {
   Bell,
   UserCheck,
   Edit2,
+  Power,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -103,6 +104,20 @@ const UsersManagementView: React.FC = () => {
       }
     }
   };
+
+  const handleToggleActive = async (u: any) => {
+     try {
+       const { data } = await api.patch(`/users/${u.id}`, {
+         name: u.name, email: u.email,
+         phone: u.phone ?? undefined, dni: u.dni ?? undefined,
+         role: u.role, isActive: u.isActive === false,
+       });
+       setUsersList(prev => prev.map(x => x.id === u.id ? { ...x, isActive: data.isActive } : x));
+       toast.success(data.isActive ? 'Usuario activado' : 'Usuario desactivado');
+     } catch (err: any) {
+       toast.error(err.response?.data?.message || 'Error al cambiar el estado');
+     }
+   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,6 +350,7 @@ const UsersManagementView: React.FC = () => {
                   <tr className="border-b border-white/10 text-slate-500 text-xs uppercase tracking-wider">
                     <th className="pb-3 font-medium px-4">Usuario</th>
                     <th className="pb-3 font-medium px-4">Rol</th>
+                    <th className="pb-3 font-medium px-4">Estado</th>
                     <th className="pb-3 font-medium px-4">Fecha Registro</th>
                     <th className="pb-3 font-medium px-4">
                       <div className="flex items-center gap-1.5">
@@ -370,6 +386,15 @@ const UsersManagementView: React.FC = () => {
                       <td className="py-4 px-4">
                         <RoleBadge role={u.role} />
                       </td>
+                         <td className="py-4 px-4">
+                          <span className={`px-2.5 py-1 rounded-md border text-xs font-bold uppercase tracking-wider ${
+                            u.isActive !== false
+                              ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                              : 'text-red-400 bg-red-500/10 border-red-500/20'
+                          }`}>
+                            {u.isActive !== false ? 'ACTIVO' : 'INACTIVO'}
+                          </span>
+                        </td>
                       <td className="py-4 px-4 text-slate-400 text-xs">
                         {new Date(u.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
@@ -378,6 +403,13 @@ const UsersManagementView: React.FC = () => {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                             <button
+                              onClick={(e) => { e.stopPropagation(); handleToggleActive(u); }}
+                              className="p-2 text-slate-500 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors"
+                              title={u.isActive === false ? 'Activar usuario' : 'Desactivar usuario'}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -406,7 +438,7 @@ const UsersManagementView: React.FC = () => {
                   ))}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-slate-500 italic">No se encontraron usuarios.</td>
+                      <td colSpan={6} className="text-center py-8 text-slate-500 italic">No se encontraron usuarios.</td>
                     </tr>
                   )}
                 </tbody>
