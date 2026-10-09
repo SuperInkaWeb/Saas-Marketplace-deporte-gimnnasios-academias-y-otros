@@ -158,13 +158,22 @@ export class UsersService {
     return { success: true, message: 'Usuario eliminado correctamente' };
   }
 
-  async update(id: string, updateDto: { name: string; email: string; phone?: string; dni?: string; role: UserRole; isActive: boolean }) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
+async update(
+  id: string,
+  updateDto: { name: string; email: string; phone?: string; dni?: string; role: UserRole; isActive: boolean },
+  currentUserId?: string,
+) {
+  const user = await this.prisma.user.findUnique({ where: { id } });
 
-    if (updateDto.role === UserRole.ADMIN && user.role !== UserRole.ADMIN) {
+  if (!user) {
+    throw new NotFoundException('Usuario no encontrado');
+  }
+
+  if (updateDto.isActive === false && id === currentUserId) {
+    throw new BadRequestException('No puedes desactivar tu propia cuenta');
+  }
+
+  if (updateDto.role === UserRole.ADMIN && user.role !== UserRole.ADMIN) {
       const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN } });
       if (adminCount >= 4) {
         throw new ConflictException('El límite de administradores (4) ha sido alcanzado.');
