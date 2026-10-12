@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/auth-context';
 import { Loader2, ShieldCheck, User, Phone, FileText, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,10 +10,13 @@ interface CompleteProfileModalProps {
   onClose?: () => void;
 }
 
+// CAMBIO: helper para detectar emails
+const looksLikeEmail = (v?: string) => !!v && /\S+@\S+\.\S+/.test(v.trim());
+
 export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onSuccess, onClose }) => {
   const { user, updateUserProfile } = useAuth();
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: looksLikeEmail(user?.name) ? '' : user?.name || '', // CAMBIO
     phone: user?.phone || '',
     dni: user?.dni || '',
     role: user?.role || 'USER',
@@ -21,28 +24,44 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
 
   const [loading, setLoading] = useState(false);
 
+  // CAMBIO: si el usuario carga después, rellena solo si es un nombre real
+  useEffect(() => {
+    if (user?.name && !looksLikeEmail(user.name)) {
+      setFormData((f) => (f.name ? f : { ...f, name: user.name }));
+    }
+  }, [user?.name]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      toast.error('❌ Por favor, ingresa tu nombre completo.');
+
+    // CAMBIO: validación con nombre limpio
+    const cleanName = formData.name.trim();
+    if (!cleanName) {
+      toast.error(' Por favor, ingresa tu nombre completo.');
+      return;
+    }
+    if (looksLikeEmail(cleanName)) {
+      toast.error(' El nombre no puede ser un correo electrónico.');
       return;
     }
     if (!formData.phone.trim() || formData.phone.length < 7) {
-      toast.error('❌ Por favor, ingresa un número telefónico válido.');
+      toast.error(' Por favor, ingresa un número telefónico válido.');
       return;
     }
     if (!formData.dni.trim() || formData.dni.length < 5) {
-      toast.error('❌ Por favor, ingresa un DNI / Cédula válido.');
+      toast.error(' Por favor, ingresa un DNI / Cédula válido.');
       return;
     }
 
     setLoading(true);
     try {
-      await updateUserProfile(formData);
+      await updateUserProfile({ ...formData, name: cleanName }); // CAMBIO
       toast.success('🎉 ¡Perfil completado con éxito! Bienvenido a Hercix.');
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      toast.error('❌ Error al actualizar los datos de perfil.');
+      // CAMBIO (mejora A): mostrar el mensaje real del backend
+      const msg = err?.response?.data?.message;
+      toast.error(`❌ ${Array.isArray(msg) ? msg[0] : msg || 'Error al actualizar los datos de perfil.'}`);
     } finally {
       setLoading(false);
     }
@@ -103,6 +122,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                 <input
                   required
                   type="text"
+                  autoComplete="name"  
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej. Juan Pérez"

@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GymsService } from './gyms.service';
-import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
+import { CreateGymDto, UpdateGymDto, UpdateGymStatusDto } from './dto/gym.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -60,11 +60,29 @@ export class GymsController {
     return this.gymsService.findNearby(Number(lat), Number(lng), Number(radius));
   }
 
+@Get('admin/all')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Listar todos los gimnasios sin importar su estado (Solo Admin)' })
+findAllAdmin() {
+  return this.gymsService.findAllAdmin();
+}
+
+@Get('mine')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Listar mis gimnasios sin importar su estado' })
+findMine(@CurrentUser() user: any) {
+  return this.gymsService.findMine(user.id);
+}
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener detalles de un gimnasio' })
-  findOne(@Param('id') id: string) {
-    return this.gymsService.findOne(id);
-  }
+findOne(@Param('id') id: string) {
+  return this.gymsService.findOnePublic(id);   // antes: findOne(id)
+}
 
   @Get(':id/members')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -90,13 +108,22 @@ export class GymsController {
     return this.gymsService.update(id, user.id, updateGymDto, isAdmin);
   }
 
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Desactivar o eliminar un gimnasio (Dueño/Admin)' })
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    const isAdmin = user.role === UserRole.ADMIN;
-    return this.gymsService.remove(id, user.id, isAdmin);
-  }
+@Patch(':id/status')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Activar o desactivar un gimnasio (Solo Admin)' })
+updateStatus(@Param('id') id: string, @Body() dto: UpdateGymStatusDto) {
+  return this.gymsService.updateStatus(id, dto.status);
+}
+
+  // controller
+@Delete(':id')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Eliminar definitivamente un gimnasio (Solo Admin)' })
+remove(@Param('id') id: string) {
+  return this.gymsService.remove(id);
+}
 }

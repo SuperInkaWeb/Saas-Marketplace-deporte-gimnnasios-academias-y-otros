@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Delete, Patch, UseGuards, Req } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserAdminDto } from './dto/user.dto';
+import { CreateUserAdminDto, UpdateUserAdminDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AnyAuthGuard } from '../auth/guards/any-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -56,11 +56,8 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar un usuario del sistema (Solo Admin)' })
-  update(
-    @Param('id') id: string,
-    @Body() updateDto: { name: string; email: string; phone?: string; dni?: string; role: UserRole; isActive: boolean }
-  ) {
-    return this.usersService.update(id, updateDto);
+ update(@Param('id') id: string, @Body() dto: UpdateUserAdminDto, @CurrentUser() current: any) {
+  return this.usersService.update(id, dto, current.id);
   }
 
   // ── Role Requests: Any logged user ────────────────────────────────────

@@ -2,10 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
+import { CreateGymDto, UpdateGymDto, UpdateGymStatusDto } from './dto/gym.dto';
+import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
 import { GymStatus, GymLocationSource } from '@prisma/client';
 
 /**
@@ -13,6 +15,7 @@ import { GymStatus, GymLocationSource } from '@prisma/client';
  * Una suma de códigos de carácter colisiona fácilmente (anagramas, "ab" vs "ba");
  * djb2 sobre la cadena completa reduce drásticamente esas colisiones.
  */
+
 function stableHash(str: string): number {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
@@ -24,7 +27,10 @@ function stableHash(str: string): number {
 @Injectable()
 export class GymsService {
   private readonly logger = new Logger(GymsService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+  private prisma: PrismaService,
+  private gymAccess: GymAccessService,
+) {}
 
   private async geocodeAddress(
     address: string,
@@ -62,6 +68,8 @@ export class GymsService {
 
     return { ...fallback, source: GymLocationSource.APPROXIMATE };
   }
+
+  
 
   /**
    * Aproximaci\u00f3n de \u00faltima instancia cuando Nominatim no encuentra la direcci\u00f3n exacta.
@@ -199,6 +207,32 @@ export class GymsService {
     }
   }
 
+  async findAllAdmin() {
+  return this.prisma.gym.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
+    },
+  });
+}
+
+// Para el panel del dueño: sus gimnasios sin importar el estado
+async findMine(ownerId: string) {
+  return this.prisma.gym.findMany({
+    where: { ownerId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+// Para el detalle público: solo gimnasios activos
+async findOnePublic(id: string) {
+  const gym = await this.findOne(id);
+  if (gym.status !== GymStatus.ACTIVE) {
+    throw new NotFoundException(`Gimnasio con ID ${id} no encontrado`);
+  }
+  return gym;
+}
+
   async findNearby(lat: number, lng: number, radiusKm: number) {
     const gyms = await this.findAll();
     
@@ -255,20 +289,27 @@ export class GymsService {
   }
 
   async update(
-    id: string,
-    currentUserId: string,
-    updateGymDto: UpdateGymDto,
-    isAdmin: boolean,
-  ) {
-    const gym = await this.findOne(id);
+  id: string,
+  currentUserId: string,
+  updateGymDto: UpdateGymDto,
+  isAdmin: boolean,
+) {
+  const gym = await this.findOne(id);
 
-    if (!isAdmin && gym.ownerId !== currentUserId) {
-      throw new ForbiddenException(
-        'No tienes permiso para actualizar este gimnasio',
-      );
-    }
+  if (!isAdmin && gym.ownerId !== currentUserId) {
+    throw new ForbiddenException(
+      'No tienes permiso para actualizar este gimnasio',
+    );
+  }
 
-    const updatedData: any = { ...updateGymDto };
+  // 3b: justo después del chequeo de propiedad
+  if (!isAdmin && gym.status !== GymStatus.ACTIVE) {
+    throw new ForbiddenException('Este gimnasio está inactivo. Contacta al administrador.');
+  }
+
+  // 3a: reemplaza la línea "const updatedData: any = { ...updateGymDto };"
+  const { status: _ignored, ...safeDto } = updateGymDto as any;
+  const updatedData: any = { ...safeDto };
 
     if (updateGymDto.latitude !== undefined && updateGymDto.longitude !== undefined) {
       // El dueño fijó/ajustó el pin manualmente: es la fuente más confiable.
@@ -319,17 +360,47 @@ export class GymsService {
     });
   }
 
-  async remove(id: string, currentUserId: string, isAdmin: boolean) {
-    const gym = await this.findOne(id);
-    if (gym.ownerId !== currentUserId && !isAdmin) {
-      throw new ForbiddenException('No tienes permiso para eliminar este gimnasio');
-    }
-    return this.prisma.gym.update({
-      where: { id },
-      data: { status: GymStatus.INACTIVE },
-    });
-  }
+  async updateStatus(id: string, status: GymStatus) {
+  const gym = await this.prisma.gym.findUnique({
+    where: { id },
+    select: { id: true, name: true, status: true },
+  });
+  if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+  if (gym.status === status) return gym; // idempotente
 
+  return this.prisma.gym.update({
+    where: { id },
+    data: { status },
+    select: { id: true, name: true, status: true, updatedAt: true },
+  });
+}
+
+// Reutilizable en cualquier operación que deba bloquearse
+async assertGymActive(gymId: string) {
+  const gym = await this.prisma.gym.findUnique({
+    where: { id: gymId },
+    select: { status: true },
+  });
+  if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+  if (gym.status !== GymStatus.ACTIVE) {
+    throw new ConflictException('Este gimnasio está inactivo temporalmente.');
+  }
+}
+
+async remove(id: string) {
+  await this.findOne(id);
+  const [orders, invoices] = await Promise.all([
+    this.prisma.order.count({ where: { gymId: id } }),
+    this.prisma.invoice.count({ where: { gymId: id } }),
+  ]);
+  if (orders > 0 || invoices > 0) {
+    throw new ConflictException(
+      'Este gimnasio tiene pedidos o facturas asociados. Desactívalo en lugar de eliminarlo.',
+    );
+  }
+  await this.prisma.gym.delete({ where: { id } }); // cascada: clases, reservas, planes, etc.
+  return { success: true };
+}
   async findMembers(gymId: string, currentUserId: string, isAdmin: boolean) {
     const gym = await this.findOne(gymId);
     if (!isAdmin && gym.ownerId !== currentUserId) {
@@ -369,16 +440,8 @@ export class GymsService {
     });
   }
 
-  async validateOwnership(gymId: string, ownerId: string) {
-    const gym = await this.prisma.gym.findUnique({
-      where: { id: gymId },
-      select: { ownerId: true }
-    });
-    
-    if (!gym) throw new NotFoundException('Gimnasio no encontrado');
-    if (gym.ownerId !== ownerId) {
-      throw new ForbiddenException('No tienes permiso sobre este gimnasio');
-    }
-    return true;
-  }
+  async validateOwnership(gymId: string, user: AuthUser) {
+  await this.gymAccess.assertCanManageGym(user, gymId);
+  return true;
+}
 }

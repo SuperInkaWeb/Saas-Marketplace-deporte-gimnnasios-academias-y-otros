@@ -1,0 +1,52 @@
+﻿== validateOwnership ==
+analytics.controller.ts:24: await this.gymsService.validateOwnership(gymId, user.id);
+gyms.service.ts:437: async validateOwnership(gymId: string, ownerId: string) {
+invoices.controller.ts:32: await this.gymsService.validateOwnership(gymId, req.user.id);
+marketing.controller.ts:22: await this.gymsService.validateOwnership(gymId, user.id);
+marketing.controller.ts:31: await this.gymsService.validateOwnership(gymId, user.id);
+== ownerId ==
+classes.service.ts:42: const isOwner = gym.ownerId === currentUserId;
+classes.service.ts:326: if (classItem.gym.ownerId !== currentUserId) {
+classes.service.ts:360: if (classItem.gym.ownerId !== currentUserId) {
+gym-access.service.ts:48: if (gym.ownerId === user.id) return { gym, scope: 'OWNER' as GymAccessScope };
+gyms.service.ts:292: if (!isAdmin && gym.ownerId !== currentUserId) {
+gyms.service.ts:400: if (!isAdmin && gym.ownerId !== currentUserId) {
+gyms.service.ts:444: if (gym.ownerId !== ownerId) {
+invoices.service.ts:50: const isGymOwner = invoice.gym?.ownerId === requesterId;
+marketplace.service.ts:18: if (gym.ownerId !== ownerId) {
+marketplace.service.ts:49: if (product.gym.ownerId !== ownerId) {
+marketplace.service.ts:64: if (product.gym.ownerId !== ownerId) {
+memberships.service.ts:23: if (gym.ownerId !== ownerId) {
+memberships.service.ts:329: if (!isAdmin && plan.gym.ownerId !== ownerId) {
+memberships.service.ts:345: if (!isAdmin && plan.gym.ownerId !== ownerId) {
+trainers.service.ts:89: if (gym.ownerId !== currentOwnerId) {
+trainers.service.ts:147: if (gym.ownerId !== currentOwnerId) {
+trainers.service.ts:247: if (!gym || gym.ownerId !== ownerUserId) {
+== ForbiddenException ==
+roles.guard.ts:39: throw new ForbiddenException(
+roles.guard.ts:43: throw new ForbiddenException(
+classes.service.ts:53: throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+classes.service.ts:59: throw new ForbiddenException('No tienes permiso para crear clases en este gimnasio');
+classes.service.ts:327: throw new ForbiddenException('No tienes permiso para actualizar esta clase');
+classes.service.ts:343: throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+classes.service.ts:361: throw new ForbiddenException('No tienes permiso para eliminar esta clase');
+gym-access.service.ts:61: throw new ForbiddenException('No tienes permiso sobre este gimnasio');
+events.service.ts:47: throw new ForbiddenException('No tienes permiso para actualizar este evento');
+gyms.service.ts:293: throw new ForbiddenException(
+gyms.service.ts:300: throw new ForbiddenException('Este gimnasio está inactivo. Contacta al administrador.');
+gyms.service.ts:401: throw new ForbiddenException(
+gyms.service.ts:445: throw new ForbiddenException('No tienes permiso sobre este gimnasio');
+invoices.service.ts:53: throw new ForbiddenException('No tienes permiso para ver esta factura');
+marketplace.service.ts:19: throw new ForbiddenException('No eres el dueño de este gimnasio');
+marketplace.service.ts:50: throw new ForbiddenException('No tienes permisos para eliminar este producto');
+marketplace.service.ts:65: throw new ForbiddenException('No tienes permisos para editar este producto');
+memberships.service.ts:24: throw new ForbiddenException('No eres el dueño de este gimnasio');
+memberships.service.ts:330: throw new ForbiddenException('No tienes permisos para modificar este plan');
+memberships.service.ts:346: throw new ForbiddenException('No tienes permisos para eliminar este plan');
+payments.service.ts:298: throw new ForbiddenException();
+professionals.service.ts:52: throw new ForbiddenException('No tienes permiso para actualizar este servicio');
+professionals.service.ts:63: throw new ForbiddenException('No tienes permiso para eliminar este servicio');
+professionals.service.ts:189: throw new ForbiddenException('No tienes permiso para actualizar esta reserva');
+trainers.service.ts:90: throw new ForbiddenException('No eres el dueño de este gimnasio');
+trainers.service.ts:148: throw new ForbiddenException('No eres el dueño de este gimnasio');
+trainers.service.ts:248: throw new ForbiddenException('No tienes permiso para gestionar solicitudes de este gimnasio');

@@ -18,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   login: (options?: { allowSignUp?: boolean }) => void;
   logout: () => void;
-  updateUserProfile: (data: { name: string; phone?: string; dni?: string }) => Promise<void>;
+  updateUserProfile: (data: { name: string; phone?: string; dni?: string; role?: string }) => Promise<void>;
   switchUserRole: (role: string) => Promise<void>;
 }
 
@@ -145,15 +145,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateUserProfile = async (profileData: { name: string; phone?: string; dni?: string }) => {
-    try {
-      const { data } = await api.patch('/auth/profile', profileData);
-      setUser(prev => prev ? { ...prev, ...data } : data);
-    } catch (error) {
-      console.error('Error al actualizar el perfil:', error);
-      throw error;
-    }
-  };
+const updateUserProfile = async (profileData: { name: string; phone?: string; dni?: string; role?: string }) => {
+  try {
+    const { data } = await api.patch('/auth/profile', profileData);
+    setUser(prev => prev ? { ...prev, ...data } : data);
+  } catch (error) {
+    console.error('Error al actualizar el perfil:', error);
+    throw error;
+  }
+};
 
   const switchUserRole = async (newRole: string) => {
     try {

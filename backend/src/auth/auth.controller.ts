@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AnyAuthGuard } from './guards/any-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -61,7 +62,7 @@ export class AuthController {
   @Patch('profile')
   updateProfile(
     @CurrentUser() user: { id: string },
-    @Body() dto: { name: string; phone?: string; dni?: string },
+    @Body() dto: CompleteProfileDto,
   ) {
     return this.authService.updateProfile(user.id, dto);
   }
@@ -97,5 +98,3 @@ export class AuthController {
     return this.authService.inviteUser(user, dto.email, dto.role, dto.gymId);
   }
 }
-
-

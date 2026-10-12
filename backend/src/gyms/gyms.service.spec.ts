@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { GymsService } from './gyms.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { GymAccessService } from '../common/gym-access/gym-access.service'
 
 describe('GymsService.findMembers (HER-SEC-008)', () => {
   let service: GymsService;
@@ -24,7 +25,7 @@ describe('GymsService.findMembers (HER-SEC-008)', () => {
       },
     } as unknown as PrismaService;
 
-    service = new GymsService(prisma);
+    service = new GymsService(prisma, {} as unknown as GymAccessService);
   });
 
   it('rejects a GYM_OWNER that does not own the gym', async () => {

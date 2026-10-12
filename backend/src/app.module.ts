@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
+import { CommonAccessModule } from './common/common-access.module';
 import { AuthModule } from './auth/auth.module';
+
 
 // Future modules:
 // import { UsersModule } from './users/users.module';
@@ -32,6 +34,7 @@ import { HealthModule } from './health/health.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    CommonAccessModule, 
     AuthModule,
     GymsModule,
     TrainersModule,

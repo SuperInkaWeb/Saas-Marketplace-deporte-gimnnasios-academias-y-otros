@@ -39,7 +39,7 @@ export class ClassesController {
     @CurrentUser() user: any,
     @Body() createClassDto: CreateClassDto,
   ) {
-    return this.classesService.create(gymId, user.id, createClassDto);
+    return this.classesService.create(gymId, user, createClassDto);
   }
 
   @Get()
@@ -48,15 +48,25 @@ export class ClassesController {
   @ApiOperation({ summary: 'Listar clases. Si myReservations=true, solo las del usuario.' })
   @ApiQuery({ name: 'gymId', required: false })
   @ApiQuery({ name: 'myReservations', required: false })
+  @ApiQuery({ name: 'includeInactive', required: false })
   findAll(
     @Query('gymId') gymId?: string,
     @Query('myReservations') myReservations?: string,
+    @Query('includeInactive') includeInactive?: string,
     @CurrentUser() user?: any,
   ) {
     const userId = myReservations === 'true' && user ? user.id : undefined;
     const ownerId = user?.role === 'GYM_OWNER' ? user.id : undefined;
     const trainerUserId = user?.role === 'TRAINER' ? user.id : undefined;
-    return this.classesService.findAll(gymId, userId, ownerId, trainerUserId);
+    // Solo el personal (ADMIN, dueño, entrenador) puede ver clases desactivadas
+    const isStaff = ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user?.role);
+    return this.classesService.findAll(
+      gymId,
+      userId,
+      ownerId,
+      trainerUserId,
+      includeInactive === 'true' && isStaff,
+    );
   }
 
 
@@ -90,7 +100,7 @@ export class ClassesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Marcar asistencia mediante escaneo de ticket QR' })
   markAttendance(@Param('id') reservationId: string, @CurrentUser() user: any) {
-    return this.classesService.markAttendance(reservationId, user.id);
+    return this.classesService.markAttendance(reservationId, user);
   }
 
   @Patch('reservations/:id/unattend')
@@ -99,7 +109,7 @@ export class ClassesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desmarcar asistencia' })
   unmarkAttendance(@Param('id') reservationId: string, @CurrentUser() user: any) {
-    return this.classesService.unmarkAttendance(reservationId, user.id);
+    return this.classesService.unmarkAttendance(reservationId, user);
   }
 
   @Delete('reservations/:id')
@@ -108,15 +118,16 @@ export class ClassesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una reserva de la lista' })
   removeReservation(@Param('id') reservationId: string, @CurrentUser() user: any) {
-    return this.classesService.removeReservation(reservationId, user.id);
+    return this.classesService.removeReservation(reservationId, user);
   }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar una clase' })
   update(@Param('id') id: string, @CurrentUser() user: any, @Body() updateClassDto: UpdateClassDto) {
-    return this.classesService.update(id, user.id, updateClassDto);
+    return this.classesService.update(id, user, updateClassDto);
   }
 
   @Delete(':id')
@@ -125,6 +136,6 @@ export class ClassesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una clase' })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.classesService.remove(id, user.id);
+    return this.classesService.remove(id, user);
   }
 }

@@ -7,6 +7,12 @@ import {
   IsNumber,
 } from 'class-validator';
 import { GymStatus } from '@prisma/client';
+import { IsIn } from 'class-validator';
+
+export class UpdateGymStatusDto {
+  @IsIn([GymStatus.ACTIVE, GymStatus.INACTIVE])
+  status: GymStatus;
+}
 
 export class CreateGymDto {
   @IsNumber()
@@ -135,10 +141,6 @@ export class UpdateGymDto {
   @IsString()
   @IsOptional()
   openDays?: string;
-
-  @IsEnum(GymStatus)
-  @IsOptional()
-  status?: GymStatus;
 
   @IsString()
   @IsOptional()
