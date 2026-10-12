@@ -156,74 +156,33 @@ export class MembershipsService {
     expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
 
     // 3. Create membership, payment and invoice with a transaction
-    return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx) => {
       // Desactivar solo las membresías activas previas del usuario EN ESTE MISMO GIMNASIO/ACADEMIA
       const activeGymMemberships = await tx.userMembership.findMany({
         where: {
           userId,
           status: MembershipStatus.ACTIVE,
-          plan: {
-            gymId: plan.gymId
-          }
+          plan: { gymId: plan.gymId },
         },
-        select: { id: true }
+        select: { id: true },
       });
 
       if (activeGymMemberships.length > 0) {
         await tx.userMembership.updateMany({
-          where: {
-            id: { in: activeGymMemberships.map(m => m.id) }
-          },
-          data: {
-            status: MembershipStatus.EXPIRED,
-          },
+          where: { id: { in: activeGymMemberships.map((m) => m.id) } },
+          data: { status: MembershipStatus.EXPIRED },
         });
       }
 
-      const membership = await tx.userMembership.create({
+      return tx.userMembership.create({
         data: {
           userId,
           planId: plan.id,
           status: MembershipStatus.ACTIVE,
           expiresAt,
         },
-        include: {
-          plan: true,
-        },
+        include: { plan: true },
       });
-
-      const payment = await tx.payment.create({
-        data: {
-          userId,
-          amount: plan.price,
-          status: PaymentStatus.COMPLETED,
-          method: 'CREDIT_CARD',
-          gatewayTxId: `tx_${randomUUID()}`,
-          description: `Suscripción a ${plan.name}`,
-          membershipId: membership.id,
-          paidAt: new Date(),
-        },
-      });
-
-      const invoiceAmount = Number(plan.price);
-      const taxAmount = invoiceAmount * 0.19; // 19% IVA simulated
-      const totalAmount = invoiceAmount + taxAmount;
-
-      await tx.invoice.create({
-        data: {
-          paymentId: payment.id,
-          userId,
-          gymId: plan.gymId,
-          invoiceNum: `INV-${Date.now().toString().slice(-6)}`,
-          amount: invoiceAmount,
-          tax: taxAmount,
-          total: totalAmount,
-          status: InvoiceStatus.ISSUED,
-          pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Mock PDF
-        },
-      });
-
-      return membership;
     });
   }
 
@@ -271,7 +230,7 @@ export class MembershipsService {
       });
 
       const invoiceAmount = Number(payment.amount);
-      const taxAmount = invoiceAmount * 0.19; // misma lógica que ya tenías
+      const taxAmount = invoiceAmount * 0.19; 
       await tx.invoice.create({
         data: {
           paymentId: payment.id,

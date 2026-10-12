@@ -387,7 +387,6 @@ async assertGymActive(gymId: string) {
   }
 }
 
-
 async remove(id: string) {
   await this.findOne(id);
   const [orders, invoices] = await Promise.all([

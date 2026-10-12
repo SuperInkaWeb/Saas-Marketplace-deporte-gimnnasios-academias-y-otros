@@ -166,6 +166,9 @@ export class ClassesService {
 
     if (!classItem) throw new NotFoundException('Clase no encontrada');
     if (!classItem.isActive) throw new BadRequestException('Esta clase no está activa');
+    if (classItem.scheduledAt <= new Date()) {
+     throw new BadRequestException('Esta clase ya comenzó o ya pasó');
+   }
     if (Number(classItem.price) > 0) {throw new BadRequestException('Esta clase requiere pago');}
     if (classItem._count.reservations >= classItem.capacity) {
       throw new BadRequestException('La clase está llena');
@@ -230,7 +233,9 @@ export class ClassesService {
       where: { classId_userId: { classId, userId } },
     });
     if (existing?.status === ReservationStatus.CONFIRMED) return null;
-
+    if (cls.scheduledAt <= new Date()) {
+     throw new ConflictException('La clase ya comenzó o ya pasó');
+   }
     if (cls._count.reservations >= cls.capacity) {
       throw new ConflictException('La clase se llenó');
     }

@@ -47,6 +47,7 @@ model User {
   coachRecommendations CoachRecommendation[] @relation("AthleteRecommendations")
   coachRecommendationsGiven CoachRecommendation[] @relation("CoachRecommendations")
   roleRequests         RoleRequest[]
+  providerSchedules    ProviderSchedule[]   // ← nueva
 
   @@map("users")
 }
@@ -290,6 +291,20 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model ProviderSchedule {
+  id          String  @id @default(uuid())
+  providerId  String  @map("provider_id")
+  dayOfWeek   Int     @map("day_of_week")    // 0 = domingo ... 6 = sábado
+  isActive    Boolean @default(true) @map("is_active")
+  openMinute  Int     @map("open_minute")    // minutos desde medianoche (480 = 08:00)
+  closeMinute Int     @map("close_minute")
+  capacity    Int     @default(1)            // reservas simultáneas por bloque
+  provider    User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, dayOfWeek])
+  @@map("provider_schedules")
+}
+
 enum UserRole {
   ADMIN
   GYM_OWNER
@@ -376,8 +391,11 @@ model ProfessionalBooking {
   status      String      @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
   bookedAt    DateTime    @default(now()) @map("booked_at")
   notes       String?
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  service     ProfessionalService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  bookingDate String?     @map("booking_date") @db.VarChar(10)   // ← nueva
+  startMinute Int?        @map("start_minute")                    // ← nueva
+  endMinute   Int?        @map("end_minute")                      // ← nueva
+  user        User        @relation(...)        // ← deja tus líneas tal como están
+  service     ProfessionalService @relation(...) // ← deja tus líneas tal como están
 
   @@map("professional_bookings")
 }

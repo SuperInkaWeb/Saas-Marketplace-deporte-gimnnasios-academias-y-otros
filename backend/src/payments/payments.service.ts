@@ -207,7 +207,7 @@ export class PaymentsService {
       },
     });
     if (!cls || !cls.isActive) throw new NotFoundException('Clase no disponible');
-    if (cls.scheduledAt <= new Date()) {
+        if (cls.scheduledAt <= new Date()) {
       throw new BadRequestException('Esta clase ya comenzó o ya pasó');
     }
     if (cls._count.reservations >= cls.capacity) {
@@ -326,8 +326,15 @@ export class PaymentsService {
 
       const planId = (mpPayment.metadata as any)?.plan_id;
       if (!planId) return { status: 'MISMATCH' };
+      try {
       await this.memberships.activateFromPayment(local.id, planId, String(mpPayment.id));
       return { status: PaymentStatus.COMPLETED, type: 'MEMBERSHIP' };
+      } catch (e) {
+      this.logger.error(
+      `Pago MP ${mpPaymentId} aprobado pero la membresía del plan ${planId} falló: ${(e as Error).message}`,
+  );
+  return { status: 'NEEDS_REVIEW' };
+}
     }
 
     if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
