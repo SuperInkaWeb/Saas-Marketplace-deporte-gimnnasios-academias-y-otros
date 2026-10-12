@@ -6,60 +6,51 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Prisma, ReservationStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service'; 
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { HealthService } from '../health/health.service';
+import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
+import { AuditService } from '../common/audit/audit.service';
 
 @Injectable()
 export class ClassesService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
-    private healthService: HealthService
+    private healthService: HealthService,
+    private gymAccess: GymAccessService,
+    private audit: AuditService,
   ) {}
 
-  async create(gymId: string, currentUserId: string, dto: CreateClassDto) {
-    // 1. Verify gym and permissions
-    const gym = await this.prisma.gym.findUnique({
-      where: { id: gymId },
-      include: { gymTrainers: true },
+  async create(gymId: string, actor: AuthUser, dto: CreateClassDto) {
+    // ADMIN global → cualquier gimnasio; dueño → el suyo; entrenador → si está vinculado y tiene canCreateClasses
+    const { gym, scope } = await this.gymAccess.assertCanManageGym(actor, gymId, {
+      trainerAccess: 'canCreateClasses',
     });
 
-    if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+    // Vínculo del usuario actual con el staff de ESTE gimnasio (si lo tiene)
+    const own = gym.gymTrainers.find((gt) => gt.trainer.userId === actor.id);
 
-    // Buscar si el usuario actual es entrenador y tiene perfil
-    const trainerProfile = await this.prisma.trainerProfile.findUnique({
-      where: { userId: currentUserId },
-    });
+    let finalTrainerId = dto.trainerId ? dto.trainerId : null;
 
-    let finalTrainerId = dto.trainerId && dto.trainerId !== "" ? dto.trainerId : null;
-    // Si el creador es un entrenador, se auto-asigna
-    if (!finalTrainerId && trainerProfile) {
-      finalTrainerId = trainerProfile.id;
-    }
-
-    const isOwner = gym.ownerId === currentUserId;
-    const isTrainer = trainerProfile && gym.gymTrainers.some(
-      (gt) => gt.trainerId === trainerProfile.id && gt.canCreateClasses,
-    );
-
-    // Si el creador es el dueño y especificó un entrenador, validar que el entrenador esté vinculado a este gimnasio
-    if (isOwner && finalTrainerId) {
-      const isTrainerLinked = gym.gymTrainers.some(
-        (gt) => gt.trainerId === finalTrainerId,
-      );
-      if (!isTrainerLinked) {
-        throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+    if (scope === 'TRAINER') {
+      // Un entrenador solo crea clases a su nombre
+      if (finalTrainerId && finalTrainerId !== own?.trainerId) {
+        throw new ForbiddenException('Un entrenador solo puede crear clases asignadas a sí mismo');
       }
+      finalTrainerId = own?.trainerId ?? null;
+    } else if (!finalTrainerId && scope === 'OWNER' && own) {
+      // Dueño que además es entrenador vinculado: se auto-asigna (comportamiento previo)
+      finalTrainerId = own.trainerId;
+    }
+    // ADMIN global: no se auto-asigna; la clase queda sin entrenador salvo que lo indique
+
+    if (finalTrainerId && !gym.gymTrainers.some((gt) => gt.trainerId === finalTrainerId)) {
+      throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
     }
 
-    // Si no es el dueño ni un entrenador autorizado, denegar
-    if (!isOwner && !isTrainer) {
-      throw new ForbiddenException('No tienes permiso para crear clases en este gimnasio');
-    }
-
-    return this.prisma.class.create({
+    const created = await this.prisma.class.create({
       data: {
         ...dto,
         trainerId: finalTrainerId,
@@ -67,9 +58,25 @@ export class ClassesService {
         scheduledAt: new Date(dto.scheduledAt),
       },
     });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: 'CLASS_CREATE',
+      entity: 'Class',
+      entityId: created.id,
+      gymId,
+      metadata: { title: created.title },
+    });
+
+    return created;
   }
 
-  async findAll(gymId?: string, userId?: string, ownerId?: string, trainerUserId?: string) {
+  async findAll(
+    gymId?: string,
+    userId?: string,
+    ownerId?: string,
+    trainerUserId?: string,
+    includeInactive = false,
+  ) {
     // If userId passed, return only classes where this user has a reservation
     if (userId) {
       const reservations = await this.prisma.reservation.findMany({
@@ -98,7 +105,7 @@ export class ClassesService {
         ...(gymId ? { gymId } : {}),
         ...(ownerId ? { gym: { ownerId } } : {}),
         ...(trainerUserId ? { trainer: { userId: trainerUserId } } : {}),
-        isActive: true,
+        ...(includeInactive ? {} : { isActive: true }),
       },
       include: {
         gym: { select: { name: true, city: true, ownerId: true } },
@@ -274,13 +281,25 @@ export class ClassesService {
     });
   }
 
-  async markAttendance(reservationId: string, currentUserId: string) {
+  /**
+   * Carga la reserva y verifica que el actor pueda gestionar el gimnasio de su clase.
+   * ADMIN global → siempre; dueño → su gimnasio; entrenador → si está vinculado al gimnasio.
+   */
+  private async getReservationForStaff(reservationId: string, actor: AuthUser) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
-      include: { class: true }
+      include: { class: true },
     });
-
     if (!reservation) throw new NotFoundException('Ticket / Reserva no encontrada');
+
+    const { scope } = await this.gymAccess.assertCanManageGym(actor, reservation.class.gymId, {
+      trainerAccess: 'linked',
+    });
+    return { reservation, scope };
+  }
+
+  async markAttendance(reservationId: string, actor: AuthUser) {
+    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
 
     // Trigger automatic calorie calculation
     try {
@@ -293,75 +312,129 @@ export class ClassesService {
       console.error('Error calculating calories:', err);
     }
 
-    return this.prisma.reservation.update({
+    const updated = await this.prisma.reservation.update({
       where: { id: reservationId },
       data: { status: ReservationStatus.ATTENDED },
     });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: 'RESERVATION_ATTEND',
+      entity: 'Reservation',
+      entityId: reservationId,
+      gymId: reservation.class.gymId,
+    });
+
+    return updated;
   }
 
-  async unmarkAttendance(reservationId: string, currentUserId: string) {
-    const reservation = await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-    });
-    if (!reservation) throw new NotFoundException('Reserva no encontrada');
+  async unmarkAttendance(reservationId: string, actor: AuthUser) {
+    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
 
-    return this.prisma.reservation.update({
+    const updated = await this.prisma.reservation.update({
       where: { id: reservationId },
       data: { status: ReservationStatus.CONFIRMED },
     });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: 'RESERVATION_UNATTEND',
+      entity: 'Reservation',
+      entityId: reservationId,
+      gymId: reservation.class.gymId,
+    });
+
+    return updated;
   }
 
-  async removeReservation(reservationId: string, currentUserId: string) {
-    const reservation = await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-    });
-    if (!reservation) throw new NotFoundException('Reserva no encontrada');
+  async removeReservation(reservationId: string, actor: AuthUser) {
+    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
 
-    return this.prisma.reservation.delete({
+    const deleted = await this.prisma.reservation.delete({
       where: { id: reservationId },
     });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: 'RESERVATION_REMOVE',
+      entity: 'Reservation',
+      entityId: reservationId,
+      gymId: reservation.class.gymId,
+    });
+
+    return deleted;
   }
-  async update(id: string, currentUserId: string, dto: UpdateClassDto) {
-    const classItem = await this.findOne(id);
-    if (classItem.gym.ownerId !== currentUserId) {
-        throw new ForbiddenException('No tienes permiso para actualizar esta clase');
-    }
 
-    let finalTrainerId: string | null | undefined = dto.trainerId;
-    if (dto.trainerId === "") {
-      finalTrainerId = null;
-    } else if (dto.trainerId) {
-      const gym = await this.prisma.gym.findUnique({
-        where: { id: classItem.gymId },
-        include: { gymTrainers: true },
-      });
-      if (gym) {
-        const isTrainerLinked = gym.gymTrainers.some(
-          (gt) => gt.trainerId === dto.trainerId,
-        );
-        if (!isTrainerLinked) {
-          throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
-        }
+  async update(id: string, actor: AuthUser, dto: UpdateClassDto) {
+    const cls = await this.prisma.class.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        gymId: true,
+        trainerId: true,
+        trainer: { select: { userId: true } },
+      },
+    });
+    if (!cls) throw new NotFoundException('Clase no encontrada');
+
+    const { gym, scope } = await this.gymAccess.assertCanManageGym(actor, cls.gymId, {
+      trainerAccess: 'canCreateClasses',
+    });
+
+    // Un entrenador solo edita SUS clases y no puede reasignarlas a otro entrenador
+    if (scope === 'TRAINER') {
+      if (cls.trainer?.userId !== actor.id) {
+        throw new ForbiddenException('Solo puedes editar las clases que tienes asignadas');
+      }
+      if (dto.trainerId !== undefined && dto.trainerId !== (cls.trainerId ?? '')) {
+        throw new ForbiddenException('Un entrenador no puede reasignar la clase a otro entrenador');
       }
     }
 
-    return this.prisma.class.update({
+    let finalTrainerId: string | null | undefined = dto.trainerId;
+    if (dto.trainerId === '') {
+      finalTrainerId = null;
+    } else if (dto.trainerId && !gym.gymTrainers.some((gt) => gt.trainerId === dto.trainerId)) {
+      throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+    }
+
+    const updated = await this.prisma.class.update({
       where: { id },
       data: {
         ...dto,
         trainerId: finalTrainerId,
-        ...(dto.scheduledAt && { scheduledAt: new Date(dto.scheduledAt) })
-      }
+        ...(dto.scheduledAt && { scheduledAt: new Date(dto.scheduledAt) }),
+      },
     });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: dto.isActive !== undefined ? 'CLASS_SET_ACTIVE' : 'CLASS_UPDATE',
+      entity: 'Class',
+      entityId: id,
+      gymId: cls.gymId,
+      metadata: { changes: Object.keys(dto) },
+    });
+
+    return updated;
   }
 
-  async remove(id: string, currentUserId: string) {
-    const classItem = await this.findOne(id);
-    if (classItem.gym.ownerId !== currentUserId) {
-        throw new ForbiddenException('No tienes permiso para eliminar esta clase');
-    }
-    return this.prisma.class.delete({
-       where: { id }
+  async remove(id: string, actor: AuthUser) {
+    const cls = await this.prisma.class.findUnique({
+      where: { id },
+      select: { id: true, gymId: true, title: true },
     });
+    if (!cls) throw new NotFoundException('Clase no encontrada');
+
+    // Eliminar sigue siendo solo dueño y ADMIN global (borra en cascada las reservas)
+    const { scope } = await this.gymAccess.assertCanManageGym(actor, cls.gymId);
+
+    const deleted = await this.prisma.class.delete({ where: { id } });
+
+    await this.audit.logGlobalAction(scope, actor, {
+      action: 'CLASS_DELETE',
+      entity: 'Class',
+      entityId: id,
+      gymId: cls.gymId,
+      metadata: { title: cls.title },
+    });
+
+    return deleted;
   }
 }

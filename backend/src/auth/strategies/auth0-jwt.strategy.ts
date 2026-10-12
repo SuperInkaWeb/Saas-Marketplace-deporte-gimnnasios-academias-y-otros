@@ -113,7 +113,8 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
             console.log(`Retrieved real email from userinfo: ${email}`);
           }
         } catch (err) {
-          console.error('Error fetching userinfo from Auth0:', err.message);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('Error fetching userinfo from Auth0:', msg);
         }
       }
     }

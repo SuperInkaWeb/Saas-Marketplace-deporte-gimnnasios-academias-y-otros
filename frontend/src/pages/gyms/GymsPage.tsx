@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import {
@@ -11,6 +11,7 @@ import {
   Loader2,
   Dumbbell,
   CheckCircle2,
+  Power,
   AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -20,14 +21,14 @@ const getGymCardBanner = (gym: any) => {
   if (gym.logoUrl) return gym.logoUrl;
   if (gym.bannerUrl) return gym.bannerUrl;
   if (gym.imageUrl) return gym.imageUrl;
-  
+
   const name = gym.name || '';
   if (name.includes('Fútbol')) return 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=600&auto=format&fit=crop';
   if (name.includes('Box')) return 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?q=80&w=600&auto=format&fit=crop';
   if (name.includes('Natación')) return 'https://images.unsplash.com/photo-1519315901367-f34ff9154487?q=80&w=600&auto=format&fit=crop';
   if (name.includes('Tenis')) return 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=600&auto=format&fit=crop';
   if (name.includes('Básquet')) return 'https://images.unsplash.com/photo-1544698310-74ea9d1c8258?q=80&w=600&auto=format&fit=crop';
-  
+
   return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop';
 };
 
@@ -41,107 +42,132 @@ const GymCard: React.FC<{
   onRequestLink?: (gymId: string) => void;
   onEdit: (gym: any) => void;
   onDelete: (id: string) => void;
+  onToggleStatus: (gym: any) => void;
   navigate: any;
-}> = ({ gym, isOwner, isAdmin, userRole, userId, hasPendingRequest, onRequestLink, onEdit, onDelete, navigate }) => (
-  <motion.div
-    whileHover={{ y: -5 }}
-    onClick={() => navigate(`/gyms/${gym.id}`)}
-    className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all cursor-pointer flex flex-col justify-between"
-  >
-    <div>
-      <div className="h-40 bg-slate-950 relative overflow-hidden">
-        <img 
-          src={getGymCardBanner(gym)} 
-          alt={gym.name}
-          className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-all duration-700" 
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
-        <div className="absolute bottom-4 left-4">
-          <span className="bg-primary/80 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
-            {gym.status || 'Activo'}
-          </span>
-        </div>
-      </div>
+}> = ({ gym, isOwner, isAdmin, userRole, userId, hasPendingRequest, onRequestLink, onEdit, onDelete, onToggleStatus, navigate }) => {
+  const isInactive = gym.status !== 'ACTIVE';
 
-      <div className="p-6 pb-0">
-        <h3 className="text-xl font-bold text-white group-hover:text-primary-light transition-colors">{gym.name}</h3>
-        <p className="text-slate-400 text-sm mt-2 line-clamp-2">
-          {gym.description ? gym.description.split('\n\n[Categorías:')[0] : 'Sin descripción disponible.'}
-        </p>
-
-        <div className="mt-6 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-slate-400 text-xs text-secondary-light">
-            <MapPin className="w-4 h-4" />
-            <span className="line-clamp-1">
-              {gym.address || 'Sin dirección'}
-              {gym.district && `, ${gym.district}`}
-              {gym.province && `, ${gym.province}`}
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      onClick={() => navigate(`/gyms/${gym.id}`)}
+      className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all cursor-pointer flex flex-col justify-between"
+    >
+      <div>
+        <div className="h-40 bg-slate-950 relative overflow-hidden">
+          <img
+            src={getGymCardBanner(gym)}
+            alt={gym.name}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ${isInactive ? 'opacity-20 grayscale' : 'opacity-50'}`}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+          <div className="absolute bottom-4 left-4">
+            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider border ${
+              isInactive
+                ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                : 'bg-green-500/20 text-green-400 border-green-500/30'
+            }`}>
+              {isInactive ? 'INACTIVO' : 'ACTIVO'}
             </span>
           </div>
         </div>
-      </div>
-    </div>
 
-    <div className="p-6 pt-0">
-      <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1 shrink-0">
-          <Star className="text-yellow-400 fill-yellow-400 w-4 h-4" />
-          <span className="text-white font-bold text-sm">NUEVO</span>
+        <div className="p-6 pb-0">
+          <h3 className="text-xl font-bold text-white group-hover:text-primary-light transition-colors">{gym.name}</h3>
+          <p className="text-slate-400 text-sm mt-2 line-clamp-2">
+            {gym.description ? gym.description.split('\n\n[Categorías:')[0] : 'Sin descripción disponible.'}
+          </p>
+
+          <div className="mt-6 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-slate-400 text-xs text-secondary-light">
+              <MapPin className="w-4 h-4" />
+              <span className="line-clamp-1">
+                {gym.address || 'Sin dirección'}
+                {gym.district && `, ${gym.district}`}
+                {gym.province && `, ${gym.province}`}
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {userRole === 'TRAINER' && (
-            <>
-              {gym.gymTrainers?.some((gt: any) => gt.trainer?.userId === userId) ? (
-                <span className="text-green-400 font-bold text-xs bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Vinculado
-                </span>
-              ) : hasPendingRequest ? (
-                <span className="text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1 shrink-0">
-                  Pendiente ⏳
-                </span>
-              ) : (
+      <div className="p-6 pt-0">
+        <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 shrink-0">
+            <Star className="text-yellow-400 fill-yellow-400 w-4 h-4" />
+            <span className="text-white font-bold text-sm">NUEVO</span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {userRole === 'TRAINER' && (
+              <>
+                {gym.gymTrainers?.some((gt: any) => gt.trainer?.userId === userId) ? (
+                  <span className="text-green-400 font-bold text-xs bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Vinculado
+                  </span>
+                ) : hasPendingRequest ? (
+                  <span className="text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1 shrink-0">
+                    Pendiente ⏳
+                  </span>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onRequestLink) onRequestLink(gym.id);
+                    }}
+                    className="bg-primary hover:bg-primary-light text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow-md shrink-0"
+                  >
+                    Postular
+                  </button>
+                )}
+              </>
+            )}
+
+            {(isOwner || isAdmin) && (
+              <>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onRequestLink) onRequestLink(gym.id);
-                  }}
-                  className="bg-primary hover:bg-primary-light text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow-md shrink-0"
+                  onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
+                  className="text-slate-400 hover:text-white transition-colors text-xs"
                 >
-                  Postular
+                  Editar
                 </button>
-              )}
-            </>
-          )}
 
-          {(isOwner || isAdmin) && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
-                className="text-slate-400 hover:text-white transition-colors text-xs"
-              >
-                Editar
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(gym.id); }}
-                className="text-red-400 hover:text-red-300 transition-colors text-xs font-bold"
-              >
-                Eliminar
-              </button>
-            </>
-          )}
+                {isAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleStatus(gym); }}
+                    className={`flex items-center gap-1 transition-colors text-xs font-bold ${
+                      isInactive ? 'text-green-400 hover:text-green-300' : 'text-yellow-400 hover:text-yellow-300'
+                    }`}
+                    title={isInactive ? 'Reactivar gimnasio' : 'Desactivar gimnasio'}
+                  >
+                    <Power className="w-3.5 h-3.5" />
+                    {isInactive ? 'Reactivar' : 'Desactivar'}
+                  </button>
+                )}
 
-          <button
-            onClick={() => navigate(`/gyms/${gym.id}`)}
-            className="text-primary-light font-bold text-xs hover:underline shrink-0"
-          >
-            Ver Detalles
-          </button>
+                {isAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(gym.id); }}
+                    className="text-red-400 hover:text-red-300 transition-colors text-xs font-bold"
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </>
+            )}
+
+            <button
+              onClick={() => navigate(`/gyms/${gym.id}`)}
+              className="text-primary-light font-bold text-xs hover:underline shrink-0"
+            >
+              Ver Detalles
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 const GymsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -157,10 +183,29 @@ const GymsPage: React.FC = () => {
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const { user } = useAuth();
 
+  // Filtro de estado guardado en la URL (sobrevive al recargar)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
+  const statusFilter: 'ALL' | 'ACTIVE' | 'INACTIVE' =
+    statusParam === 'ACTIVE' || statusParam === 'INACTIVE' ? statusParam : 'ALL';
+
+  const updateStatusFilter = (value: string) =>
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (value === 'ALL') next.delete('status');
+      else next.set('status', value);
+      return next;
+    }, { replace: true });
+
+  const hasActiveFilters = !!(selectedSport || selectedDistrict || statusFilter !== 'ALL');
+  const canFilterByStatus = user?.role === 'ADMIN' || user?.role === 'GYM_OWNER';
+
   const fetchGyms = async () => {
     try {
       setLoading(true);
-      const url = user?.role === 'GYM_OWNER' ? `/gyms?ownerId=${user.id}` : '/gyms';
+      let url = '/gyms';
+      if (user?.role === 'ADMIN') url = '/gyms/admin/all';
+      else if (user?.role === 'GYM_OWNER') url = '/gyms/mine';
       const { data } = await api.get(url);
       setGyms(data);
     } catch (err) {
@@ -198,7 +243,7 @@ const GymsPage: React.FC = () => {
   }, [user]);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este gimnasio?')) {
+    if (window.confirm('Esto ELIMINA el gimnasio y todos sus datos de forma permanente (clases, reservas, planes...). Si solo quieres suspenderlo, usa "Desactivar". ¿Eliminar definitivamente?')) {
       try {
         await api.delete(`/gyms/${id}`);
         setMessage({ type: 'success', text: 'Gimnasio eliminado exitosamente.' });
@@ -206,7 +251,26 @@ const GymsPage: React.FC = () => {
         setTimeout(() => setMessage(null), 3000);
       } catch (err: any) {
         setMessage({ type: 'error', text: err.response?.data?.message || 'Error al eliminar.' });
+        setTimeout(() => setMessage(null), 3000);
       }
+    }
+  };
+
+  const handleToggleStatus = async (gym: any) => {
+    const next = gym.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    if (
+      next === 'INACTIVE' &&
+      !window.confirm('El gimnasio dejará de ser visible y no aceptará reservas ni compras. Sus datos se conservan. ¿Continuar?')
+    ) return;
+
+    try {
+      const { data } = await api.patch(`/gyms/${gym.id}/status`, { status: next });
+      setGyms(prev => prev.map(g => (g.id === gym.id ? { ...g, status: data.status } : g)));
+      setMessage({ type: 'success', text: next === 'ACTIVE' ? 'Gimnasio reactivado.' : 'Gimnasio desactivado. Sus datos se conservan.' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al cambiar el estado.' });
+      setTimeout(() => setMessage(null), 3000);
     }
   };
 
@@ -248,7 +312,9 @@ const GymsPage: React.FC = () => {
 
     const matchesDistrict = selectedDistrict === '' || (g.district && g.district.toLowerCase() === selectedDistrict.toLowerCase());
 
-    return matchesSearch && matchesSport && matchesDistrict;
+    const matchesStatus = statusFilter === 'ALL' || g.status === statusFilter;
+
+    return matchesSearch && matchesSport && matchesDistrict && matchesStatus;
   });
 
   return (
@@ -318,12 +384,12 @@ const GymsPage: React.FC = () => {
         <button
           onClick={() => setShowFiltersPanel(!showFiltersPanel)}
           className={`glass-card px-6 py-4 flex items-center gap-2 hover:bg-white/10 transition-all font-medium border ${
-            showFiltersPanel || selectedSport || selectedDistrict ? 'border-primary/50 bg-primary/10 text-white' : 'border-white/5 text-slate-300'
+            showFiltersPanel || hasActiveFilters ? 'border-primary/50 bg-primary/10 text-white' : 'border-white/5 text-slate-300'
           }`}
         >
-          <Filter className={`w-5 h-5 ${selectedSport || selectedDistrict ? 'text-primary-light' : ''}`} />
+          <Filter className={`w-5 h-5 ${hasActiveFilters ? 'text-primary-light' : ''}`} />
           <span>Filtros</span>
-          {(selectedSport || selectedDistrict) && (
+          {hasActiveFilters && (
             <span className="w-2 h-2 rounded-full bg-primary-light animate-pulse" />
           )}
         </button>
@@ -334,8 +400,25 @@ const GymsPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-white/10 bg-slate-900/60 backdrop-blur-md rounded-2xl"
+          className={`glass-card p-6 grid grid-cols-1 gap-4 border-white/10 bg-slate-900/60 backdrop-blur-md rounded-2xl ${
+            canFilterByStatus ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
+          }`}
         >
+          {canFilterByStatus && (
+            <div>
+              <label className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Estado</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => updateStatusFilter(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary-light cursor-pointer"
+              >
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Activos</option>
+                <option value="INACTIVE">Inactivos</option>
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Deporte / Categoría</label>
             <select
@@ -365,11 +448,12 @@ const GymsPage: React.FC = () => {
           </div>
 
           <div className="flex items-end">
-            {(selectedSport || selectedDistrict) ? (
+            {hasActiveFilters ? (
               <button
                 onClick={() => {
                   setSelectedSport('');
                   setSelectedDistrict('');
+                  updateStatusFilter('ALL');
                 }}
                 className="w-full py-2.5 rounded-xl border border-red-500/20 hover:border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold transition-all text-xs active:scale-95 flex items-center justify-center gap-1.5"
               >
@@ -402,6 +486,7 @@ const GymsPage: React.FC = () => {
               onRequestLink={handleRequestLink}
               onEdit={setEditingGym}
               onDelete={handleDelete}
+              onToggleStatus={handleToggleStatus}
               navigate={navigate}
             />
           ))}

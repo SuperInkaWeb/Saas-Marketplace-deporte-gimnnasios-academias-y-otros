@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import UserProfileModal from './components/UserProfileModal';
+import { useSearchParams } from 'react-router-dom';
 import {
   Users,
   Search,
@@ -24,18 +25,42 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+const ROLE_KEYS = ['ALL', 'USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] as const;
+const STATUS_KEYS = ['ALL', 'ACTIVE', 'INACTIVE'] as const;
+type RoleFilter = typeof ROLE_KEYS[number];
+type StatusFilter = typeof STATUS_KEYS[number];
+
 const UsersManagementView: React.FC = () => {
   const { user } = useAuth();
   const [usersList, setUsersList] = useState<any[]>([]);
   const [roleRequests, setRoleRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('ALL');
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [search, setSearch] = useState('');
   const [searchRequests, setSearchRequests] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+// Se leen de la URL y se validan; si el valor es inválido cae en 'ALL'
+const roleParam = searchParams.get('role');
+const statusParam = searchParams.get('status');
+const selectedRoleFilter: RoleFilter = ROLE_KEYS.includes(roleParam as RoleFilter)
+  ? (roleParam as RoleFilter)
+  : 'ALL';
+const selectedStatusFilter: StatusFilter = STATUS_KEYS.includes(statusParam as StatusFilter)
+  ? (statusParam as StatusFilter)
+  : 'ALL';
+
+const updateFilter = (key: 'role' | 'status', value: string) => {
+  setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    if (value === 'ALL') next.delete(key);
+    else next.set(key, value);
+    return next;
+  }, { replace: true });
+};
 
   // Modal Form State
   const [formData, setFormData] = useState({
@@ -204,12 +229,24 @@ const UsersManagementView: React.FC = () => {
     );
   };
 
-  const filteredUsers = usersList.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
-                          u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = selectedRoleFilter === 'ALL' || u.role === selectedRoleFilter;
-    return matchesSearch && matchesRole;
-  });
+const isUserActive = (u: any) => u.isActive !== false;
+const matchesRole = (u: any, role: string) => role === 'ALL' || u.role === role;
+const matchesStatus = (u: any, status: string) =>
+  status === 'ALL' || (status === 'ACTIVE' ? isUserActive(u) : !isUserActive(u));
+
+const filteredUsers = usersList.filter(u => {
+  const q = search.toLowerCase();
+  const matchesSearch = u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  return matchesSearch
+    && matchesRole(u, selectedRoleFilter)
+    && matchesStatus(u, selectedStatusFilter);
+});
+
+// Contadores cruzados: cada grupo de chips cuenta respetando el otro filtro
+const roleCount = (key: string) =>
+  usersList.filter(u => matchesRole(u, key) && matchesStatus(u, selectedStatusFilter)).length;
+const statusCount = (key: string) =>
+  usersList.filter(u => matchesStatus(u, key) && matchesRole(u, selectedRoleFilter)).length;
 
   const filteredRequests = roleRequests.filter(req =>
     (req.user?.name || '').toLowerCase().includes(searchRequests.toLowerCase()) ||
@@ -309,36 +346,60 @@ const UsersManagementView: React.FC = () => {
           </div>
 
           {/* Chips de filtro por rol */}
-          <div className="flex flex-wrap gap-2 mb-6 items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Filtrar por Rol:</span>
-            {[
-              { key: 'ALL', label: 'Todos', count: usersList.length, color: 'hover:border-primary/50', activeBg: 'bg-primary text-white border-primary' },
-              { key: 'USER', label: 'Atletas', count: usersList.filter(u => u.role === 'USER').length, color: 'hover:border-green-500/50', activeBg: 'bg-green-500/10 text-green-400 border-green-500/30' },
-              { key: 'GYM_OWNER', label: 'Dueños', count: usersList.filter(u => u.role === 'GYM_OWNER').length, color: 'hover:border-blue-500/50', activeBg: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
-              { key: 'TRAINER', label: 'Coaches', count: usersList.filter(u => u.role === 'TRAINER').length, color: 'hover:border-yellow-500/50', activeBg: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
-              { key: 'ADMIN', label: 'Admins', count: usersList.filter(u => u.role === 'ADMIN').length, color: 'hover:border-red-500/50', activeBg: 'bg-red-500/10 text-red-400 border-red-500/30' }
-            ].map(chip => {
-              const isActive = selectedRoleFilter === chip.key;
-              return (
-                <button
-                  key={chip.key}
-                  type="button"
-                  onClick={() => setSelectedRoleFilter(chip.key)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                    isActive 
-                      ? chip.activeBg 
-                      : 'bg-slate-900/50 text-slate-400 border-white/5 ' + chip.color
-                  }`}
-                >
-                  {chip.label}
-                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-slate-500'}`}>
-                    {chip.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <div className="flex flex-wrap gap-2 mb-3 items-center">
+  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Filtrar por Rol:</span>
+  {[
+    { key: 'ALL', label: 'Todos', color: 'hover:border-primary/50', activeBg: 'bg-primary text-white border-primary' },
+    { key: 'USER', label: 'Atletas', color: 'hover:border-green-500/50', activeBg: 'bg-green-500/10 text-green-400 border-green-500/30' },
+    { key: 'GYM_OWNER', label: 'Dueños', color: 'hover:border-blue-500/50', activeBg: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+    { key: 'TRAINER', label: 'Coaches', color: 'hover:border-yellow-500/50', activeBg: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
+    { key: 'ADMIN', label: 'Admins', color: 'hover:border-red-500/50', activeBg: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  ].map(chip => {
+    const isActive = selectedRoleFilter === chip.key;
+    return (
+      <button
+        key={chip.key}
+        type="button"
+        onClick={() => updateFilter('role', chip.key)}
+        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+          isActive ? chip.activeBg : 'bg-slate-900/50 text-slate-400 border-white/5 ' + chip.color
+        }`}
+      >
+        {chip.label}
+        <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-slate-500'}`}>
+          {roleCount(chip.key)}
+        </span>
+      </button>
+    );
+  })}
+</div>
 
+{/* Chips de filtro por estado */}
+<div className="flex flex-wrap gap-2 mb-6 items-center">
+  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Filtrar por Estado:</span>
+  {[
+    { key: 'ALL', label: 'Todos', color: 'hover:border-primary/50', activeBg: 'bg-primary text-white border-primary' },
+    { key: 'ACTIVE', label: 'Activos', color: 'hover:border-green-500/50', activeBg: 'bg-green-500/10 text-green-400 border-green-500/30' },
+    { key: 'INACTIVE', label: 'Inactivos', color: 'hover:border-red-500/50', activeBg: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  ].map(chip => {
+    const isActive = selectedStatusFilter === chip.key;
+    return (
+      <button
+        key={chip.key}
+        type="button"
+        onClick={() => updateFilter('status', chip.key)}
+        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+          isActive ? chip.activeBg : 'bg-slate-900/50 text-slate-400 border-white/5 ' + chip.color
+        }`}
+      >
+        {chip.label}
+        <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-slate-500'}`}>
+          {statusCount(chip.key)}
+        </span>
+      </button>
+    );
+  })}
+</div>
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />

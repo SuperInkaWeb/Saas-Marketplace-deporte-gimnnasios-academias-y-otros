@@ -12,6 +12,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
+import { sanitizeName } from '../common/utils/normalize-name';
 import { EmailService } from '../notifications/email.service';
 
 
@@ -223,14 +224,22 @@ export class AuthService {
   }
 
   async updateProfile(userId: string, data: { name: string; phone?: string; dni?: string }) {
-    // El cambio de rol NUNCA se procesa aquí: los flujos válidos son
-    // POST /users/role-requests (solicitud USER -> GYM_OWNER/TRAINER, requiere aprobación)
-    // y POST /auth/switch-role (alternar entre roles ya habilitados). Aceptar un
-    // campo `role` en este endpoint permitía auto-escalar a ADMIN sin validación.
+    // El cambio de rol NUNCA se procesa aquí (ver comentario original).
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!current) throw new NotFoundException('Usuario no encontrado');
+
+    const name = sanitizeName(data.name, current.email);
+    if (!name) {
+      throw new BadRequestException('El nombre no puede estar vacío ni ser tu correo electrónico');
+    }
+
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        name: data.name,
+        name,
         phone: data.phone,
         dni: data.dni,
       },
@@ -242,7 +251,7 @@ export class AuthService {
         phone: true,
         dni: true,
         avatarUrl: true,
-      }
+      },
     });
   }
 
@@ -480,154 +489,156 @@ export class AuthService {
    * Looks up user by auth0Id, then by email as fallback.
    * Creates a new user if none is found.
    */
-  async findOrCreateAuth0User(params: {
-    auth0Id: string;
-    email: string;
-    name: string;
-    avatarUrl?: string;
-  }) {
-    const { auth0Id, email, name, avatarUrl } = params;
+    async findOrCreateAuth0User(params: {
+      auth0Id: string;
+      email: string;
+      name: string;
+      avatarUrl?: string;
+    }) {
+      const { auth0Id, email, name, avatarUrl } = params;
 
-    const adminEmails = [
-      'mario123q@gmail.com',
-      'sebastian.admin@hercix-demo.com',
-      'soporte.tecnico@hercix-demo.com',
-      'gerente.plataforma@hercix-demo.com'
-    ];
+      const adminEmails = [
+        'mario123q@gmail.com',
+        'sebastian.admin@hercix-demo.com',
+        'soporte.tecnico@hercix-demo.com',
+        'gerente.plataforma@hercix-demo.com'
+      ];
 
-    // 1. Try by auth0Id (fastest path after first login)
-    let user = await this.prisma.user.findUnique({
-      where: { auth0Id },
-      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
-    });
+      // 1. Try by auth0Id (fastest path after first login)
+      let user = await this.prisma.user.findUnique({
+        where: { auth0Id },
+        select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+      });
 
-    if (user) {
-      // Force admin role if they match an admin email (in case role got changed or database was reset)
-      if (adminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+      if (user) {
+        // Force admin role if they match an admin email (in case role got changed or database was reset)
+        if (adminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: { role: UserRole.ADMIN },
+            select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+          });
+        }
+
+        // Bloquear accesos sociales (Google) solo para el rol Administrador
+        if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
+          throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
+        }
+        // Actualizar última sesión
+        await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+        return user;
+      }
+
+      // 2. Try by email (user may have registered before Auth0 or pre-seeded/invited)
+      let existing = await this.prisma.user.findFirst({
+        where: { 
+          email: {
+            equals: email,
+            mode: 'insensitive'
+          }
+        },
+      });
+
+      if (existing) {
+        // Force admin role if they match an admin email (in case role got changed or database was reset)
+        if (adminEmails.includes(existing.email.toLowerCase()) && existing.role !== UserRole.ADMIN) {
+          existing = await this.prisma.user.update({
+            where: { id: existing.id },
+            data: { role: UserRole.ADMIN }
+          });
+        }
+
+        // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
+        if (auth0Id.startsWith('google-oauth2|') && existing.role === UserRole.ADMIN) {
+          throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
+        }
+
+        console.log(`Encontrado usuario existente por email (case-insensitive): ${existing.email}. Vinculando a Auth0 ID: ${auth0Id}`);
         user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: { role: UserRole.ADMIN },
+          where: { id: existing.id },
+          data: { 
+            auth0Id, 
+            avatarUrl: avatarUrl ?? existing.avatarUrl,
+          },
           select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
         });
+        return user;
       }
 
-      // Bloquear accesos sociales (Google) solo para el rol Administrador
-      if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
-        throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
-      }
-      // Actualizar última sesión
-      await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-      return user;
-    }
-
-    // 2. Try by email (user may have registered before Auth0 or pre-seeded/invited)
-    let existing = await this.prisma.user.findFirst({
-      where: { 
-        email: {
-          equals: email,
-          mode: 'insensitive'
+      // 3. New User Flow: Check if there's a pending invitation
+      const invitation = await this.prisma.invitation.findFirst({
+        where: {
+          email: {
+            equals: email,
+            mode: 'insensitive'
+          },
+          status: 'PENDING',
+          expiresAt: { gt: new Date() }
         }
-      },
-    });
+      });
 
-    if (existing) {
-      // Force admin role if they match an admin email (in case role got changed or database was reset)
-      if (adminEmails.includes(existing.email.toLowerCase()) && existing.role !== UserRole.ADMIN) {
-        existing = await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { role: UserRole.ADMIN }
-        });
+      let assignedRole: UserRole = UserRole.USER;
+      let gymIdToLink: string | null = null;
+
+      if (adminEmails.includes(email.toLowerCase())) {
+        console.log(`Email de Administrador detectado para ${email}. Auto-asignando rol ADMIN.`);
+        assignedRole = UserRole.ADMIN;
+      } else if (invitation) {
+        console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
+        assignedRole = invitation.role;
+        gymIdToLink = invitation.gymId;
+      } else {
+        console.log(`No hay invitación para ${email}. Creando atleta público (USER)`);
       }
 
-      // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
-      if (auth0Id.startsWith('google-oauth2|') && existing.role === UserRole.ADMIN) {
-        throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
-      }
+     const safeName = sanitizeName(name, email);
 
-      console.log(`Encontrado usuario existente por email (case-insensitive): ${existing.email}. Vinculando a Auth0 ID: ${auth0Id}`);
-      user = await this.prisma.user.update({
-        where: { id: existing.id },
-        data: { 
-          auth0Id, 
-          avatarUrl: avatarUrl ?? existing.avatarUrl,
+      // Create the user in PostgreSQL
+      const newUser = await this.prisma.user.create({
+        data: {
+          auth0Id,
+          email: email.toLowerCase(),
+          name:safeName,
+          avatarUrl,
+          role: assignedRole,
+          emailVerified: true,
         },
         select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
       });
-      return user;
-    }
 
-    // 3. New User Flow: Check if there's a pending invitation
-    const invitation = await this.prisma.invitation.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive'
-        },
-        status: 'PENDING',
-        expiresAt: { gt: new Date() }
-      }
-    });
-
-    let assignedRole: UserRole = UserRole.USER;
-    let gymIdToLink: string | null = null;
-
-    if (adminEmails.includes(email.toLowerCase())) {
-      console.log(`Email de Administrador detectado para ${email}. Auto-asignando rol ADMIN.`);
-      assignedRole = UserRole.ADMIN;
-    } else if (invitation) {
-      console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
-      assignedRole = invitation.role;
-      gymIdToLink = invitation.gymId;
-    } else {
-      console.log(`No hay invitación para ${email}. Creando atleta público (USER)`);
-    }
-
-    // Create the user in PostgreSQL
-    const newUser = await this.prisma.user.create({
-      data: {
-        auth0Id,
-        email: email.toLowerCase(),
-        name,
-        avatarUrl,
-        role: assignedRole,
-        emailVerified: true,
-      },
-      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
-    });
-
-    // If invitation was accepted, handle updates
-    if (invitation) {
-      await this.prisma.invitation.update({
-        where: { id: invitation.id },
-        data: { status: 'ACCEPTED' }
-      });
-
-      // SaaS flow: If invited as a Trainer and gymId is present, create trainer profile and link
-      if (assignedRole === UserRole.TRAINER && gymIdToLink) {
-        const trainerProf = await this.prisma.trainerProfile.create({
-          data: {
-            userId: newUser.id,
-            bio: 'Entrenador invitado',
-            experienceYears: 1
-          }
+      // If invitation was accepted, handle updates
+      if (invitation) {
+        await this.prisma.invitation.update({
+          where: { id: invitation.id },
+          data: { status: 'ACCEPTED' }
         });
 
-        await this.prisma.gymTrainer.create({
-          data: {
-            gymId: gymIdToLink,
-            trainerId: trainerProf.id,
-            canCreateClasses: true
-          }
-        });
-        console.log(`TrainerProfile creado y vinculado al gimnasio ${gymIdToLink}`);
+        // SaaS flow: If invited as a Trainer and gymId is present, create trainer profile and link
+        if (assignedRole === UserRole.TRAINER && gymIdToLink) {
+          const trainerProf = await this.prisma.trainerProfile.create({
+            data: {
+              userId: newUser.id,
+              bio: 'Entrenador invitado',
+              experienceYears: 1
+            }
+          });
+
+          await this.prisma.gymTrainer.create({
+            data: {
+              gymId: gymIdToLink,
+              trainerId: trainerProf.id,
+              canCreateClasses: true
+            }
+          });
+          console.log(`TrainerProfile creado y vinculado al gimnasio ${gymIdToLink}`);
+        }
       }
+
+      // Send welcome email to new Auth0 users (non-blocking)
+        this.emailService.sendWelcome(email, safeName || 'Atleta').catch(() => {});
+
+      return newUser;
     }
-
-    // Send welcome email to new Auth0 users (non-blocking)
-    this.emailService.sendWelcome(email, name).catch(() => {});
-
-    return newUser;
-  }
 
   // ── Token helpers ─────────────────────────────────────────────────────────
 
