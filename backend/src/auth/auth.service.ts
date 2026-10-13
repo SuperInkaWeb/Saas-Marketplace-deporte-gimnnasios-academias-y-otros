@@ -15,6 +15,13 @@ import { UserRole } from '@prisma/client';
 import { sanitizeName } from '../common/utils/normalize-name';
 import { EmailService } from '../notifications/email.service';
 
+// Correos que siempre tienen el rol ADMIN (en pantalla se muestra como "Superadmin")
+const ADMIN_EMAILS = [
+  'mario123q@gmail.com',
+  'sebastian.admin@hercix-demo.com',
+  'soporte.tecnico@hercix-demo.com',
+  'gerente.plataforma@hercix-demo.com',
+];
 
 @Injectable()
 export class AuthService {
@@ -107,7 +114,7 @@ export class AuthService {
 
     // Find valid refresh token
     const savedTokens = await this.prisma.refreshToken.findMany({
-      where: { userId, expiresAt: { gt: new Date() } }
+      where: { userId, expiresAt: { gt: new Date() } },
     });
 
     let tokenValid = false;
@@ -125,8 +132,50 @@ export class AuthService {
 
     const { passwordHash: _pw, ...safeUser } = user;
     const tokens = await this.generateTokens(user.id, user.email, user.role);
-    
+
     return { user: safeUser, ...tokens };
+  }
+
+  // ── Roles elegibles (única fuente de verdad para getMe y switchRole) ─────
+
+  /**
+   * Devuelve los perfiles a los que la cuenta tiene derecho.
+   * - USER: todos.
+   * - ADMIN: rol actual ADMIN o correo en ADMIN_EMAILS (así no pierde el acceso
+   *   al cambiar temporalmente a otra vista).
+   * - GYM_OWNER: tiene gimnasios, rol actual, o solicitud aprobada.
+   * - TRAINER: tiene perfil de entrenador, rol actual, o solicitud aprobada.
+   */
+  private async getEligibleRoles(user: {
+    id: string;
+    email: string;
+    role: UserRole;
+  }): Promise<string[]> {
+    const roles: string[] = ['USER'];
+
+    if (user.role === 'ADMIN' || ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+      roles.push('ADMIN');
+    }
+
+    const [gymCount, ownerRequest, trainerProfile, trainerRequest] = await Promise.all([
+      this.prisma.gym.count({ where: { ownerId: user.id } }),
+      this.prisma.roleRequest.findFirst({
+        where: { userId: user.id, requestedRole: 'GYM_OWNER', status: 'APPROVED' },
+      }),
+      this.prisma.trainerProfile.findUnique({ where: { userId: user.id } }),
+      this.prisma.roleRequest.findFirst({
+        where: { userId: user.id, requestedRole: 'TRAINER', status: 'APPROVED' },
+      }),
+    ]);
+
+    if (gymCount > 0 || user.role === 'GYM_OWNER' || ownerRequest) {
+      roles.push('GYM_OWNER');
+    }
+    if (trainerProfile || user.role === 'TRAINER' || trainerRequest) {
+      roles.push('TRAINER');
+    }
+
+    return roles;
   }
 
   // ── Get current user ──────────────────────────────────────────────────────
@@ -151,31 +200,7 @@ export class AuthService {
 
     if (!user) return null;
 
-    // Obtener roles adicionales de forma dinámica sin migraciones pesadas
-    const roles: string[] = ['USER']; // Todos son atletas
-
-    // Verificar si es administrador
-    if (user.role === 'ADMIN') {
-      roles.push('ADMIN');
-    }
-
-    // Verificar si es dueño (tiene gimnasios o su rol principal es GYM_OWNER o tiene solicitud aprobada)
-    const gymCount = await this.prisma.gym.count({ where: { ownerId: userId } });
-    const hasApprovedOwnerRequest = await this.prisma.roleRequest.findFirst({
-      where: { userId, requestedRole: 'GYM_OWNER', status: 'APPROVED' }
-    });
-    if (gymCount > 0 || user.role === 'GYM_OWNER' || hasApprovedOwnerRequest) {
-      roles.push('GYM_OWNER');
-    }
-
-    // Verificar si es coach (tiene trainerProfile o su rol principal es TRAINER o tiene solicitud aprobada)
-    const trainerProfile = await this.prisma.trainerProfile.findUnique({ where: { userId } });
-    const hasApprovedTrainerRequest = await this.prisma.roleRequest.findFirst({
-      where: { userId, requestedRole: 'TRAINER', status: 'APPROVED' }
-    });
-    if (trainerProfile || user.role === 'TRAINER' || hasApprovedTrainerRequest) {
-      roles.push('TRAINER');
-    }
+    const roles = await this.getEligibleRoles(user);
 
     return {
       ...user,
@@ -188,20 +213,7 @@ export class AuthService {
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
     // Validar que el usuario sea elegible para este rol
-    const eligibleRoles = ['USER'];
-    if (user.role === 'ADMIN') eligibleRoles.push('ADMIN');
-
-    const gymCount = await this.prisma.gym.count({ where: { ownerId: userId } });
-    const hasApprovedOwnerRequest = await this.prisma.roleRequest.findFirst({
-      where: { userId, requestedRole: 'GYM_OWNER', status: 'APPROVED' }
-    });
-    if (gymCount > 0 || user.role === 'GYM_OWNER' || hasApprovedOwnerRequest) eligibleRoles.push('GYM_OWNER');
-
-    const trainerProfile = await this.prisma.trainerProfile.findUnique({ where: { userId } });
-    const hasApprovedTrainerRequest = await this.prisma.roleRequest.findFirst({
-      where: { userId, requestedRole: 'TRAINER', status: 'APPROVED' }
-    });
-    if (trainerProfile || user.role === 'TRAINER' || hasApprovedTrainerRequest) eligibleRoles.push('TRAINER');
+    const eligibleRoles = await this.getEligibleRoles(user);
 
     if (!eligibleRoles.includes(newRole)) {
       throw new BadRequestException(`No eres elegible para el rol: ${newRole}`);
@@ -219,7 +231,7 @@ export class AuthService {
         phone: true,
         dni: true,
         avatarUrl: true,
-      }
+      },
     });
   }
 
@@ -276,7 +288,7 @@ export class AuthService {
         }),
       ]);
 
-      const activities = recentReservations.map(res => ({
+      const activities = recentReservations.map((res) => ({
         id: res.id,
         type: 'RESERVATION',
         title: `Reserva: ${res.class.title}`,
@@ -326,9 +338,9 @@ export class AuthService {
       });
 
       const recentActivities: any[] = [];
-      gyms.forEach(gym => {
-        gym.classes.forEach(cls => {
-          cls.reservations.forEach(res => {
+      gyms.forEach((gym) => {
+        gym.classes.forEach((cls) => {
+          cls.reservations.forEach((res) => {
             recentActivities.push({
               id: res.id,
               type: 'RESERVATION',
@@ -359,15 +371,15 @@ export class AuthService {
             where: { isActive: true },
             include: {
               _count: {
-                select: { reservations: { where: { status: 'CONFIRMED' } } }
+                select: { reservations: { where: { status: 'CONFIRMED' } } },
               },
               gym: true,
-            }
+            },
           },
           gymTrainers: {
-            include: { gym: true }
-          }
-        }
+            include: { gym: true },
+          },
+        },
       });
 
       if (!trainerProfile) {
@@ -381,26 +393,28 @@ export class AuthService {
       }
 
       const servicesCount = await this.prisma.professionalService.count({
-        where: { providerId: userId }
+        where: { providerId: userId },
       });
 
-      const classIds = trainerProfile.classes.map(c => c.id);
+      const classIds = trainerProfile.classes.map((c) => c.id);
       const uniqueAthletes = new Set();
       if (classIds.length > 0) {
         const reservations = await this.prisma.reservation.findMany({
-          where: { classId: { in: classIds }, status: 'CONFIRMED' }
+          where: { classId: { in: classIds }, status: 'CONFIRMED' },
         });
-        reservations.forEach(r => uniqueAthletes.add(r.userId));
+        reservations.forEach((r) => uniqueAthletes.add(r.userId));
       }
 
-      const recentBookings = classIds.length > 0 ? await this.prisma.reservation.findMany({
-        where: { classId: { in: classIds }, status: 'CONFIRMED' },
-        include: { user: true, class: { include: { gym: true } } },
-        orderBy: { bookedAt: 'desc' },
-        take: 5,
-      }) : [];
+      const recentBookings = classIds.length > 0
+        ? await this.prisma.reservation.findMany({
+            where: { classId: { in: classIds }, status: 'CONFIRMED' },
+            include: { user: true, class: { include: { gym: true } } },
+            orderBy: { bookedAt: 'desc' },
+            take: 5,
+          })
+        : [];
 
-      const activities = recentBookings.map(res => ({
+      const activities = recentBookings.map((res) => ({
         id: res.id,
         type: 'RESERVATION',
         title: `Nueva reserva: ${res.class.title}`,
@@ -408,7 +422,7 @@ export class AuthService {
         date: res.bookedAt,
       }));
 
-      const gymDetails = trainerProfile.gymTrainers.map(gt => ({
+      const gymDetails = trainerProfile.gymTrainers.map((gt) => ({
         id: gt.gym.id,
         name: gt.gym.name,
       }));
@@ -431,7 +445,7 @@ export class AuthService {
         take: 5,
       });
 
-      const activities = reservations.map(res => ({
+      const activities = reservations.map((res) => ({
         id: res.id,
         type: 'RESERVATION',
         title: `Clase reservada: ${res.class.title}`,
@@ -446,7 +460,7 @@ export class AuthService {
         take: 5,
       });
 
-      const profActivities = profBookings.map(b => ({
+      const profActivities = profBookings.map((b) => ({
         id: b.id,
         type: 'PROFESSIONAL_SERVICE',
         title: `Cita Profesional: ${b.service.title}`,
@@ -454,7 +468,9 @@ export class AuthService {
         date: b.bookedAt,
       }));
 
-      const allActivities = [...activities, ...profActivities].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
+      const allActivities = [...activities, ...profActivities]
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 5);
 
       const gymsCount = await this.prisma.gym.count({
         where: { status: 'ACTIVE' },
@@ -481,7 +497,6 @@ export class AuthService {
     }
   }
 
-
   // ── Auth0 — Find or Create ────────────────────────────────────────────────
 
   /**
@@ -489,156 +504,153 @@ export class AuthService {
    * Looks up user by auth0Id, then by email as fallback.
    * Creates a new user if none is found.
    */
-    async findOrCreateAuth0User(params: {
-      auth0Id: string;
-      email: string;
-      name: string;
-      avatarUrl?: string;
-    }) {
-      const { auth0Id, email, name, avatarUrl } = params;
+  async findOrCreateAuth0User(params: {
+    auth0Id: string;
+    email: string;
+    name: string;
+    avatarUrl?: string;
+  }) {
+    const { auth0Id, email, name, avatarUrl } = params;
 
-      const adminEmails = [
-        'mario123q@gmail.com',
-        'sebastian.admin@hercix-demo.com',
-        'soporte.tecnico@hercix-demo.com',
-        'gerente.plataforma@hercix-demo.com'
-      ];
+    // 1. Try by auth0Id (fastest path after first login)
+    let user = await this.prisma.user.findUnique({
+      where: { auth0Id },
+      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+    });
 
-      // 1. Try by auth0Id (fastest path after first login)
-      let user = await this.prisma.user.findUnique({
-        where: { auth0Id },
-        select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
-      });
-
-      if (user) {
-        // Force admin role if they match an admin email (in case role got changed or database was reset)
-        if (adminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
-          user = await this.prisma.user.update({
-            where: { id: user.id },
-            data: { role: UserRole.ADMIN },
-            select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
-          });
-        }
-
-        // Bloquear accesos sociales (Google) solo para el rol Administrador
-        if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
-          throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
-        }
-        // Actualizar última sesión
-        await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-        return user;
-      }
-
-      // 2. Try by email (user may have registered before Auth0 or pre-seeded/invited)
-      let existing = await this.prisma.user.findFirst({
-        where: { 
-          email: {
-            equals: email,
-            mode: 'insensitive'
-          }
-        },
-      });
-
-      if (existing) {
-        // Force admin role if they match an admin email (in case role got changed or database was reset)
-        if (adminEmails.includes(existing.email.toLowerCase()) && existing.role !== UserRole.ADMIN) {
-          existing = await this.prisma.user.update({
-            where: { id: existing.id },
-            data: { role: UserRole.ADMIN }
-          });
-        }
-
-        // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
-        if (auth0Id.startsWith('google-oauth2|') && existing.role === UserRole.ADMIN) {
-          throw new UnauthorizedException('Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.');
-        }
-
-        console.log(`Encontrado usuario existente por email (case-insensitive): ${existing.email}. Vinculando a Auth0 ID: ${auth0Id}`);
+    if (user) {
+      // Force admin role if they match an admin email (in case role got changed or database was reset)
+      if (ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
         user = await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { 
-            auth0Id, 
-            avatarUrl: avatarUrl ?? existing.avatarUrl,
-          },
+          where: { id: user.id },
+          data: { role: UserRole.ADMIN },
           select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
         });
-        return user;
       }
 
-      // 3. New User Flow: Check if there's a pending invitation
-      const invitation = await this.prisma.invitation.findFirst({
-        where: {
-          email: {
-            equals: email,
-            mode: 'insensitive'
-          },
-          status: 'PENDING',
-          expiresAt: { gt: new Date() }
-        }
-      });
+      // Bloquear accesos sociales (Google) solo para el rol Administrador
+      if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
+        throw new UnauthorizedException(
+          'Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.',
+        );
+      }
+      // Actualizar última sesión
+      await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      return user;
+    }
 
-      let assignedRole: UserRole = UserRole.USER;
-      let gymIdToLink: string | null = null;
+    // 2. Try by email (user may have registered before Auth0 or pre-seeded/invited)
+    let existing = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
+      },
+    });
 
-      if (adminEmails.includes(email.toLowerCase())) {
-        console.log(`Email de Administrador detectado para ${email}. Auto-asignando rol ADMIN.`);
-        assignedRole = UserRole.ADMIN;
-      } else if (invitation) {
-        console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
-        assignedRole = invitation.role;
-        gymIdToLink = invitation.gymId;
-      } else {
-        console.log(`No hay invitación para ${email}. Creando atleta público (USER)`);
+    if (existing) {
+      // Force admin role if they match an admin email (in case role got changed or database was reset)
+      if (ADMIN_EMAILS.includes(existing.email.toLowerCase()) && existing.role !== UserRole.ADMIN) {
+        existing = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { role: UserRole.ADMIN },
+        });
       }
 
-     const safeName = sanitizeName(name, email);
+      // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
+      if (auth0Id.startsWith('google-oauth2|') && existing.role === UserRole.ADMIN) {
+        throw new UnauthorizedException(
+          'Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.',
+        );
+      }
 
-      // Create the user in PostgreSQL
-      const newUser = await this.prisma.user.create({
+      console.log(`Encontrado usuario existente por email (case-insensitive): ${existing.email}. Vinculando a Auth0 ID: ${auth0Id}`);
+      user = await this.prisma.user.update({
+        where: { id: existing.id },
         data: {
           auth0Id,
-          email: email.toLowerCase(),
-          name:safeName,
-          avatarUrl,
-          role: assignedRole,
-          emailVerified: true,
+          avatarUrl: avatarUrl ?? existing.avatarUrl,
         },
         select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
       });
+      return user;
+    }
 
-      // If invitation was accepted, handle updates
-      if (invitation) {
-        await this.prisma.invitation.update({
-          where: { id: invitation.id },
-          data: { status: 'ACCEPTED' }
+    // 3. New User Flow: Check if there's a pending invitation
+    const invitation = await this.prisma.invitation.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    let assignedRole: UserRole = UserRole.USER;
+    let gymIdToLink: string | null = null;
+
+    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+      console.log(`Email de Administrador detectado para ${email}. Auto-asignando rol ADMIN.`);
+      assignedRole = UserRole.ADMIN;
+    } else if (invitation) {
+      console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
+      assignedRole = invitation.role;
+      gymIdToLink = invitation.gymId;
+    } else {
+      console.log(`No hay invitación para ${email}. Creando atleta público (USER)`);
+    }
+
+    const safeName = sanitizeName(name, email);
+
+    // Create the user in PostgreSQL
+    const newUser = await this.prisma.user.create({
+      data: {
+        auth0Id,
+        email: email.toLowerCase(),
+        name: safeName,
+        avatarUrl,
+        role: assignedRole,
+        emailVerified: true,
+      },
+      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+    });
+
+    // If invitation was accepted, handle updates
+    if (invitation) {
+      await this.prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { status: 'ACCEPTED' },
+      });
+
+      // SaaS flow: If invited as a Trainer and gymId is present, create trainer profile and link
+      if (assignedRole === UserRole.TRAINER && gymIdToLink) {
+        const trainerProf = await this.prisma.trainerProfile.create({
+          data: {
+            userId: newUser.id,
+            bio: 'Entrenador invitado',
+            experienceYears: 1,
+          },
         });
 
-        // SaaS flow: If invited as a Trainer and gymId is present, create trainer profile and link
-        if (assignedRole === UserRole.TRAINER && gymIdToLink) {
-          const trainerProf = await this.prisma.trainerProfile.create({
-            data: {
-              userId: newUser.id,
-              bio: 'Entrenador invitado',
-              experienceYears: 1
-            }
-          });
-
-          await this.prisma.gymTrainer.create({
-            data: {
-              gymId: gymIdToLink,
-              trainerId: trainerProf.id,
-              canCreateClasses: true
-            }
-          });
-          console.log(`TrainerProfile creado y vinculado al gimnasio ${gymIdToLink}`);
-        }
+        await this.prisma.gymTrainer.create({
+          data: {
+            gymId: gymIdToLink,
+            trainerId: trainerProf.id,
+            canCreateClasses: true,
+          },
+        });
+        console.log(`TrainerProfile creado y vinculado al gimnasio ${gymIdToLink}`);
       }
-
-      // Send welcome email to new Auth0 users (non-blocking)
-        this.emailService.sendWelcome(email, safeName || 'Atleta').catch(() => {});
-
-      return newUser;
     }
+
+    // Send welcome email to new Auth0 users (non-blocking)
+    this.emailService.sendWelcome(email, safeName || 'Atleta').catch(() => {});
+
+    return newUser;
+  }
 
   // ── Token helpers ─────────────────────────────────────────────────────────
 

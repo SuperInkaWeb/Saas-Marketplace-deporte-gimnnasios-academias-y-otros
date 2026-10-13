@@ -16,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import {
   ApiTags,
   ApiOperation,
@@ -78,10 +79,11 @@ findMine(@CurrentUser() user: any) {
   return this.gymsService.findMine(user.id);
 }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener detalles de un gimnasio' })
-findOne(@Param('id') id: string) {
-  return this.gymsService.findOnePublic(id);   // antes: findOne(id)
+@Get(':id')
+@UseGuards(OptionalJwtAuthGuard)
+@ApiOperation({ summary: 'Obtener detalles de un gimnasio' })
+findOne(@Param('id') id: string, @CurrentUser() user: any) {
+  return this.gymsService.findOneForViewer(id, user);
 }
 
   @Get(':id/members')

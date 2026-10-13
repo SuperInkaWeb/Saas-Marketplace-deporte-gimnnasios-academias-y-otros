@@ -3,6 +3,8 @@
   import { PrismaService } from '../prisma/prisma.service'; 
   import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
   import { NotificationsService } from '../notifications/notifications.service';
+  import { ConflictException } from '@nestjs/common';
+import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.util';
 
 
   @Injectable()
@@ -45,6 +47,8 @@
     if (!service) throw new NotFoundException('Servicio no encontrado');
     return service;
   }
+  
+  
 
   async update(id: string, currentUserId: string, updateDto: UpdateProfessionalDto, isAdmin: boolean) {
     const service = await this.findOne(id);

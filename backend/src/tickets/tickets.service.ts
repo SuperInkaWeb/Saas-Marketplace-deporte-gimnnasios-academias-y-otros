@@ -75,12 +75,13 @@ export class TicketsService {
 
   /** Estadísticas rápidas para el dashboard */
   async getStats() {
-    const [open, inReview, resolved, total] = await Promise.all([
+    const [open, inReview, resolved, closed, total] = await Promise.all([
       this.prisma.supportTicket.count({ where: { status: 'OPEN' } }),
       this.prisma.supportTicket.count({ where: { status: 'IN_REVIEW' } }),
       this.prisma.supportTicket.count({ where: { status: 'RESOLVED' } }),
+      this.prisma.supportTicket.count({ where: { status: 'CLOSED' } }),
       this.prisma.supportTicket.count(),
     ]);
-    return { open, inReview, resolved, total };
+    return { open, inReview, resolved, closed, total };
   }
 }

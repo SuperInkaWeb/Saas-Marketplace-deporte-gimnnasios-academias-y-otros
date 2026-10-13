@@ -6,9 +6,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateGymDto, UpdateGymDto, UpdateGymStatusDto } from './dto/gym.dto';
+import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
-import { GymStatus, GymLocationSource } from '@prisma/client';
+import { GymStatus, GymLocationSource, UserRole } from '@prisma/client';
 
 /**
  * Hash de cadena estable (djb2) usado para separar negocios del mismo distrito.
@@ -224,13 +224,19 @@ async findMine(ownerId: string) {
   });
 }
 
-// Para el detalle público: solo gimnasios activos
-async findOnePublic(id: string) {
+async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null) {
   const gym = await this.findOne(id);
-  if (gym.status !== GymStatus.ACTIVE) {
+
+  if (gym.status === GymStatus.ACTIVE) return gym;
+
+  const isAdmin = user?.role === UserRole.ADMIN;
+  const isOwner = !!user && gym.ownerId === user.id;
+
+  if (!isAdmin && !isOwner) {
     throw new NotFoundException(`Gimnasio con ID ${id} no encontrado`);
   }
-  return gym;
+
+  return gym; // el dueño/admin lo ve, con status !== ACTIVE
 }
 
   async findNearby(lat: number, lng: number, radiusKm: number) {

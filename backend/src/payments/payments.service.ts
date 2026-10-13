@@ -50,7 +50,8 @@ export class PaymentsService {
   }): Promise<string> {
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) throw new Error('FRONTEND_URL no está configurada');
-    const isHttps = frontendUrl.startsWith('https://');
+    const isHttps =
+    frontendUrl.startsWith('https://') || process.env.MP_FORCE_AUTO_RETURN === 'true';
 
     const preference = await new Preference(this.mp).create({
       body: {

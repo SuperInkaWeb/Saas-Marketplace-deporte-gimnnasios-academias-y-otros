@@ -7,6 +7,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, TicketStatus } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ParseEnumPipe } from '@nestjs/common';
+
 
 @ApiTags('tickets')
 @Controller('tickets')
@@ -24,13 +26,16 @@ export class TicketsController {
 
   /** Solo el Admin ve todos los tickets */
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: listar todos los tickets' })
-  findAll(@Query('status') status?: TicketStatus) {
-    return this.ticketsService.findAll(status);
-  }
-
+@UseGuards(RolesGuard)
+@Roles(UserRole.ADMIN)
+@ApiOperation({ summary: 'Admin: listar todos los tickets' })
+findAll(
+  @Query('status', new ParseEnumPipe(TicketStatus, { optional: true }))
+  status?: TicketStatus,
+) {
+  return this.ticketsService.findAll(status);
+}
+  
   /** Admin: estadísticas de tickets */
   @Get('stats')
   @UseGuards(RolesGuard)
