@@ -20,7 +20,9 @@ import {
   Settings,
   ShoppingCart,
   X,
-  Minus
+  Minus,
+  AlertTriangle,
+  Power
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,12 +54,31 @@ const GymShowroom: React.FC = () => {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
 
-// Payment integration state
-const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
-const [payingCart, setPayingCart] = useState(false);
+  // Payment integration state
+  const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
+  const [payingCart, setPayingCart] = useState(false);
+
+  // Reactivación (solo admin)
+  const [reactivating, setReactivating] = useState(false);
 
   const isOwner = user?.role === 'GYM_OWNER' || user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
   const isMyGym = isOwner && gym && gym.ownerId === user?.id;
+  const isInactive = !!gym && gym.status !== 'ACTIVE';
+
+  const handleReactivate = async () => {
+    if (reactivating) return;
+    try {
+      setReactivating(true);
+      const { data } = await api.patch(`/gyms/${id}/status`, { status: 'ACTIVE' });
+      setGym((prev: any) => ({ ...prev, status: data.status }));
+      toast.success('Negocio reactivado correctamente ✅');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'No se pudo reactivar el negocio.');
+    } finally {
+      setReactivating(false);
+    }
+  };
 
   const handlePlanSuccess = async () => {
     toast.success(editingPlan ? 'Plan actualizado ✅' : '¡Plan de membresía creado exitosamente! ✅');
@@ -66,40 +87,48 @@ const [payingCart, setPayingCart] = useState(false);
   };
 
   const handleSubscribe = async (plan: any) => {
-  if (isOwner) {
-    toast.error('Los administradores/dueños no pueden suscribirse a planes.');
-    return;
-  }
-  if (payingPlanId) return;
-  setPayingPlanId(plan.id);
-  try {
-    const { data } = await api.post('/payments/mercadopago/membership-checkout', {
-      planId: plan.id,
-    });
-    window.location.href = data.checkoutUrl;
-  } catch (err: any) {
-    toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
-    setPayingPlanId(null);
-  }
-};
+    if (isInactive) {
+      toast.error('Este negocio está inactivo temporalmente.');
+      return;
+    }
+    if (isOwner) {
+      toast.error('Los administradores/dueños no pueden suscribirse a planes.');
+      return;
+    }
+    if (payingPlanId) return;
+    setPayingPlanId(plan.id);
+    try {
+      const { data } = await api.post('/payments/mercadopago/membership-checkout', {
+        planId: plan.id,
+      });
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+      setPayingPlanId(null);
+    }
+  };
 
-const handlePayCart = async () => {
-  if (isOwner) {
-    toast.error('Los administradores/dueños no pueden realizar pedidos.');
-    return;
-  }
-  if (payingCart) return;
-  setPayingCart(true);
-  try {
-    const { data } = await api.post('/payments/mercadopago/order-checkout', {
-      items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
-    });
-    window.location.href = data.checkoutUrl;
-  } catch (err: any) {
-    toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
-    setPayingCart(false);
-  }
-};
+  const handlePayCart = async () => {
+    if (isInactive) {
+      toast.error('Este negocio está inactivo temporalmente.');
+      return;
+    }
+    if (isOwner) {
+      toast.error('Los administradores/dueños no pueden realizar pedidos.');
+      return;
+    }
+    if (payingCart) return;
+    setPayingCart(true);
+    try {
+      const { data } = await api.post('/payments/mercadopago/order-checkout', {
+        items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
+      });
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+      setPayingCart(false);
+    }
+  };
 
   const handleDeletePlan = async (planId: string, planName: string) => {
     if (!window.confirm(`¿Eliminar el plan de membresía "${planName}"? Esta acción no se puede deshacer.`)) return;
@@ -136,21 +165,31 @@ const handlePayCart = async () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [gymRes, productsRes, plansRes, classesRes] = await Promise.all([
+      const [gymRes, productsRes, plansRes, classesRes] = await Promise.allSettled([
         api.get(`/gyms/${id}`),
         api.get(`/marketplace/products?gymId=${id}`),
         api.get(`/memberships/plans?gymId=${id}`),
         api.get(`/classes?gymId=${id}`)
       ]);
 
-      setGym(gymRes.data);
-      setProducts(productsRes.data);
-      setPlans(plansRes.data);
-      setClasses(classesRes.data);
+      // Si el gimnasio no carga (404 / sin permiso) mostramos "no encontrado"
+      if (gymRes.status === 'rejected') {
+        setGym(null);
+        return;
+      }
+
+      const productsData = productsRes.status === 'fulfilled' ? productsRes.value.data : [];
+      const plansData = plansRes.status === 'fulfilled' ? plansRes.value.data : [];
+      const classesData = classesRes.status === 'fulfilled' ? classesRes.value.data : [];
+
+      setGym(gymRes.value.data);
+      setProducts(productsData);
+      setPlans(plansData);
+      setClasses(classesData);
       
-      if (productsRes.data.length > 0) setActiveTab('products');
-      else if (plansRes.data.length > 0) setActiveTab('plans');
-      else if (classesRes.data.length > 0) setActiveTab('classes');
+      if (productsData.length > 0) setActiveTab('products');
+      else if (plansData.length > 0) setActiveTab('plans');
+      else if (classesData.length > 0) setActiveTab('classes');
       
     } catch (err) {
       console.error('Error cargando vitrina:', err);
@@ -163,28 +202,32 @@ const handlePayCart = async () => {
     fetchData();
   }, [id]);
 
-const handleBook = async (c: any) => {
-  if (bookingId) return;
-  setBookingId(c.id);
-  try {
-    const { data } = await api.post('/payments/mercadopago/class-checkout', {
-      classId: c.id,
-    });
-
-    // Clase gratuita: el backend la reserva directo
-    if (data.free) {
-      toast.success('¡Reserva confirmada exitosamente!');
+  const handleBook = async (c: any) => {
+    if (isInactive) {
+      toast.error('Este negocio está inactivo temporalmente.');
       return;
     }
+    if (bookingId) return;
+    setBookingId(c.id);
+    try {
+      const { data } = await api.post('/payments/mercadopago/class-checkout', {
+        classId: c.id,
+      });
 
-    // Clase de pago: redirige a Mercado Pago
-    window.location.href = data.checkoutUrl;
-  } catch (err: any) {
-    toast.error(err.response?.data?.message || 'Error al reservar la clase');
-  } finally {
-    setBookingId(null);
-  }
-};
+      // Clase gratuita: el backend la reserva directo
+      if (data.free) {
+        toast.success('¡Reserva confirmada exitosamente!');
+        return;
+      }
+
+      // Clase de pago: redirige a Mercado Pago
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error al reservar la clase');
+    } finally {
+      setBookingId(null);
+    }
+  };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
     if (!window.confirm(`¿Eliminar el producto "${productName}"? Esta acción no se puede deshacer.`)) return;
@@ -218,6 +261,10 @@ const handleBook = async (c: any) => {
 
   // Cart functions
   const addToCart = (product: any) => {
+    if (isInactive) {
+      toast.error('Este negocio está inactivo temporalmente.');
+      return;
+    }
     setCart(prev => {
       const exists = prev.find(i => i.id === product.id);
       if (exists) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
@@ -241,7 +288,22 @@ const handleBook = async (c: any) => {
     );
   }
 
-  if (!gym) return <div>Negocio no encontrado</div>;
+  if (!gym) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-center space-y-4">
+        <h2 className="text-2xl font-bold text-white">Negocio no disponible</h2>
+        <p className="text-slate-400 text-sm max-w-sm">
+          Este negocio no existe o no está disponible por el momento.
+        </p>
+        <button
+          onClick={() => navigate('/gyms')}
+          className="flex items-center gap-2 text-white/80 hover:text-white text-sm font-bold bg-white/5 px-4 py-2 rounded-full border border-white/10 transition-all"
+        >
+          <ArrowLeft className="w-4 h-4" /> Volver a Negocios
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
@@ -253,344 +315,391 @@ const handleBook = async (c: any) => {
         initialData={editingProduct ? { ...editingProduct, gymId: id } : undefined}
       />
 
-      {/* Hero Section */}
-      <div className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group">
-        {/* Beautiful Dynamic Cover Image */}
-        <div className="absolute inset-0 bg-slate-950">
-          <img 
-            src={getBannerImage()} 
-            alt={gym.name}
-            className="w-full h-full object-cover opacity-40 group-hover:scale-105 group-hover:opacity-50 transition-all duration-1000" 
-          />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent z-10"></div>
-        
-        <div className="absolute bottom-10 left-10 right-10 z-20 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-4">
-            <button 
-              onClick={() => navigate('/gyms')}
-              className="flex items-center gap-2 text-white/60 hover:text-white mb-4 text-sm font-bold transition-all bg-white/5 w-fit px-4 py-2 rounded-full backdrop-blur-md border border-white/5"
+      {/* Banner de negocio inactivo (sin grisar, para que destaque) */}
+      {isInactive && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+          <div className="flex items-center gap-3 text-amber-300">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span className="text-sm font-medium">
+              {isAdmin
+                ? 'Este negocio está desactivado y no es visible para los clientes.'
+                : 'Este negocio está desactivado y no es visible para los clientes. Contacta al administrador para reactivarlo.'}
+            </span>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={handleReactivate}
+              disabled={reactivating}
+              className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 px-4 py-2 text-sm font-black text-black transition-all shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" /> Volver a Negocios
+              {reactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+              Reactivar negocio
             </button>
-            <div className="flex items-center gap-4">
-              <div className="bg-primary/20 p-4 rounded-3xl backdrop-blur-xl border border-primary/30">
-                <Activity className="w-10 h-10 text-primary-light" />
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">{gym.name}</h1>
-                <div className="flex flex-wrap items-center gap-4 mt-2">
-                  <span className="flex items-center gap-1.5 text-slate-400 text-sm font-bold bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    <MapPin className="w-3.5 h-3.5 text-primary-light" /> {gym.city || 'Sede Central'}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-slate-400 text-sm font-bold bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-current" /> 4.9 (Verificado)
-                  </span>
-                  {isMyGym && (
-                    <span className="flex items-center gap-1.5 text-primary-light text-sm font-bold bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                      <Settings className="w-3.5 h-3.5" /> Tu Local
+          )}
+        </div>
+      )}
+
+      {/* Contenido principal: se grisa si el negocio está inactivo */}
+      <div className={`space-y-8 transition-all ${isInactive ? 'grayscale opacity-70' : ''}`}>
+        {/* Hero Section */}
+        <div className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group">
+          {/* Beautiful Dynamic Cover Image */}
+          <div className="absolute inset-0 bg-slate-950">
+            <img 
+              src={getBannerImage()} 
+              alt={gym.name}
+              className="w-full h-full object-cover opacity-40 group-hover:scale-105 group-hover:opacity-50 transition-all duration-1000" 
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent z-10"></div>
+          
+          <div className="absolute bottom-10 left-10 right-10 z-20 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-4">
+              <button 
+                onClick={() => navigate('/gyms')}
+                className="flex items-center gap-2 text-white/60 hover:text-white mb-4 text-sm font-bold transition-all bg-white/5 w-fit px-4 py-2 rounded-full backdrop-blur-md border border-white/5"
+              >
+                <ArrowLeft className="w-4 h-4" /> Volver a Negocios
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="bg-primary/20 p-4 rounded-3xl backdrop-blur-xl border border-primary/30">
+                  <Activity className="w-10 h-10 text-primary-light" />
+                </div>
+                <div>
+                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">{gym.name}</h1>
+                  <div className="flex flex-wrap items-center gap-4 mt-2">
+                    <span className="flex items-center gap-1.5 text-slate-400 text-sm font-bold bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                      <MapPin className="w-3.5 h-3.5 text-primary-light" /> {gym.city || 'Sede Central'}
                     </span>
-                  )}
+                    <span className="flex items-center gap-1.5 text-slate-400 text-sm font-bold bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                      <Star className="w-3.5 h-3.5 text-yellow-400 fill-current" /> 4.9 (Verificado)
+                    </span>
+                    {isMyGym && (
+                      <span className="flex items-center gap-1.5 text-primary-light text-sm font-bold bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                        <Settings className="w-3.5 h-3.5" /> Tu Local
+                      </span>
+                    )}
+                    {isInactive && (
+                      <span className="flex items-center gap-1.5 text-zinc-200 text-sm font-black bg-zinc-700 px-3 py-1 rounded-full border border-zinc-500/40 tracking-wider">
+                        <Power className="w-3.5 h-3.5" /> INACTIVO
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex gap-3">
-            {isMyGym ? (
-              <button
-                onClick={() => {
-                  if (activeTab === 'plans') {
-                    setEditingPlan(null);
-                    setShowPlanModal(true);
-                  } else {
-                    setEditingProduct(null);
-                    setShowProductModal(true);
-                  }
-                }}
-                className="bg-primary text-white font-black px-6 py-3 rounded-2xl shadow-xl hover:bg-primary-dark transition-all text-sm flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{activeTab === 'plans' ? 'Añadir Membresía' : 'Añadir Producto'}</span>
-              </button>
-            ) : (
-              <>
-                {cartCount > 0 && (
-                  <button
-                    onClick={() => setShowCart(true)}
-                    className="relative bg-white/10 text-white font-black px-5 py-3 rounded-2xl shadow-xl hover:bg-white/20 transition-all text-sm flex items-center gap-2 border border-white/20"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Carrito
-                    <span className="absolute -top-2 -right-2 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
-                  </button>
-                )}
-                <button className="bg-white text-slate-900 font-black px-8 py-3 rounded-2xl shadow-xl hover:scale-105 transition-all text-sm">
-                  Seguir Negocio
+            
+            <div className="flex gap-3">
+              {isMyGym ? (
+                <button
+                  disabled={isInactive}
+                  onClick={() => {
+                    if (activeTab === 'plans') {
+                      setEditingPlan(null);
+                      setShowPlanModal(true);
+                    } else {
+                      setEditingProduct(null);
+                      setShowProductModal(true);
+                    }
+                  }}
+                  className="bg-primary text-white font-black px-6 py-3 rounded-2xl shadow-xl hover:bg-primary-dark transition-all text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{activeTab === 'plans' ? 'Añadir Membresía' : 'Añadir Producto'}</span>
                 </button>
-              </>
-            )}
+              ) : (
+                <>
+                  {cartCount > 0 && !isInactive && (
+                    <button
+                      onClick={() => setShowCart(true)}
+                      className="relative bg-white/10 text-white font-black px-5 py-3 rounded-2xl shadow-xl hover:bg-white/20 transition-all text-sm flex items-center gap-2 border border-white/20"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Carrito
+                      <span className="absolute -top-2 -right-2 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+                    </button>
+                  )}
+                  <button
+                    disabled={isInactive}
+                    className="bg-white text-slate-900 font-black px-8 py-3 rounded-2xl shadow-xl hover:scale-105 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    Seguir Negocio
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Info & Navigation */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Sidebar Info */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-card p-6 border-white/5 space-y-4">
-             <h3 className="text-white font-bold text-sm uppercase tracking-widest opacity-50">Información</h3>
-             <p className="text-slate-400 text-sm leading-relaxed">
-               {gym.description ? gym.description.split('\n\n[Categorías:')[0] : 'Este negocio ofrece los mejores servicios deportivos del sector.'}
-             </p>
-             <div className="space-y-3 pt-4">
-               <div className="flex flex-col gap-2">
-                 <div className="flex items-center justify-between gap-3 text-sm text-slate-300">
-                   <div className="flex items-center gap-3">
-                     <Phone className="w-4 h-4 text-primary-light" /> {gym.phone || '+51 900 100 200'}
+        {/* Info & Navigation */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Info */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="glass-card p-6 border-white/5 space-y-4">
+               <h3 className="text-white font-bold text-sm uppercase tracking-widest opacity-50">Información</h3>
+               <p className="text-slate-400 text-sm leading-relaxed">
+                 {gym.description ? gym.description.split('\n\n[Categorías:')[0] : 'Este negocio ofrece los mejores servicios deportivos del sector.'}
+               </p>
+               <div className="space-y-3 pt-4">
+                 <div className="flex flex-col gap-2">
+                   <div className="flex items-center justify-between gap-3 text-sm text-slate-300">
+                     <div className="flex items-center gap-3">
+                       <Phone className="w-4 h-4 text-primary-light" /> {gym.phone || '+51 900 100 200'}
+                     </div>
+                     {gym.phone && !isInactive && (
+                       <a
+                         href={`https://api.whatsapp.com/send?phone=${gym.phone.replace(/[^0-9+]/g, '')}&text=${encodeURIComponent(`Hola ${gym.name}, me gustaría consultar sobre sus planes y clases en Hercix.`)}`}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="bg-green-500/10 hover:bg-green-500/20 text-green-400 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border border-green-500/20 flex items-center gap-1"
+                         title="Chatear con el local"
+                       >
+                         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                         Chatear
+                       </a>
+                     )}
                    </div>
-                   {gym.phone && (
-                     <a
-                       href={`https://api.whatsapp.com/send?phone=${gym.phone.replace(/[^0-9+]/g, '')}&text=${encodeURIComponent(`Hola ${gym.name}, me gustaría consultar sobre sus planes y clases en Hercix.`)}`}
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       className="bg-green-500/10 hover:bg-green-500/20 text-green-400 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border border-green-500/20 flex items-center gap-1"
-                       title="Chatear con el local"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                       Chatear
-                     </a>
-                   )}
+                 </div>
+                 <div className="flex items-center gap-3 text-sm text-slate-300">
+                   <Globe className="w-4 h-4 text-primary-light" /> {gym.website || 'www.negocio.com'}
                  </div>
                </div>
-               <div className="flex items-center gap-3 text-sm text-slate-300">
-                 <Globe className="w-4 h-4 text-primary-light" /> {gym.website || 'www.negocio.com'}
+            </div>
+
+            <div className="glass-card p-6 border-white/5">
+               <div className="flex justify-between items-center mb-4">
+                 <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Estado</span>
+                 {isInactive ? (
+                   <span className="bg-zinc-700 text-zinc-300 text-[10px] px-2 py-0.5 rounded border border-zinc-500/40 font-black">INACTIVO</span>
+                 ) : (
+                   <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded border border-green-500/20 font-black">OPEN</span>
+                 )}
                </div>
-             </div>
+               {isInactive ? (
+                 <p className="text-slate-400 text-sm font-bold">No disponible temporalmente</p>
+               ) : (
+                 <>
+                   <p className="text-white text-sm font-bold">{gym.openDays || 'Lunes a Sábado'}</p>
+                   <p className="text-slate-500 text-xs mt-1">{gym.openTime || '06:00 AM'} - {gym.closeTime || '10:00 PM'}</p>
+                 </>
+               )}
+            </div>
           </div>
 
-          <div className="glass-card p-6 border-white/5">
-             <div className="flex justify-between items-center mb-4">
-               <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Estado</span>
-               <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded border border-green-500/20 font-black">OPEN</span>
-             </div>
-             <p className="text-white text-sm font-bold">{gym.openDays || 'Lunes a Sábado'}</p>
-             <p className="text-slate-500 text-xs mt-1">{gym.openTime || '06:00 AM'} - {gym.closeTime || '10:00 PM'}</p>
-          </div>
-        </div>
-
-        {/* Content Tabs */}
-        <div className="lg:col-span-3 space-y-6">
-          <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 max-w-md">
-            {[
-              { id: 'products', label: 'Tienda', icon: ShoppingBag, count: products.length },
-              { id: 'plans', label: 'Membresías', icon: CreditCard, count: plans.length },
-              { id: 'classes', label: 'Clases', icon: Calendar, count: classes.length },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-primary text-white shadow-lg' 
-                    : 'text-slate-500 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-                {tab.count > 0 && <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-md">{tab.count}</span>}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab Content */}
-          <div className="min-h-[400px]">
-            <AnimatePresence mode="wait">
-              {activeTab === 'products' && (
-                <motion.div 
-                  key="products" 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-4"
+          {/* Content Tabs */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 max-w-md">
+              {[
+                { id: 'products', label: 'Tienda', icon: ShoppingBag, count: products.length },
+                { id: 'plans', label: 'Membresías', icon: CreditCard, count: plans.length },
+                { id: 'classes', label: 'Clases', icon: Calendar, count: classes.length },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
+                    activeTab === tab.id 
+                      ? 'bg-primary text-white shadow-lg' 
+                      : 'text-slate-500 hover:text-white hover:bg-white/5'
+                  }`}
                 >
-                  {/* Owner: Add Product Banner */}
-                  {isMyGym && (
-                    <button
-                      onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
-                      className="w-full border-2 border-dashed border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10 rounded-2xl py-5 flex items-center justify-center gap-3 text-primary-light font-bold transition-all group"
-                    >
-                      <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
-                      Añadir Nuevo Producto a tu Tienda
-                    </button>
-                  )}
+                  <tab.icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                  {tab.count > 0 && <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-md">{tab.count}</span>}
+                </button>
+              ))}
+            </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.length > 0 ? products.map(p => (
-                      <div key={p.id} className="glass-card p-4 border-white/5 hover:border-primary/20 transition-all group relative">
-                        {/* Owner Controls */}
-                        {isMyGym && (
-                          <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEditProduct(p)} className="p-1.5 bg-slate-700 hover:bg-primary rounded-lg text-white transition-colors" title="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDeleteProduct(p.id, p.name)} disabled={deletingProductId === p.id} className="p-1.5 bg-slate-700 hover:bg-red-500 rounded-lg text-white transition-colors disabled:opacity-50" title="Eliminar">
-                              {deletingProductId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        )}
-                        <div className="h-40 bg-slate-800 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
-                          {p.imageUrl ? (
-                            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <ShoppingBag className="w-12 h-12 text-slate-700 opacity-20 group-hover:scale-110 transition-transform" />
-                          )}
-                        </div>
-                        <span className="text-[10px] font-black text-primary-light uppercase tracking-widest">{p.category}</span>
-                        <h4 className="text-white font-bold mt-1">{p.name}</h4>
-                        <p className="text-slate-500 text-xs mt-1 line-clamp-1">{p.description}</p>
-                        <div className="mt-4 flex justify-between items-center">
-                          <span className="text-xl font-black text-white">${Number(p.price).toFixed(2)}</span>
-                          {!isMyGym ? (
-                            <button
-                              onClick={() => addToCart(p)}
-                              className="flex items-center gap-1.5 bg-primary/20 hover:bg-primary text-primary-light hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-primary/20 hover:border-primary active:scale-95"
-                            >
-                              <ShoppingCart className="w-3.5 h-3.5" /> Añadir
-                            </button>
-                          ) : (
-                            <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-lg">Stock: {p.stock ?? '—'}</span>
-                          )}
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="col-span-full py-20 text-center text-slate-500 italic">
-                        {isMyGym ? 'Aún no has añadido productos. ¡Usa el botón de arriba!' : 'No hay productos disponibles para este local aún.'}
-                      </div>
+            {/* Tab Content */}
+            <div className="min-h-[400px]">
+              <AnimatePresence mode="wait">
+                {activeTab === 'products' && (
+                  <motion.div 
+                    key="products" 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-4"
+                  >
+                    {/* Owner: Add Product Banner */}
+                    {isMyGym && !isInactive && (
+                      <button
+                        onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
+                        className="w-full border-2 border-dashed border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10 rounded-2xl py-5 flex items-center justify-center gap-3 text-primary-light font-bold transition-all group"
+                      >
+                        <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
+                        Añadir Nuevo Producto a tu Tienda
+                      </button>
                     )}
-                  </div>
-                </motion.div>
-              )}
 
-              {activeTab === 'plans' && (
-                <motion.div 
-                  key="plans" 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-4"
-                >
-                  {/* Owner: Add Plan Banner */}
-                  {isMyGym && (
-                    <button
-                      onClick={() => { setEditingPlan(null); setShowPlanModal(true); }}
-                      className="w-full border-2 border-dashed border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10 rounded-2xl py-5 flex items-center justify-center gap-3 text-primary-light font-bold transition-all group"
-                    >
-                      <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
-                      Añadir Nuevo Plan de Membresía
-                    </button>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {plans.length > 0 ? plans.map(p => (
-                      <div key={p.id} className="glass-card p-8 border-white/5 relative overflow-hidden group">
-                        {/* Owner Controls */}
-                        {isMyGym && (
-                          <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEditPlan(p)} className="p-1.5 bg-slate-700 hover:bg-primary rounded-lg text-white transition-colors" title="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDeletePlan(p.id, p.name)} className="p-1.5 bg-slate-700 hover:bg-red-500 rounded-lg text-white transition-colors" title="Eliminar">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {products.length > 0 ? products.map(p => (
+                        <div key={p.id} className="glass-card p-4 border-white/5 hover:border-primary/20 transition-all group relative">
+                          {/* Owner Controls */}
+                          {isMyGym && !isInactive && (
+                            <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleEditProduct(p)} className="p-1.5 bg-slate-700 hover:bg-primary rounded-lg text-white transition-colors" title="Editar">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDeleteProduct(p.id, p.name)} disabled={deletingProductId === p.id} className="p-1.5 bg-slate-700 hover:bg-red-500 rounded-lg text-white transition-colors disabled:opacity-50" title="Eliminar">
+                                {deletingProductId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          )}
+                          <div className="h-40 bg-slate-800 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <ShoppingBag className="w-12 h-12 text-slate-700 opacity-20 group-hover:scale-110 transition-transform" />
+                            )}
                           </div>
-                        )}
-                        <div className="absolute -right-4 -bottom-4 p-8 opacity-5">
-                           <CreditCard className="w-24 h-24 text-white" />
-                        </div>
-                        <h4 className="text-2xl font-black text-white">{p.name}</h4>
-                        <p className="text-slate-400 text-sm mt-2">{p.description}</p>
-                        <div className="mt-8 flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-white px-2">${Number(p.price).toFixed(0)}</span>
-                          <span className="text-slate-500 text-sm uppercase font-bold tracking-widest">/ {p.durationDays} Días</span>
-                        </div>
-                        <ul className="mt-6 space-y-3">
-                           {[
-                             'Acceso completo a instalaciones', 
-                             'Entrenador de piso corporativo', 
-                             'App de seguimiento incluida'
-                           ].map((f, i) => (
-                             <li key={i} className="flex items-center gap-2 text-xs text-slate-400">
-                               <CheckCircle2 className="w-3.5 h-3.5 text-primary-light" /> {f}
-                             </li>
-                           ))}
-                        </ul>
-                        <button 
-                          onClick={() => handleSubscribe(p)}
-                          disabled={payingPlanId === p.id}
-                          className="w-full mt-8 py-3 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95 flex items-center justify-center gap-2"
-                        >
-                          {payingPlanId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Suscribirme Hoy'}
-                        </button>
-                      </div>
-                    )) : (
-                      <div className="col-span-full py-20 text-center text-slate-500 italic">No hay planes de membresía activos.</div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-
-              {activeTab === 'classes' && (
-                <motion.div 
-                  key="classes" 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-4"
-                >
-                  {classes.length > 0 ? classes.map(c => (
-                    <div key={c.id} className="glass-card p-6 border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 group">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-slate-800 p-4 rounded-2xl group-hover:bg-primary/20 transition-colors">
-                          <Calendar className={`w-6 h-6 ${true ? 'text-primary-light' : 'text-slate-500'}`} />
-                        </div>
-                        <div>
-                          <h4 className="text-white font-bold text-lg">{c.title}</h4>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">
-                            <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> {c.capacity} Cupos</span>
-                            <span>•</span>
-                            <span className="text-primary-light">Programado</span>
+                          <span className="text-[10px] font-black text-primary-light uppercase tracking-widest">{p.category}</span>
+                          <h4 className="text-white font-bold mt-1">{p.name}</h4>
+                          <p className="text-slate-500 text-xs mt-1 line-clamp-1">{p.description}</p>
+                          <div className="mt-4 flex justify-between items-center">
+                            <span className="text-xl font-black text-white">${Number(p.price).toFixed(2)}</span>
+                            {!isMyGym ? (
+                              <button
+                                onClick={() => addToCart(p)}
+                                disabled={isInactive}
+                                className="flex items-center gap-1.5 bg-primary/20 hover:bg-primary text-primary-light hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-primary/20 hover:border-primary active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/20 disabled:hover:text-primary-light"
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5" /> Añadir
+                              </button>
+                            ) : (
+                              <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-lg">Stock: {p.stock ?? '—'}</span>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4 border-t md:border-t-0 pt-4 md:pt-0 border-white/5">
-                        <div className="text-right">
-                          <p className="text-white font-black">{new Date(c.scheduledAt).toLocaleDateString()}</p>
-                          <p className="text-slate-500 text-xs uppercase font-bold">10:00 AM</p>
-                          <p className="text-green-400 font-bold text-sm">
-                            {Number(c.price) > 0 ? `S/ ${Number(c.price).toFixed(2)}` : 'Gratis'}
-                          </p>
+                      )) : (
+                        <div className="col-span-full py-20 text-center text-slate-500 italic">
+                          {isMyGym && !isInactive ? 'Aún no has añadido productos. ¡Usa el botón de arriba!' : 'No hay productos disponibles para este local aún.'}
                         </div>
-                        <button 
-                          onClick={() => handleBook(c)}
-                          disabled={bookingId === c.id}
-                          className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white px-6 py-2 rounded-xl text-sm font-bold border border-white/10 transition-all flex items-center justify-center min-w-[120px]">
-                          {bookingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reservar'}
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  )) : (
-                    <div className="col-span-full py-20 text-center text-slate-500 italic">No hay clases programadas actualmente.</div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </motion.div>
+                )}
+
+                {activeTab === 'plans' && (
+                  <motion.div 
+                    key="plans" 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-4"
+                  >
+                    {/* Owner: Add Plan Banner */}
+                    {isMyGym && !isInactive && (
+                      <button
+                        onClick={() => { setEditingPlan(null); setShowPlanModal(true); }}
+                        className="w-full border-2 border-dashed border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10 rounded-2xl py-5 flex items-center justify-center gap-3 text-primary-light font-bold transition-all group"
+                      >
+                        <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
+                        Añadir Nuevo Plan de Membresía
+                      </button>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {plans.length > 0 ? plans.map(p => (
+                        <div key={p.id} className="glass-card p-8 border-white/5 relative overflow-hidden group">
+                          {/* Owner Controls */}
+                          {isMyGym && !isInactive && (
+                            <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleEditPlan(p)} className="p-1.5 bg-slate-700 hover:bg-primary rounded-lg text-white transition-colors" title="Editar">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDeletePlan(p.id, p.name)} className="p-1.5 bg-slate-700 hover:bg-red-500 rounded-lg text-white transition-colors" title="Eliminar">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="absolute -right-4 -bottom-4 p-8 opacity-5">
+                             <CreditCard className="w-24 h-24 text-white" />
+                          </div>
+                          <h4 className="text-2xl font-black text-white">{p.name}</h4>
+                          <p className="text-slate-400 text-sm mt-2">{p.description}</p>
+                          <div className="mt-8 flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-white px-2">${Number(p.price).toFixed(0)}</span>
+                            <span className="text-slate-500 text-sm uppercase font-bold tracking-widest">/ {p.durationDays} Días</span>
+                          </div>
+                          <ul className="mt-6 space-y-3">
+                             {[
+                               'Acceso completo a instalaciones', 
+                               'Entrenador de piso corporativo', 
+                               'App de seguimiento incluida'
+                             ].map((f, i) => (
+                               <li key={i} className="flex items-center gap-2 text-xs text-slate-400">
+                                 <CheckCircle2 className="w-3.5 h-3.5 text-primary-light" /> {f}
+                               </li>
+                             ))}
+                          </ul>
+                          <button 
+                            onClick={() => handleSubscribe(p)}
+                            disabled={payingPlanId === p.id || isInactive}
+                            className="w-full mt-8 py-3 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            {payingPlanId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : isInactive ? 'No disponible' : 'Suscribirme Hoy'}
+                          </button>
+                        </div>
+                      )) : (
+                        <div className="col-span-full py-20 text-center text-slate-500 italic">No hay planes de membresía activos.</div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'classes' && (
+                  <motion.div 
+                    key="classes" 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-4"
+                  >
+                    {classes.length > 0 ? classes.map(c => (
+                      <div key={c.id} className="glass-card p-6 border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 group">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-slate-800 p-4 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                            <Calendar className={`w-6 h-6 ${true ? 'text-primary-light' : 'text-slate-500'}`} />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-bold text-lg">{c.title}</h4>
+                            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">
+                              <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> {c.capacity} Cupos</span>
+                              <span>•</span>
+                              <span className="text-primary-light">Programado</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 border-t md:border-t-0 pt-4 md:pt-0 border-white/5">
+                          <div className="text-right">
+                            <p className="text-white font-black">{new Date(c.scheduledAt).toLocaleDateString()}</p>
+                            <p className="text-slate-500 text-xs uppercase font-bold">10:00 AM</p>
+                            <p className="text-green-400 font-bold text-sm">
+                              {Number(c.price) > 0 ? `S/ ${Number(c.price).toFixed(2)}` : 'Gratis'}
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => handleBook(c)}
+                            disabled={bookingId === c.id || isInactive}
+                            className="bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-xl text-sm font-bold border border-white/10 transition-all flex items-center justify-center min-w-[120px]">
+                            {bookingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reservar'}
+                          </button>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="col-span-full py-20 text-center text-slate-500 italic">No hay clases programadas actualmente.</div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Cart Drawer - Athletes only */}
-      {showCart && !isMyGym && (
+      {showCart && !isMyGym && !isInactive && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div onClick={() => setShowCart(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <motion.div

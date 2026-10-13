@@ -10,15 +10,37 @@ interface CompleteProfileModalProps {
   onClose?: () => void;
 }
 
+// Límites de longitud
+const DNI_MAX_LENGTH = 8;    // DNI Perú. Si aceptas cédulas de otros países, súbelo (ej. 10)
+const PHONE_MAX_LENGTH = 12; // "+" + 11 dígitos (ej. +51785768930)
+const NAME_MAX_LENGTH = 60;
+
 // CAMBIO: helper para detectar emails
 const looksLikeEmail = (v?: string) => !!v && /\S+@\S+\.\S+/.test(v.trim());
+
+// Solo dígitos
+const onlyDigits = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max);
+
+// Siempre "+" al inicio seguido solo de dígitos (vacío si no hay dígitos)
+const cleanPhone = (raw: string, max: number) => {
+  const digits = raw.replace(/\D/g, '');
+  return digits ? `+${digits}`.slice(0, max) : '';
+};
+
+// Solo letras (con tildes, ñ, ü) y espacios; sin espacios dobles ni al inicio
+const cleanName = (raw: string, max: number) =>
+  raw
+    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^\s/, '')
+    .slice(0, max);
 
 export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onSuccess, onClose }) => {
   const { user, updateUserProfile } = useAuth();
   const [formData, setFormData] = useState({
-    name: looksLikeEmail(user?.name) ? '' : user?.name || '', // CAMBIO
-    phone: user?.phone || '',
-    dni: user?.dni || '',
+    name: looksLikeEmail(user?.name) ? '' : cleanName(user?.name || '', NAME_MAX_LENGTH),
+    phone: cleanPhone(user?.phone || '', PHONE_MAX_LENGTH),
+    dni: onlyDigits(user?.dni || '', DNI_MAX_LENGTH),
     role: user?.role || 'USER',
   });
 
@@ -27,7 +49,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
   // CAMBIO: si el usuario carga después, rellena solo si es un nombre real
   useEffect(() => {
     if (user?.name && !looksLikeEmail(user.name)) {
-      setFormData((f) => (f.name ? f : { ...f, name: user.name }));
+      setFormData((f) => (f.name ? f : { ...f, name: cleanName(user.name, NAME_MAX_LENGTH) }));
     }
   }, [user?.name]);
 
@@ -35,27 +57,27 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
     e.preventDefault();
 
     // CAMBIO: validación con nombre limpio
-    const cleanName = formData.name.trim();
-    if (!cleanName) {
+    const finalName = formData.name.trim();
+    if (!finalName) {
       toast.error(' Por favor, ingresa tu nombre completo.');
       return;
     }
-    if (looksLikeEmail(cleanName)) {
-      toast.error(' El nombre no puede ser un correo electrónico.');
+    if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$/.test(finalName)) {
+      toast.error(' El nombre solo puede contener letras y espacios.');
       return;
     }
-    if (!formData.phone.trim() || formData.phone.length < 7) {
-      toast.error(' Por favor, ingresa un número telefónico válido.');
+    if (!/^\+\d{11}$/.test(formData.phone)) {
+      toast.error(' El teléfono debe tener el formato +51785768930 (+ y 11 dígitos).');
       return;
     }
-    if (!formData.dni.trim() || formData.dni.length < 5) {
-      toast.error(' Por favor, ingresa un DNI / Cédula válido.');
+    if (!/^\d{8}$/.test(formData.dni)) {
+      toast.error(' El DNI debe tener 8 dígitos numéricos.');
       return;
     }
 
     setLoading(true);
     try {
-      await updateUserProfile({ ...formData, name: cleanName }); // CAMBIO
+      await updateUserProfile({ ...formData, name: finalName });
       toast.success('🎉 ¡Perfil completado con éxito! Bienvenido a Hercix.');
       if (onSuccess) onSuccess();
     } catch (err: any) {
@@ -92,9 +114,9 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
             <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-secondary/20 blur-3xl animate-pulse" />
 
             {onClose && (
-              <button 
-                type="button" 
-                onClick={onClose} 
+              <button
+                type="button"
+                onClick={onClose}
                 className="absolute top-6 right-6 text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-all z-10"
               >
                 <X className="w-5 h-5" />
@@ -122,15 +144,18 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                 <input
                   required
                   type="text"
-                  autoComplete="name"  
+                  autoComplete="name"
+                  maxLength={NAME_MAX_LENGTH}
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: cleanName(e.target.value, NAME_MAX_LENGTH) })
+                  }
                   placeholder="Ej. Juan Pérez"
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all placeholder:text-slate-600"
                 />
               </div>
 
-              {/* DNI / Documento input */}
+              {/* DNI / Documento input (solo números) */}
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-primary-light" /> DNI / Cédula de Identidad
@@ -138,14 +163,19 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                 <input
                   required
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={DNI_MAX_LENGTH}
                   value={formData.dni}
-                  onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                  placeholder="Ej. 102938475"
+                  onChange={(e) =>
+                    setFormData({ ...formData, dni: onlyDigits(e.target.value, DNI_MAX_LENGTH) })
+                  }
+                  placeholder="Ej. 10293847"
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all placeholder:text-slate-600"
                 />
               </div>
 
-              {/* Teléfono input */}
+              {/* Teléfono input ("+" automático + 11 dígitos) */}
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-primary-light" /> Número Telefónico
@@ -153,9 +183,13 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                 <input
                   required
                   type="tel"
+                  inputMode="tel"
+                  maxLength={PHONE_MAX_LENGTH}
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Ej. +51 987 654 321"
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: cleanPhone(e.target.value, PHONE_MAX_LENGTH) })
+                  }
+                  placeholder="Ej. +51987654321"
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all placeholder:text-slate-600"
                 />
               </div>
@@ -169,15 +203,15 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                   {[
                     { value: 'USER', label: 'Atleta', emoji: '👤' },
                     { value: 'TRAINER', label: 'Entrenador', emoji: '⏱️' },
-                    { value: 'GYM_OWNER', label: 'Dueño', emoji: '🏢' }
-                  ].map(r => (
+                    { value: 'GYM_OWNER', label: 'Dueño', emoji: '🏢' },
+                  ].map((r) => (
                     <button
                       key={r.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, role: r.value })}
                       className={`p-3.5 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-xs font-bold uppercase tracking-wider ${
-                        formData.role === r.value 
-                          ? 'bg-primary/20 border-primary text-white shadow-lg shadow-primary/10' 
+                        formData.role === r.value
+                          ? 'bg-primary/20 border-primary text-white shadow-lg shadow-primary/10'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
                       }`}
                     >
@@ -186,7 +220,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
                     </button>
                   ))}
                 </div>
-                 {formData.role !== 'USER' && (
+                {formData.role !== 'USER' && (
                   <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-[10px] text-yellow-400 mt-2 flex items-center gap-2">
                     <span className="animate-pulse text-base shrink-0">⚠️</span>
                     <span>Los roles de **Entrenador** y **Dueño** no se activarán de forma directa. Tu solicitud quedará en estado **PENDIENTE**. Un administrador del sistema (como Mario) deberá aprobarla desde su panel antes de que puedas acceder.</span>

@@ -1,14 +1,52 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/auth-context';
-import { Building2, Dumbbell, Users, LogIn, ArrowLeft } from 'lucide-react';
+import { useAuth, ROLE_LABELS } from '../../context/auth-context';
+import type { Role } from '../../context/auth-context';
+import { Building2, Dumbbell, Users, LogIn, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+
+interface PortalCard {
+  title: string;
+  icon: React.ElementType;
+  desc: string;
+  color: string;
+  accent: string;
+  image?: string;
+  allowSignUp: boolean;
+  portalRole: Role;
+}
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const roles = [
+  // Si el backend/contexto cerró la sesión porque el perfil elegido no coincide con la cuenta
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('denied') === 'role_mismatch') {
+      const role = params.get('role') as Role | null;
+      const label = role && ROLE_LABELS[role] ? ROLE_LABELS[role] : 'seleccionado';
+      toast.error(
+        `Esta cuenta no tiene acceso al perfil ${label}. Ingresa con el perfil que corresponde a tu cuenta.`,
+      );
+      // Limpia la URL para que el aviso no se repita al recargar
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
+  const roles: PortalCard[] = [
+    {
+      // Internamente es el rol ADMIN; en pantalla se muestra como "Superadmin"
+      title: 'Superadmin',
+      icon: ShieldCheck,
+      desc: 'Control total de la plataforma: usuarios, solicitudes, soporte y métricas globales.',
+      color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-400Hover',
+      accent: 'bg-purple-500',
+      image: '/assets/super_admin_gateway.png',
+      allowSignUp: false,
+      portalRole: 'ADMIN',
+    },
     {
       title: 'Dueño (Owner)',
       icon: Building2,
@@ -17,6 +55,7 @@ const LoginPage: React.FC = () => {
       accent: 'bg-primary',
       image: '/assets/gym_owner_gateway.png',
       allowSignUp: false,
+      portalRole: 'GYM_OWNER',
     },
     {
       title: 'Coach / Entrenador',
@@ -26,6 +65,7 @@ const LoginPage: React.FC = () => {
       accent: 'bg-accent',
       image: '/assets/coach_gateway.png',
       allowSignUp: false,
+      portalRole: 'TRAINER',
     },
     {
       title: 'Atleta / Usuario',
@@ -35,6 +75,7 @@ const LoginPage: React.FC = () => {
       accent: 'bg-green-500',
       image: '/assets/athlete_gateway.png',
       allowSignUp: true,
+      portalRole: 'USER',
     },
   ];
 
@@ -54,7 +95,7 @@ const LoginPage: React.FC = () => {
       {/* Background glowing design */}
       <div className="absolute -top-40 -left-40 rounded-full w-[600px] h-[600px] bg-primary/10 blur-3xl"></div>
       <div className="absolute -bottom-40 -right-40 rounded-full w-[600px] h-[600px] bg-accent/10 blur-3xl"></div>
- 
+
       {/* Header Info */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -68,8 +109,8 @@ const LoginPage: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Interactive Gateway Cards Grid - Symmetric 3-column Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-10 mb-8">
+      {/* Interactive Gateway Cards Grid - 4 perfiles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full max-w-7xl relative z-10 mb-8">
         {roles.map((r, i) => {
           const Icon = r.icon;
           return (
@@ -79,19 +120,25 @@ const LoginPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1, duration: 0.5 }}
               whileHover={{ y: -5, scale: 1.02 }}
-              onClick={() => login({ allowSignUp: r.allowSignUp })}
+              onClick={() => login({ allowSignUp: r.allowSignUp, portalRole: r.portalRole })}
               className={`glass-card p-5 border border-white/5 bg-gradient-to-br ${r.color.split(' ')[0]} ${r.color.split(' ')[1]} hover:border-white/20 transition-all cursor-pointer group flex flex-col justify-between`}
             >
               <div>
                 {/* Image Container with Lucide Icon Badge Overlay */}
                 <div className="relative w-full h-40 rounded-2xl overflow-hidden mb-4 border border-white/10">
-                  <img 
-                    src={r.image} 
-                    alt={r.title} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                  />
+                  {r.image ? (
+                    <img
+                      src={r.image}
+                      alt={r.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-purple-900/60 via-slate-900 to-slate-950 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                      <Icon className="w-16 h-16 text-purple-300/40" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent"></div>
-                  
+
                   {/* Badge floating */}
                   <div className="absolute top-3 right-3 bg-slate-950/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] uppercase font-bold text-slate-300">
                     Ingreso Seguro
@@ -106,7 +153,7 @@ const LoginPage: React.FC = () => {
                 <h3 className="text-xl font-bold text-white group-hover:text-primary-light transition-colors">{r.title}</h3>
                 <p className="text-slate-400 text-xs mt-2 leading-relaxed">{r.desc}</p>
               </div>
-              
+
               <div className="mt-5 flex items-center gap-2 text-xs font-bold text-primary-light opacity-0 group-hover:opacity-100 transition-opacity">
                 <span>Ingresar ahora</span>
                 <LogIn className="w-3.5 h-3.5" />
@@ -115,8 +162,6 @@ const LoginPage: React.FC = () => {
           );
         })}
       </div>
-
-
 
       {/* Footer Branding */}
       <motion.div

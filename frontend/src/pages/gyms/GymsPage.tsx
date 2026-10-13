@@ -51,7 +51,7 @@ const GymCard: React.FC<{
     <motion.div
       whileHover={{ y: -5 }}
       onClick={() => navigate(`/gyms/${gym.id}`)}
-      className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all cursor-pointer flex flex-col justify-between"
+      className={`glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all cursor-pointer flex flex-col justify-between ${isInactive ? 'opacity-75' : ''}`}
     >
       <div>
         <div className="h-40 bg-slate-950 relative overflow-hidden">
@@ -125,12 +125,14 @@ const GymCard: React.FC<{
 
             {(isOwner || isAdmin) && (
               <>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
-                  className="text-slate-400 hover:text-white transition-colors text-xs"
-                >
-                  Editar
-                </button>
+                {(isAdmin || !isInactive) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(gym); }}
+                    className="text-slate-400 hover:text-white transition-colors text-xs"
+                  >
+                    Editar
+                  </button>
+                )}
 
                 {isAdmin && (
                   <button
@@ -197,7 +199,7 @@ const GymsPage: React.FC = () => {
       return next;
     }, { replace: true });
 
-  const hasActiveFilters = !!(selectedSport || selectedDistrict || statusFilter !== 'ALL');
+  const hasActiveFilters = !!(selectedSport || selectedDistrict);
   const canFilterByStatus = user?.role === 'ADMIN' || user?.role === 'GYM_OWNER';
 
   const fetchGyms = async () => {
@@ -301,7 +303,8 @@ const GymsPage: React.FC = () => {
 
   const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-  const filteredGyms = gyms.filter(g => {
+  // Filtros de búsqueda, deporte y distrito (sin el estado, para poder contar por estado)
+  const baseFilteredGyms = gyms.filter(g => {
     const s = normalize(search);
     const cleanDesc = g.description ? g.description.split('\n\n[Categorías:')[0] : '';
     const fields = [g.name, g.address, cleanDesc, g.city, g.district, g.province];
@@ -312,9 +315,19 @@ const GymsPage: React.FC = () => {
 
     const matchesDistrict = selectedDistrict === '' || (g.district && g.district.toLowerCase() === selectedDistrict.toLowerCase());
 
-    const matchesStatus = statusFilter === 'ALL' || g.status === statusFilter;
+    return matchesSearch && matchesSport && matchesDistrict;
+  });
 
-    return matchesSearch && matchesSport && matchesDistrict && matchesStatus;
+  const statusCounts = {
+    ALL: baseFilteredGyms.length,
+    ACTIVE: baseFilteredGyms.filter(g => g.status === 'ACTIVE').length,
+    INACTIVE: baseFilteredGyms.filter(g => g.status !== 'ACTIVE').length,
+  };
+
+  const filteredGyms = baseFilteredGyms.filter(g => {
+    if (statusFilter === 'ACTIVE') return g.status === 'ACTIVE';
+    if (statusFilter === 'INACTIVE') return g.status !== 'ACTIVE';
+    return true;
   });
 
   return (
@@ -395,30 +408,44 @@ const GymsPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Filtro por estado */}
+      {canFilterByStatus && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-slate-500 text-[11px] font-bold uppercase tracking-widest">
+            Filtrar por estado:
+          </span>
+          {([
+            { value: 'ALL', label: 'Todos', count: statusCounts.ALL },
+            { value: 'ACTIVE', label: 'Activos', count: statusCounts.ACTIVE },
+            { value: 'INACTIVE', label: 'Inactivos', count: statusCounts.INACTIVE },
+          ] as const).map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => updateStatusFilter(opt.value)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border transition-all ${
+                statusFilter === opt.value
+                  ? 'bg-primary text-white border-primary shadow-lg'
+                  : 'bg-white/5 text-slate-400 border-white/5 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {opt.label}
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-md ${
+                statusFilter === opt.value ? 'bg-white/20' : 'bg-white/10'
+              }`}>
+                {opt.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Panel de Filtros Desplegable */}
       {showFiltersPanel && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`glass-card p-6 grid grid-cols-1 gap-4 border-white/10 bg-slate-900/60 backdrop-blur-md rounded-2xl ${
-            canFilterByStatus ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
-          }`}
+          className="glass-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-white/10 bg-slate-900/60 backdrop-blur-md rounded-2xl"
         >
-          {canFilterByStatus && (
-            <div>
-              <label className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Estado</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => updateStatusFilter(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary-light cursor-pointer"
-              >
-                <option value="ALL">Todos</option>
-                <option value="ACTIVE">Activos</option>
-                <option value="INACTIVE">Inactivos</option>
-              </select>
-            </div>
-          )}
-
           <div>
             <label className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Deporte / Categoría</label>
             <select
@@ -453,7 +480,6 @@ const GymsPage: React.FC = () => {
                 onClick={() => {
                   setSelectedSport('');
                   setSelectedDistrict('');
-                  updateStatusFilter('ALL');
                 }}
                 className="w-full py-2.5 rounded-xl border border-red-500/20 hover:border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold transition-all text-xs active:scale-95 flex items-center justify-center gap-1.5"
               >
@@ -497,7 +523,11 @@ const GymsPage: React.FC = () => {
             <Dumbbell className="text-slate-500 w-12 h-12" />
           </div>
           <h2 className="text-xl font-bold text-white">No se encontraron gimnasios</h2>
-          <p className="text-slate-400 mt-2">Prueba ajustando tu búsqueda o registra el primero.</p>
+          <p className="text-slate-400 mt-2">
+            {statusFilter !== 'ALL'
+              ? 'No hay gimnasios con este estado. Prueba con otro filtro.'
+              : 'Prueba ajustando tu búsqueda o registra el primero.'}
+          </p>
         </div>
       )}
     </div>

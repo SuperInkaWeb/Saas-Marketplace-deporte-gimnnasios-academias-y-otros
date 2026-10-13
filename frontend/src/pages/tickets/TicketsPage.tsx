@@ -28,6 +28,7 @@ const AdminTicketsPanel: React.FC = () => {
   const [filter, setFilter] = useState('');
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchTickets = async () => {
@@ -71,9 +72,15 @@ const AdminTicketsPanel: React.FC = () => {
     } catch { toast.error('Error al eliminar'); }
   };
 
-  const filtered = tickets.filter(t =>
-    !filter || t.subject.toLowerCase().includes(filter.toLowerCase()) || t.user?.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filtered = tickets.filter(t => {
+  const q = filter.toLowerCase();
+  const matchesSearch =
+    !q ||
+    t.subject.toLowerCase().includes(q) ||
+    t.user?.name?.toLowerCase().includes(q);
+  const matchesStatus = !statusFilter || t.status === statusFilter;
+  return matchesSearch && matchesStatus;
+});
 
   const counts = { OPEN: 0, IN_REVIEW: 0, RESOLVED: 0, CLOSED: 0 } as any;
   tickets.forEach(t => counts[t.status]++);
@@ -87,15 +94,42 @@ const AdminTicketsPanel: React.FC = () => {
           </h1>
           <p className="text-slate-400 text-sm">Panel administrativo — todas las solicitudes de soporte</p>
         </div>
-        <button onClick={fetchTickets} className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-slate-300 hover:bg-white/10 transition-colors text-sm">
-          <RefreshCw className="w-4 h-4" /> Actualizar
-        </button>
+        <div className="flex items-center gap-3">
+  <div className="flex items-center gap-2">
+    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+      Filtro por estado:
+    </label>
+    <select
+      value={statusFilter}
+      onChange={e => setStatusFilter(e.target.value)}
+      className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-primary transition-all"
+    >
+      <option value="">Todos</option>
+      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+        <option key={key} value={key}>{cfg.label}</option>
+      ))}
+    </select>
+  </div>
+
+  <button
+    onClick={fetchTickets}
+    className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-slate-300 hover:bg-white/10 transition-colors text-sm"
+  >
+    <RefreshCw className="w-4 h-4" /> Actualizar
+  </button>
+</div>
       </div>
 
-      {/* Stats */}
+            {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <div key={key} className={`glass-card p-4 border border-white/5`}>
+          <div
+            key={key}
+            onClick={() => setStatusFilter(statusFilter === key ? '' : key)}
+            className={`glass-card p-4 border cursor-pointer transition-all ${
+              statusFilter === key ? 'border-primary' : 'border-white/5 hover:border-white/15'
+            }`}
+          >
             <p className={`text-xs font-bold uppercase tracking-wider ${cfg.color.split(' ')[0]}`}>{cfg.label}</p>
             <p className="text-3xl font-bold text-white mt-1">{counts[key]}</p>
           </div>

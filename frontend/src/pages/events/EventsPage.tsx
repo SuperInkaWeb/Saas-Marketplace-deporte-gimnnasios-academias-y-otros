@@ -34,6 +34,12 @@ const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: any; color: strin
   OTHER: { label: 'Otros', icon: Trophy, color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
 };
 
+const toLocalInputValue = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const EventCard: React.FC<{ event: any; onRegister: (e: any) => void; onEdit: (e: any) => void; user: any }> = ({ event, onRegister, onEdit, user }) => {
   const config = EVENT_TYPE_CONFIG[event.eventType] || EVENT_TYPE_CONFIG.TOURNAMENT;
   const Icon = config.icon;
@@ -76,7 +82,11 @@ const EventCard: React.FC<{ event: any; onRegister: (e: any) => void; onEdit: (e
         <div className="space-y-2 mb-4 mt-auto">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
             <Calendar className="w-4 h-4 text-primary-light flex-shrink-0" />
-            <span>{eventDate.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <span>
+              {eventDate.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+              {' · '}
+              {eventDate.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            </span>
           </div>
           {event.location && (
             <div className="flex items-center gap-2 text-slate-400 text-sm">
@@ -114,7 +124,7 @@ const EventCard: React.FC<{ event: any; onRegister: (e: any) => void; onEdit: (e
               <Ticket className="w-4 h-4" />
               {isPast ? 'Cerrado' : 'Inscribirse'}
             </button>
-          ) : (user?.role === 'GYM_OWNER' || user?.role === 'ADMIN') && event.organizerId === user?.id ? (
+          ) : (user?.role === 'ADMIN' || ((user?.role === 'GYM_OWNER' || user?.role === 'TRAINER') && event.organizerId === user?.id)) ? (
             <button
               onClick={() => onEdit(event)}
               className="bg-slate-800 text-slate-300 px-4 py-2 text-sm rounded-xl font-bold flex items-center gap-1.5 border border-white/5 hover:bg-slate-700 transition-all"
@@ -136,7 +146,7 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
     description: initialData?.description || '',
     eventType: initialData?.eventType || 'TOURNAMENT',
     price: initialData?.price || 0,
-    date: initialData?.date ? new Date(initialData.date).toISOString().slice(0, 16) : '',
+    date: initialData?.date ? toLocalInputValue(initialData.date) : '',
     location: initialData?.location || '',
     capacity: initialData?.capacity || '',
   });
@@ -236,7 +246,7 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
 
           <div className="space-y-2">
             <label className="text-slate-400 text-xs font-bold uppercase tracking-wider">Fecha y Hora</label>
-            <input required type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+            <input required type="datetime-local" value={form.date} min={initialData ? undefined : toLocalInputValue(new Date().toISOString())} onChange={e => setForm({ ...form, date: e.target.value })}
               className="bg-white/5 border-white/10 focus:border-primary-light w-full py-3 px-4 border rounded-xl text-white outline-none" />
           </div>
 
@@ -543,22 +553,25 @@ const EventsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [payingEvent, setPayingEvent] = useState<any>(null);
-  const { user } = useAuth();
+const [payingEvent, setPayingEvent] = useState<any>(null);
+const [showPast, setShowPast] = useState(false);
+const { user } = useAuth();
+const isStaff = !!user && ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user.role);
 
-  const fetchEvents = async () => {
-    try {
-      const { data } = await api.get('/events');
-      console.log('Fetched events:', data);
-      setEvents(data);
-    } catch (err) {
-      console.error('Error fetching events:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchEvents = async () => {
+  try {
+    const { data } = isStaff
+      ? await api.get('/events/manage', { params: { includePast: showPast } })
+      : await api.get('/events');
+    setEvents(data);
+  } catch (err) {
+    console.error('Error fetching events:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  useEffect(() => { fetchEvents(); }, []);
+useEffect(() => { fetchEvents(); }, [user?.id, showPast]);
 
   const handleRegister = (event: any) => {
     if (Number(event.price) > 0) {
@@ -666,6 +679,13 @@ const EventsPage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {isStaff && (
+  <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer w-fit">
+    <input type="checkbox" checked={showPast} onChange={e => setShowPast(e.target.checked)} />
+    Mostrar eventos ya iniciados
+  </label>
+)}
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
