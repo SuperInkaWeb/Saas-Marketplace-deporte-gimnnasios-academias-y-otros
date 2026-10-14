@@ -1,10 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, ROLE_LABELS } from '../../context/auth-context';
 import type { Role } from '../../context/auth-context';
-import { Building2, Dumbbell, Users, LogIn, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Building2, Dumbbell, Users, LogIn, ArrowLeft, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 
 interface PortalCard {
   title: string;
@@ -20,33 +19,20 @@ interface PortalCard {
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [deniedLabel, setDeniedLabel] = useState<string | null>(null);
 
-  // Si el backend/contexto cerró la sesión porque el perfil elegido no coincide con la cuenta
+  // Si la cuenta no tiene el perfil elegido, el contexto vuelve aquí con ?denied=role_mismatch
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('denied') === 'role_mismatch') {
       const role = params.get('role') as Role | null;
-      const label = role && ROLE_LABELS[role] ? ROLE_LABELS[role] : 'seleccionado';
-      toast.error(
-        `Esta cuenta no tiene acceso al perfil ${label}. Ingresa con el perfil que corresponde a tu cuenta.`,
-      );
-      // Limpia la URL para que el aviso no se repita al recargar
+      setDeniedLabel(role && ROLE_LABELS[role] ? ROLE_LABELS[role] : 'seleccionado');
+      // Limpia la URL para que el aviso no reaparezca al recargar
       navigate('/login', { replace: true });
     }
   }, [navigate]);
 
   const roles: PortalCard[] = [
-    {
-      // Internamente es el rol ADMIN; en pantalla se muestra como "Superadmin"
-      title: 'Superadmin',
-      icon: ShieldCheck,
-      desc: 'Control total de la plataforma: usuarios, solicitudes, soporte y métricas globales.',
-      color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-400Hover',
-      accent: 'bg-purple-500',
-      image: '/assets/super_admin_gateway.png',
-      allowSignUp: false,
-      portalRole: 'ADMIN',
-    },
     {
       title: 'Dueño (Owner)',
       icon: Building2,
@@ -109,8 +95,23 @@ const LoginPage: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Interactive Gateway Cards Grid - 4 perfiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full max-w-7xl relative z-10 mb-8">
+      {/* Error: la cuenta no existe en el rol elegido */}
+      {deniedLabel && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          role="alert"
+          className="relative z-10 w-full max-w-2xl mb-6 -mt-6 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <span>
+            Esta cuenta no existe en el rol <strong>{deniedLabel}</strong>. Elige el perfil con el que te registraste.
+          </span>
+        </motion.div>
+      )}
+
+      {/* Interactive Gateway Cards Grid - Symmetric 3-column Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-10 mb-8">
         {roles.map((r, i) => {
           const Icon = r.icon;
           return (
@@ -133,8 +134,8 @@ const LoginPage: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-900/60 via-slate-900 to-slate-950 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                      <Icon className="w-16 h-16 text-purple-300/40" />
+                    <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 flex items-center justify-center">
+                      <Icon className="w-16 h-16 text-white/20" />
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent"></div>

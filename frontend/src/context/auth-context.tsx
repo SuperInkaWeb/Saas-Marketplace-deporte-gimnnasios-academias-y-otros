@@ -88,11 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       setUser(null);
-      auth0Logout({
-        logoutParams: {
-          returnTo: `${window.location.origin}/login?denied=role_mismatch&role=${portalRole}`,
-        },
-      });
+      // Limpia la sesión local SIN redirigir a Auth0 (no requiere "Allowed Logout URLs")
+      try {
+        await auth0Logout({ openUrl: false });
+      } catch (error) {
+        console.error('Error limpiando la sesión local:', error);
+      }
+      // Vuelve al portal, donde se muestra el error dentro de la página
+      window.location.replace(`/login?denied=role_mismatch&role=${portalRole}`);
       return null;
     }
 
@@ -177,6 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authorizationParams: {
           allow_signup: options?.allowSignUp === false ? 'false' : 'true',
           screen_hint: options?.allowSignUp ? 'signup' : 'login',
+          // Desde el portal siempre pide credenciales, aunque Auth0 recuerde una sesión anterior
+          ...(options?.portalRole ? { prompt: 'login' } : {}),
         },
       });
     } catch (error: any) {
