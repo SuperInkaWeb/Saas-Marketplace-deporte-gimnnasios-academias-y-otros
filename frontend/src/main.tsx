@@ -1,7 +1,7 @@
-import { StrictMode, Suspense, lazy } from 'react'
-import type { ComponentType } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import App from './App.tsx'
 import { Auth0Provider } from '@auth0/auth0-react'
 
 let domain = import.meta.env.VITE_AUTH0_DOMAIN || "dev-khvop4d61s5ip8d3.us.auth0.com";
@@ -20,21 +20,6 @@ if (
   audience = "https://hercix-api";
 }
 
-// ── Sitio de Superadmin ────────────────────────────────────────────────────
-// Se activa con `--mode admin` (ver .env.admin y los scripts dev:admin / build:admin).
-// El mismo código genera dos sitios: Hercix (por defecto) y Hercix Admin.
-const isAdminSite = import.meta.env.VITE_APP_TARGET === 'admin';
-
-// El sitio admin puede usar su propia aplicación de Auth0 (recomendado)
-if (isAdminSite && import.meta.env.VITE_AUTH0_ADMIN_CLIENT_ID) {
-  clientId = import.meta.env.VITE_AUTH0_ADMIN_CLIENT_ID;
-}
-
-// Como la condición es constante en el build, solo se incluye la app que corresponde
-const Root = lazy<ComponentType>(() =>
-  isAdminSite ? import('./admin/AdminApp') : import('./App.tsx'),
-);
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Auth0Provider
@@ -48,9 +33,7 @@ createRoot(document.getElementById('root')!).render(
       cacheLocation="localstorage"
       useRefreshTokens={false}
     >
-      <Suspense fallback={null}>
-        <Root />
-      </Suspense>
+      <App />
     </Auth0Provider>
   </StrictMode>,
 )
