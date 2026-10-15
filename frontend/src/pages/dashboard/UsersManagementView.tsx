@@ -42,13 +42,10 @@ const UsersManagementView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showDateDropdown, setShowDateDropdown] = useState(false);
 
 // Se leen de la URL y se validan; si el valor es inválido cae en 'ALL'
 const roleParam = searchParams.get('role');
 const statusParam = searchParams.get('status');
-const startDateParam = searchParams.get('startDate');
-const endDateParam = searchParams.get('endDate');
 const selectedRoleFilter: RoleFilter = ROLE_KEYS.includes(roleParam as RoleFilter)
   ? (roleParam as RoleFilter)
   : 'ALL';
@@ -56,10 +53,10 @@ const selectedStatusFilter: StatusFilter = STATUS_KEYS.includes(statusParam as S
   ? (statusParam as StatusFilter)
   : 'ALL';
 
-const updateFilter = (key: 'role' | 'status' | 'startDate' | 'endDate', value: string) => {
+const updateFilter = (key: 'role' | 'status', value: string) => {
   setSearchParams(prev => {
     const next = new URLSearchParams(prev);
-    if (!value || value === 'ALL') next.delete(key);
+    if (value === 'ALL') next.delete(key);
     else next.set(key, value);
     return next;
   }, { replace: true });
@@ -240,17 +237,9 @@ const matchesStatus = (u: any, status: string) =>
 const filteredUsers = usersList.filter(u => {
   const q = search.toLowerCase();
   const matchesSearch = u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-  
-  // Validación de rango de fechas (comparando con u.createdAt)
-  const userDate = new Date(u.createdAt).toISOString().split('T')[0];
-  const matchesStartDate = !startDateParam || userDate >= startDateParam;
-  const matchesEndDate = !endDateParam || userDate <= endDateParam;
-
   return matchesSearch
     && matchesRole(u, selectedRoleFilter)
-    && matchesStatus(u, selectedStatusFilter)
-    && matchesStartDate
-    && matchesEndDate;
+    && matchesStatus(u, selectedStatusFilter);
 });
 
 // Contadores cruzados: cada grupo de chips cuenta respetando el otro filtro
@@ -356,74 +345,6 @@ const statusCount = (key: string) =>
             />
           </div>
 
-{/* Botón y Menú Desplegable de Filtro de Fecha */}
-<div className="relative inline-block text-left mb-6">
-  <button
-    type="button"
-    onClick={() => setShowDateDropdown(!showDateDropdown)}
-    className="px-4 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:border-primary/50 transition-all flex items-center gap-2"
-  >
-    <Clock className="w-4 h-4 text-primary-light" />
-    <span>
-      {startDateParam || endDateParam 
-        ? `Fecha: ${startDateParam || 'Inicio'} → ${endDateParam || 'Hoy'}` 
-        : 'Filtrar por fecha'}
-    </span>
-    {(startDateParam || endDateParam) && (
-      <span 
-        onClick={(e) => { e.stopPropagation(); updateFilter('startDate', ''); updateFilter('endDate', ''); }}
-        className="ml-1 text-slate-500 hover:text-red-400"
-      >
-        ✕
-      </span>
-    )}
-  </button>
-
-  {showDateDropdown && (
-    <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-slate-200">
-      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Rango de Registro</h4>
-      
-      <div className="space-y-3">
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Desde:</label>
-          <input
-            type="date"
-            value={startDateParam || ''}
-            onChange={(e) => updateFilter('startDate', e.target.value)}
-            className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Hasta:</label>
-          <input
-            type="date"
-            value={endDateParam || ''}
-            onChange={(e) => updateFilter('endDate', e.target.value)}
-            className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-white/5">
-        <button
-          type="button"
-          onClick={() => { updateFilter('startDate', ''); updateFilter('endDate', ''); setShowDateDropdown(false); }}
-          className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors"
-        >
-          Limpiar
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowDateDropdown(false)}
-          className="px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-xs font-semibold transition-colors"
-        >
-          Aplicar
-        </button>
-      </div>
-    </div>
-  )}
-</div>
-
           {/* Chips de filtro por rol */}
           <div className="flex flex-wrap gap-2 mb-3 items-center">
   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Filtrar por Rol:</span>
@@ -479,7 +400,6 @@ const statusCount = (key: string) =>
     );
   })}
 </div>
-
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
