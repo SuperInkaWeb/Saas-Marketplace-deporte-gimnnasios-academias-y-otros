@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backup local
+Hercix_backup/
+
+# Variables de entorno (nunca subir)
+.env
+.env.*
+!.env.example

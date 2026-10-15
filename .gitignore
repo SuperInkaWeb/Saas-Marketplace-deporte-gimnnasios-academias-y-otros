@@ -9,3 +9,7 @@ coverage/
 .next/
 out/
 backend/dist/
+Hercix_backup/
+.env
+.env.*
+!.env.example
