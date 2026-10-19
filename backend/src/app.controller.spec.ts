@@ -27,6 +27,7 @@ describe('AppController', () => {
   describe('AUD-05', () => {
     it('no longer exposes GET /health/db-debug', () => {
       const routes = Object.getOwnPropertyNames(AppController.prototype)
+        .filter((name) => name !== 'constructor')
         .map((name) => Reflect.getMetadata('path', AppController.prototype[name]))
         .filter(Boolean);
       expect(routes).toEqual(['health']);
