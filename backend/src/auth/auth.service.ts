@@ -15,13 +15,6 @@ import { UserRole } from '@prisma/client';
 import { sanitizeName } from '../common/utils/normalize-name';
 import { EmailService } from '../notifications/email.service';
 
-// Correos que siempre tienen el rol ADMIN (en pantalla se muestra como "Superadmin")
-const ADMIN_EMAILS = [
-  'mario123q@gmail.com',
-  'sebastian.admin@hercix-demo.com',
-  'soporte.tecnico@hercix-demo.com',
-  'gerente.plataforma@hercix-demo.com',
-];
 
 @Injectable()
 export class AuthService {
@@ -141,8 +134,8 @@ export class AuthService {
   /**
    * Devuelve los perfiles a los que la cuenta tiene derecho.
    * - USER: todos.
-   * - ADMIN: rol actual ADMIN o correo en ADMIN_EMAILS (así no pierde el acceso
-   *   al cambiar temporalmente a otra vista).
+   * - ADMIN: solo si el rol guardado es ADMIN (AUD-03: ya no se concede por
+   *   coincidencia de correo).
    * - GYM_OWNER: tiene gimnasios, rol actual, o solicitud aprobada.
    * - TRAINER: tiene perfil de entrenador, rol actual, o solicitud aprobada.
    */
@@ -153,7 +146,7 @@ export class AuthService {
   }): Promise<string[]> {
     const roles: string[] = ['USER'];
 
-    if (user.role === 'ADMIN' || ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    if (user.role === 'ADMIN') {
       roles.push('ADMIN');
     }
 
@@ -507,10 +500,11 @@ export class AuthService {
   async findOrCreateAuth0User(params: {
     auth0Id: string;
     email: string;
+    emailVerified: boolean;
     name: string;
     avatarUrl?: string;
   }) {
-    const { auth0Id, email, name, avatarUrl } = params;
+    const { auth0Id, email, emailVerified, name, avatarUrl } = params;
 
     // 1. Try by auth0Id (fastest path after first login)
     let user = await this.prisma.user.findUnique({
@@ -519,15 +513,6 @@ export class AuthService {
     });
 
     if (user) {
-      // Force admin role if they match an admin email (in case role got changed or database was reset)
-      if (ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: { role: UserRole.ADMIN },
-          select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
-        });
-      }
-
       // Bloquear accesos sociales (Google) solo para el rol Administrador
       if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
         throw new UnauthorizedException(
@@ -540,7 +525,7 @@ export class AuthService {
     }
 
     // 2. Try by email (user may have registered before Auth0 or pre-seeded/invited)
-    let existing = await this.prisma.user.findFirst({
+    const existing = await this.prisma.user.findFirst({
       where: {
         email: {
           equals: email,
@@ -550,12 +535,12 @@ export class AuthService {
     });
 
     if (existing) {
-      // Force admin role if they match an admin email (in case role got changed or database was reset)
-      if (ADMIN_EMAILS.includes(existing.email.toLowerCase()) && existing.role !== UserRole.ADMIN) {
-        existing = await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { role: UserRole.ADMIN },
-        });
+      // AUD-03: vincular por correo solo si Auth0 confirma que la persona controla ese
+      // correo; si no, cualquiera podría registrarse con el correo de otro y tomar su cuenta.
+      if (!emailVerified) {
+        throw new UnauthorizedException(
+          'Verifica tu correo electrónico para vincularlo a tu cuenta existente.',
+        );
       }
 
       // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
@@ -592,15 +577,13 @@ export class AuthService {
     let assignedRole: UserRole = UserRole.USER;
     let gymIdToLink: string | null = null;
 
-    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
-      console.log(`Email de Administrador detectado para ${email}. Auto-asignando rol ADMIN.`);
-      assignedRole = UserRole.ADMIN;
-    } else if (invitation) {
+    // AUD-03: nunca se asigna ADMIN al registrarse; lo otorga otro ADMIN desde la gestión de usuarios.
+    if (invitation && emailVerified) {
       console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
       assignedRole = invitation.role;
       gymIdToLink = invitation.gymId;
     } else {
-      console.log(`No hay invitación para ${email}. Creando atleta público (USER)`);
+      console.log(`Sin invitación aplicable para ${email} (verificado: ${emailVerified}). Creando atleta público (USER)`);
     }
 
     const safeName = sanitizeName(name, email);
@@ -613,13 +596,13 @@ export class AuthService {
         name: safeName,
         avatarUrl,
         role: assignedRole,
-        emailVerified: true,
+        emailVerified,
       },
       select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
     });
 
     // If invitation was accepted, handle updates
-    if (invitation) {
+    if (invitation && emailVerified) {
       await this.prisma.invitation.update({
         where: { id: invitation.id },
         data: { status: 'ACCEPTED' },

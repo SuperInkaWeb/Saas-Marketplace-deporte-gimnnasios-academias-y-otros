@@ -9,6 +9,7 @@ import * as https from 'https';
 export interface Auth0JwtPayload {
   sub: string;      // Auth0 user ID e.g. "auth0|abc123"
   email?: string;
+  email_verified?: boolean;
   name?: string;
   picture?: string;
   iss: string;
@@ -89,14 +90,16 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
     console.log('Validando Payload de Auth0:', JSON.stringify(payload, null, 2));
     const { sub, picture } = payload;
     let email = payload.email;
+    let emailVerified = payload.email_verified;
     let name = payload.name;
 
     if (!sub) {
       throw new UnauthorizedException('Token inválido: falta sub');
     }
 
-    // Fetch real email from Auth0 /userinfo if not present in custom API access token payload
-    if (!email) {
+    // Fetch real email from Auth0 /userinfo if not present in custom API access token payload.
+    // AUD-03: también se consulta si el token no dice si el correo está verificado.
+    if (!email || emailVerified === undefined) {
       const authHeader = req.headers?.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
@@ -109,6 +112,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
           const userInfo = await this.fetchUserInfo(domain, token);
           if (userInfo && userInfo.email) {
             email = userInfo.email;
+            emailVerified = userInfo.email_verified === true;
             name = userInfo.name || name;
             console.log(`Retrieved real email from userinfo: ${email}`);
           }
@@ -122,6 +126,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
     const user = await this.authService.findOrCreateAuth0User({
       auth0Id: sub,
       email: email ?? `${sub}@auth0.user`,
+      emailVerified: emailVerified === true,
       name: name ?? 'Usuario',
       avatarUrl: picture,
     });
