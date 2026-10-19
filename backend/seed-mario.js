@@ -4,6 +4,18 @@ const fs = require('fs');
 
 const prisma = new PrismaClient();
 
+// Script operativo: nunca contra producción; las credenciales llegan por variables de entorno.
+if (process.env.NODE_ENV === 'production') {
+  console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+  process.exit(1);
+}
+for (const name of ['DATABASE_URL', 'SEED_DEFAULT_PASSWORD']) {
+  if (!process.env[name]) {
+    console.error(`Falta la variable de entorno ${name}.`);
+    process.exit(1);
+  }
+}
+
 const DISTRICTS = ['Callao', 'Puente Piedra', 'Magdalena', 'La Molina', 'San Juan de Lurigancho', 'Los Olivos'];
 const COORDS = {
   'Callao': { lat: -12.0566, lng: -77.1184 },
@@ -65,7 +77,7 @@ function log(msg) {
 
 async function main() {
   log('=== HERCIX Clean Seed - Iniciando limpieza ===');
-  const hash = await bcrypt.hash('Hercix2026!', 10);
+  const hash = await bcrypt.hash(process.env.SEED_DEFAULT_PASSWORD, 10);
 
   // ── 1. CLEAN demo data (keep real Auth0 registered users) ──────────────────
   log('Limpiando datos demo anteriores...');
@@ -192,7 +204,7 @@ async function main() {
   const [tu, tg, tc] = await Promise.all([prisma.user.count(), prisma.gym.count(), prisma.class.count()]);
   log(`\n=== SEED COMPLETADO ===`);
   log(`  Usuarios: ${tu} | Gimnasios: ${tg} | Clases: ${tc}`);
-  log(`  Password demo: Hercix2026!`);
+  log(`  Password demo: (valor de SEED_DEFAULT_PASSWORD)`);
   try { fs.writeFileSync('seed-progress.json', JSON.stringify({ status: 'COMPLETADO', percent: 100, users: tu, gyms: tg, classes: tc, timestamp: new Date() })); } catch(e) {}
 }
 

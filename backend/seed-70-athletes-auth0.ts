@@ -3,10 +3,22 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+// Script operativo: nunca contra producción; las credenciales llegan por variables de entorno.
+if (process.env.NODE_ENV === 'production') {
+  console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+  process.exit(1);
+}
+for (const name of ['DATABASE_URL', 'SEED_DEFAULT_PASSWORD']) {
+  if (!process.env[name]) {
+    console.error(`Falta la variable de entorno ${name}.`);
+    process.exit(1);
+  }
+}
+
 const DOMAIN = 'dev-khvop4d61s5ip8d3.us.auth0.com';
 const CLIENT_ID = '3kp2ZDHZYjBxcJaqtGXZdTIShBsK3sJK';
 const CONNECTION = 'Username-Password-Authentication';
-const PASSWORD = 'Hercix2026!';
+const PASSWORD = process.env.SEED_DEFAULT_PASSWORD!;
 
 const DISTRICTS = ['Callao', 'Puente Piedra', 'Magdalena', 'La Molina', 'San Juan de Lurigancho', 'Los Olivos'];
 
