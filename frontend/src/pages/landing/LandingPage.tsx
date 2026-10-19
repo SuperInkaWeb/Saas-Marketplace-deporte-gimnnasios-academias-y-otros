@@ -10,12 +10,16 @@ import {
   ArrowRight, 
   ShieldCheck 
 } from 'lucide-react';
+import LeagueHero from '../../components/league/LeagueHero';
+import LeagueFlyers from '../../components/league/LeagueFlyers';
+import { LEAGUE_CAMPAIGN, isLeagueActive } from '../../components/league/leagueCampaign';
 
 const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentImage, setCurrentImage] = useState(0);
+  const leagueActive = isLeagueActive();
 
   const carouselImages = [
     'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1920&q=80', // Gym/Crossfit (High energy)
@@ -24,11 +28,13 @@ const LandingPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Con la campaña activa el fondo es el banner fijo del evento: no hace falta rotar.
+    if (leagueActive) return;
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % carouselImages.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [leagueActive]);
 
   const handlePortalAccess = () => {
     if (user) {
@@ -39,6 +45,12 @@ const LandingPage: React.FC = () => {
     } else {
       navigate('/login');
     }
+  };
+
+  // CTA de HERCIX League: con sesión va al panel; sin sesión, a ingresar/registrarse.
+  const handleLeagueCta = (path: string) => {
+    if (user) handlePortalAccess();
+    else navigate(path);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -87,7 +99,15 @@ const LandingPage: React.FC = () => {
     <div className="bg-background-darker min-h-screen text-white overflow-hidden font-sans relative">
       {/* Background Image Carousel with smooth cross-fade */}
       <div className="absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out pointer-events-none overflow-hidden">
-        {carouselImages.map((img, index) => (
+        {leagueActive && (
+          <div
+            className="absolute inset-x-0 top-0 h-[900px] md:h-[1000px] bg-cover bg-[center_30%] opacity-45"
+            style={{ backgroundImage: `url(${LEAGUE_CAMPAIGN.heroImage})` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background-darker/40 to-background-darker"></div>
+          </div>
+        )}
+        {!leagueActive && carouselImages.map((img, index) => (
           <div
             key={index}
             className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${
@@ -151,6 +171,13 @@ const LandingPage: React.FC = () => {
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-6 pt-16 pb-24 relative z-10 flex flex-col items-center">
+        {leagueActive ? (
+          <>
+            <LeagueHero onJoin={() => handleLeagueCta('/login')} />
+            <LeagueFlyers onCta={handleLeagueCta} />
+          </>
+        ) : (
+        <>
         {/* Badge Notification */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
@@ -228,6 +255,8 @@ const LandingPage: React.FC = () => {
             </span>
           ))}
         </motion.div>
+        </>
+        )}
 
         {/* Features / Solutions Grid (Symmetric showcases) */}
         <section className="w-full max-w-6xl mt-32">
