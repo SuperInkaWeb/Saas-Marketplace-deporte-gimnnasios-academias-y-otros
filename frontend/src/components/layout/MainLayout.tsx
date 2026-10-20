@@ -360,7 +360,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Complete Profile Onboarding Modal */}
       <CompleteProfileModal 
-        isOpen={!!user && user.role !== 'ADMIN' && !['mario123q@gmail.com', 'sebastian.admin@hercix-demo.com', 'soporte.tecnico@hercix-demo.com', 'gerente.plataforma@hercix-demo.com'].includes(user.email.toLowerCase()) && (!user.dni || !user.phone)} 
+        isOpen={!!user && user.role !== 'ADMIN' && (!user.dni || !user.phone)} 
         onSuccess={() => console.log('Perfil completado con éxito')}
       />
 
