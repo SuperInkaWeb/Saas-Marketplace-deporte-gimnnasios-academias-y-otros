@@ -105,7 +105,7 @@ DIRECT_URL="postgresql://neondb_owner:PASSWORD@HOST.c-5.us-east-1.aws.neon.tech/
 
 ### Configuración
 ```env
-RESEND_API_KEY="re_K3Khak9i_..."
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxx"
 RESEND_FROM_EMAIL="onboarding@resend.dev"
 RESEND_FROM_NAME="Hercix"
 ```
@@ -167,8 +167,8 @@ GEMINI_API_KEY="AIzaSy..."
 
 ### Configuración
 ```env
-FITBIT_CLIENT_ID="23VJLL"
-FITBIT_CLIENT_SECRET="2f14ec2b357a7e4eaf36fe2f8fd5b737"
+FITBIT_CLIENT_ID="<FITBIT_CLIENT_ID>"
+FITBIT_CLIENT_SECRET="<FITBIT_CLIENT_SECRET>"
 ```
 
 ### Redirect URLs configuradas

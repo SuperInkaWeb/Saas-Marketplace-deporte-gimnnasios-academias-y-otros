@@ -1,7 +1,19 @@
 import { JwtService } from '@nestjs/jwt';
 
+// Script operativo: nunca contra producción; las credenciales llegan por variables de entorno.
+if (process.env.NODE_ENV === 'production') {
+  console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+  process.exit(1);
+}
+for (const name of ['JWT_SECRET']) {
+  if (!process.env[name]) {
+    console.error(`Falta la variable de entorno ${name}.`);
+    process.exit(1);
+  }
+}
+
 const jwtService = new JwtService({
-  secret: 'sports_saas_super_secret_jwt_key_change_in_production_000000',
+  secret: process.env.JWT_SECRET!,
 });
 
 async function main() {

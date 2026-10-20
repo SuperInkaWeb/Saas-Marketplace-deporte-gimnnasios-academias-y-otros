@@ -12,9 +12,21 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+// Script operativo: nunca contra producción; las credenciales llegan por variables de entorno.
+if (process.env.NODE_ENV === 'production') {
+  console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+  process.exit(1);
+}
+for (const name of ['DATABASE_URL', 'SEED_DEFAULT_PASSWORD']) {
+  if (!process.env[name]) {
+    console.error(`Falta la variable de entorno ${name}.`);
+    process.exit(1);
+  }
+}
+
 // ── Configuración ─────────────────────────────────────────────────────────────
 const DISTRICTS = ['Callao', 'Puente Piedra', 'Magdalena', 'La Molina', 'San Juan de Lurigancho', 'Los Olivos'];
-const DEFAULT_PASS = 'Hercix2026!';
+const DEFAULT_PASS = process.env.SEED_DEFAULT_PASSWORD!;
 
 // Coordenadas aproximadas por distrito
 const COORDS: Record<string, { lat: number; lng: number }> = {

@@ -65,7 +65,7 @@ Guarda este script como `backup.ps1` en la raíz del proyecto:
 # backup.ps1
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $filename = "backup_sportnexus_$timestamp.sql"
-$env:PGPASSWORD = "npg_7gzFXtWqS5os"
+$env:PGPASSWORD = "<PASSWORD_DEL_ROL_NEON>"
 
 pg_dump `
   --host=ep-tiny-cell-amwm2qa6.c-5.us-east-1.aws.neon.tech `

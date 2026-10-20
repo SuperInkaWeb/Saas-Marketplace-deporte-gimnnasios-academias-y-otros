@@ -1,17 +1,29 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+// Script operativo: nunca contra producción; las credenciales llegan por variables de entorno.
+if (process.env.NODE_ENV === 'production') {
+  console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+  process.exit(1);
+}
+for (const name of ['SETUP_ADMIN_DATABASE_URL', 'SETUP_ADMIN_PASSWORD']) {
+  if (!process.env[name]) {
+    console.error(`Falta la variable de entorno ${name}.`);
+    process.exit(1);
+  }
+}
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://neondb_owner:npg_7gzFXtWqS5os@ep-tiny-cell-amwm2qa6-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+      url: process.env.SETUP_ADMIN_DATABASE_URL
     }
   }
 });
 
 async function main() {
   const email = 'admin@sportnexus.com';
-  const password = 'Admin123!';
+  const password = process.env.SETUP_ADMIN_PASSWORD!;
   const hashedPassword = await bcrypt.hash(password, 10);
 
   // Check if user exists

@@ -194,5 +194,5 @@ curl https://sportnexus-platform.onrender.com/api
 # Test de autenticación
 curl -X POST https://sportnexus-platform.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@hercix.com","password":"Admin123!"}'
+  -d '{"email":"admin@hercix.com","password":"<TU_PASSWORD>"}'
 ```
