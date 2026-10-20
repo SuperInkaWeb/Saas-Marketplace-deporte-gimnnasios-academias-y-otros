@@ -12,7 +12,8 @@ describe('AuthService.updateProfile (HER-SEC-002)', () => {
     userUpdateMock = jest.fn().mockResolvedValue({ id: 'u1' });
     const prisma = {
       user: {
-        findUnique: jest.fn(),
+        // updateProfile lee el correo actual para validar el nombre (sanitizeName)
+        findUnique: jest.fn().mockResolvedValue({ email: 'walter@example.com' }),
         update: userUpdateMock,
       },
       roleRequest: {

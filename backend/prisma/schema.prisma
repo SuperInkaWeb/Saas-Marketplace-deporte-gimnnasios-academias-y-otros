@@ -391,11 +391,11 @@ model ProfessionalBooking {
   status      String      @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
   bookedAt    DateTime    @default(now()) @map("booked_at")
   notes       String?
-  bookingDate String?     @map("booking_date") @db.VarChar(10)   // ← nueva
-  startMinute Int?        @map("start_minute")                    // ← nueva
-  endMinute   Int?        @map("end_minute")                      // ← nueva
-  user        User        @relation(...)        // ← deja tus líneas tal como están
-  service     ProfessionalService @relation(...) // ← deja tus líneas tal como están
+  bookingDate String?     @map("booking_date") @db.VarChar(10)
+  startMinute Int?        @map("start_minute")
+  endMinute   Int?        @map("end_minute")
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service     ProfessionalService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("professional_bookings")
 }
