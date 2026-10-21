@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignType, CampaignStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -19,31 +19,39 @@ export class MarketingService {
     let recipients: string[] = [];
     let usersToNotify: any[] = [];
     
+    // Miembros del gimnasio: membresía activa o reserva confirmada/asistida.
+    const isGymMember = {
+      OR: [
+        {
+          userMemberships: { some: { plan: { gymId }, status: 'ACTIVE' as const } }
+        },
+        {
+          reservations: { some: { class: { gymId }, status: { in: ['CONFIRMED' as const, 'ATTENDED' as const] } } }
+        }
+      ]
+    };
+
     if (data.sendToAll) {
       const members = await this.prisma.user.findMany({
-        where: { 
-          OR: [
-            {
-              userMemberships: { some: { plan: { gymId }, status: 'ACTIVE' } }
-            },
-            {
-              reservations: { some: { class: { gymId }, status: { in: ['CONFIRMED', 'ATTENDED'] } } }
-            }
-          ]
-        },
+        where: isGymMember,
         select: { id: true, email: true }
       });
       recipients = members.map(m => m.email);
       usersToNotify = members;
     } else if (data.toEmail) {
-      recipients = [data.toEmail];
-      const user = await this.prisma.user.findUnique({
-        where: { email: data.toEmail },
-        select: { id: true }
+      // AUD-22: solo se envía a miembros del gimnasio, nunca a un correo cualquiera.
+      const member = await this.prisma.user.findFirst({
+        where: {
+          email: { equals: String(data.toEmail).trim(), mode: 'insensitive' },
+          ...isGymMember,
+        },
+        select: { id: true, email: true }
       });
-      if (user) {
-        usersToNotify = [user];
+      if (!member) {
+        throw new BadRequestException('El destinatario debe ser miembro de este gimnasio');
       }
+      recipients = [member.email];
+      usersToNotify = [member];
     }
 
     if (recipients.length > 0 && (!data.type || data.type === 'EMAIL')) {
