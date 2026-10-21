@@ -448,7 +448,9 @@ export class AuthService {
 
       const profBookings = await this.prisma.professionalBooking.findMany({
         where: { userId, status: 'CONFIRMED' },
-        include: { service: { include: { provider: true } } },
+        include: {
+          service: { include: { provider: { select: { name: true } } } },
+        },
         orderBy: { bookedAt: 'desc' },
         take: 5,
       });
