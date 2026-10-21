@@ -29,7 +29,7 @@ export class InvoicesController {
   @Roles('ADMIN', 'GYM_OWNER')
   async getGymInvoices(@Param('gymId') gymId: string, @Request() req) {
     if (req.user.role !== UserRole.ADMIN) {
-      await this.gymsService.validateOwnership(gymId, req.user.id);
+      await this.gymsService.validateOwnership(gymId, req.user);
     }
     return this.invoicesService.getGymInvoices(gymId);
   }

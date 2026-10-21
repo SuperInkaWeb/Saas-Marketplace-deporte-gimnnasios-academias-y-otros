@@ -1,6 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
+/** Escapa texto para interpolarlo en HTML de correos. */
+export const escapeHtml = (value: string): string =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 @Injectable()
 export class EmailService {
   private readonly resend: Resend;
@@ -218,16 +227,19 @@ export class EmailService {
     to: string,
     data: { name: string; subject: string; headline: string; body: string; ctaText: string; ctaUrl: string },
   ): Promise<void> {
+    // AUD-22: el dueño escribe texto plano; se escapa para que no pueda inyectar HTML (enlaces, formularios).
+    const headline = escapeHtml(data.headline);
+    const body = escapeHtml(data.body ?? '').replace(/\r?\n/g, '<br>');
     const content = `
-      <h2 style="margin:0 0 16px;color:#fff;font-size:24px;">${data.headline}</h2>
-      <div style="color:#a0aec0;font-size:15px;line-height:1.7;margin-bottom:32px;">${data.body}</div>
+      <h2 style="margin:0 0 16px;color:#fff;font-size:24px;">${headline}</h2>
+      <div style="color:#a0aec0;font-size:15px;line-height:1.7;margin-bottom:32px;">${body}</div>
       <div style="text-align:center;">
         <a href="${data.ctaUrl}" style="background:linear-gradient(135deg,#6d28d9,#a855f7);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;display:inline-block;">
           ${data.ctaText} →
         </a>
       </div>
     `;
-    await this.send(to, data.subject, content, data.headline);
+    await this.send(to, data.subject, content, headline);
   }
 
   // ─── Internal send ──────────────────────────────────────────────────────────
