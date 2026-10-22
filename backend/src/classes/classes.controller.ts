@@ -60,12 +60,15 @@ export class ClassesController {
     const trainerUserId = user?.role === 'TRAINER' ? user.id : undefined;
     // Solo el personal (ADMIN, dueño, entrenador) puede ver clases desactivadas
     const isStaff = ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user?.role);
+    // El staff ya recibe solo sus clases (ownerId / trainerUserId), así que puede ver a los asistentes
+    const canSeeAttendees = isStaff && !userId;
     return this.classesService.findAll(
       gymId,
       userId,
       ownerId,
       trainerUserId,
       includeInactive === 'true' && isStaff,
+      user ? { id: user.id, canSeeAttendees } : undefined,
     );
   }
 
