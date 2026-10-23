@@ -1,11 +1,47 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
+import { UpdateGoalDto, UpsertMetDto } from './dto/health.dto';
 import { HealthMetricType, UserRole } from '@prisma/client';
+import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
 
 @Injectable()
 export class HealthService {
   constructor(private prisma: PrismaService) {}
+
+  // ── Control de acceso (AUD-12) ────────────────────────────────────────────
+
+  // Coach vinculado: entrenador de un gimnasio donde el atleta tiene membresía activa
+  // (mismo criterio que getCoachAthletes).
+  private async isLinkedCoach(coachUserId: string, athleteId: string) {
+    const membership = await this.prisma.userMembership.findFirst({
+      where: {
+        userId: athleteId,
+        status: 'ACTIVE',
+        plan: { gym: { gymTrainers: { some: { trainer: { userId: coachUserId } } } } },
+      },
+      select: { id: true },
+    });
+    return !!membership;
+  }
+
+  // Datos de salud de un atleta: él mismo, su coach vinculado o ADMIN.
+  async assertCanViewAthlete(viewer: AuthUser, athleteId: string) {
+    if (viewer.id === athleteId || isGlobalAdmin(viewer)) return;
+    if (await this.isLinkedCoach(viewer.id, athleteId)) return;
+    throw new ForbiddenException('No tienes acceso a los datos de salud de este usuario');
+  }
+
+  // Recomendaciones: solo su coach vinculado o ADMIN.
+  async assertCanCoachAthlete(viewer: AuthUser, athleteId: string) {
+    if (isGlobalAdmin(viewer)) {
+      const athlete = await this.prisma.user.findUnique({ where: { id: athleteId }, select: { id: true } });
+      if (!athlete) throw new NotFoundException('Atleta no encontrado');
+      return;
+    }
+    if (viewer.id !== athleteId && (await this.isLinkedCoach(viewer.id, athleteId))) return;
+    throw new ForbiddenException('Solo el coach del atleta puede registrar recomendaciones');
+  }
 
   // ── Health Metrics Logging ────────────────────────────────────────────────
 
@@ -58,7 +94,7 @@ export class HealthService {
     });
   }
 
-  async createOrUpdateMET(dto: { name: string; metValue: number; intensity: string; defaultDuration?: number }) {
+  async createOrUpdateMET(dto: UpsertMetDto) {
     return this.prisma.activityMET.upsert({
       where: { name: dto.name },
       update: {
@@ -99,11 +135,18 @@ export class HealthService {
     return goal;
   }
 
-  async createOrUpdateGoal(userId: string, dto: { targetCalories: number; targetSteps: number; targetWater: number; targetWeight?: number }) {
+  async createOrUpdateGoal(userId: string, dto: UpdateGoalDto) {
+    // AUD-12 (H-39): campos explícitos; el userId sale siempre del token
+    const data = {
+      targetCalories: dto.targetCalories,
+      targetSteps: dto.targetSteps,
+      targetWater: dto.targetWater,
+      targetWeight: dto.targetWeight,
+    };
     return this.prisma.userGoal.upsert({
       where: { userId },
-      update: dto,
-      create: { userId, ...dto },
+      update: data,
+      create: { userId, ...data },
     });
   }
 
