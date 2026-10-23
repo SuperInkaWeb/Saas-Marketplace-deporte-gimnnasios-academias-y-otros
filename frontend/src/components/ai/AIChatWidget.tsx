@@ -175,6 +175,7 @@ const AIChatWidget: React.FC = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKey}
+                maxLength={2000}
                 placeholder="Escribe tu pregunta..."
                 className="flex-grow bg-white/5 border border-white/10 focus:border-primary-light rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-all placeholder:text-slate-500"
               />
