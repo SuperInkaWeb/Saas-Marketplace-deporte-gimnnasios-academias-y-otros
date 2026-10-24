@@ -47,6 +47,8 @@ services:
         sync: false
       - key: FITBIT_CLIENT_SECRET
         sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
 
   # ─── Frontend (React/Vite) — Static Site (100% gratis, sin sleep) ─
   - type: web
