@@ -6,6 +6,23 @@
   import { ConflictException } from '@nestjs/common';
 import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.util';
 
+// AUD-08: nunca devolver la fila User completa (passwordHash, dni, auth0Id) en las reservas.
+// Lo que el atleta ve del profesional:
+const PROVIDER_PUBLIC_SELECT = {
+  id: true,
+  name: true,
+  avatarUrl: true,
+} as const;
+// Lo que el profesional ve del cliente (igual que getProviderBookings):
+const BOOKING_CLIENT_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+} as const;
+// Lo que el atleta recibe de sí mismo al reservar:
+const BOOKING_SELF_SELECT = { id: true, name: true } as const;
+
 
   @Injectable()
   export class ProfessionalsService {
@@ -83,7 +100,10 @@ import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.u
 
     return tx.professionalBooking.create({
       data: { userId, serviceId, notes: notes ?? undefined, status: 'PENDING' },
-      include: { service: { include: { provider: true } }, user: true },
+      include: {
+        service: { include: { provider: { select: PROVIDER_PUBLIC_SELECT } } },
+        user: { select: BOOKING_SELF_SELECT },
+      },
     });
   }
 
@@ -122,9 +142,9 @@ import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.u
       },
       include: {
         service: {
-          include: { provider: true }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
         },
-        user: true,
+        user: { select: BOOKING_SELF_SELECT },
       },
     });
 
@@ -158,7 +178,7 @@ import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.u
       where: { userId },
       include: {
         service: {
-          include: { provider: true }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
         }
       },
       orderBy: { bookedAt: 'desc' },
@@ -198,9 +218,9 @@ import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.u
       data: { status },
       include: {
         service: {
-          include: { provider: true }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
         },
-        user: true
+        user: { select: BOOKING_CLIENT_SELECT }
       }
     });
 
