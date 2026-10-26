@@ -1,11 +1,36 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TokenCipher, TokenCipherError } from '../common/security/token-cipher';
 
 @Injectable()
 export class GoogleHealthService {
   private readonly logger = new Logger(GoogleHealthService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cipher: TokenCipher,
+  ) {
+    if (!cipher.enabled) {
+      this.logger.warn(
+        'TOKEN_ENCRYPTION_KEY no configurada: los tokens de Google Health se guardan sin cifrar',
+      );
+    }
+  }
+
+  // AUD-15: los tokens se guardan cifrados; uno ilegible obliga a reconectar la cuenta
+  private readToken(value: string): string {
+    try {
+      return this.cipher.decrypt(value);
+    } catch (e) {
+      if (e instanceof TokenCipherError) {
+        this.logger.error(e.message);
+        throw new BadRequestException(
+          'Token de Google inválido. Reconecta tu cuenta.',
+        );
+      }
+      throw e;
+    }
+  }
 
   // ── Step 1: Generate the Google OAuth2 Authorization URL ──────────────────
   getAuthorizationUrl(redirectUri: string): string {
@@ -71,16 +96,20 @@ export class GoogleHealthService {
     await this.prisma.wearableConnection.upsert({
       where: { userId_provider: { userId, provider: 'FITBIT' } }, // Reusing FITBIT enum to avoid DB migration errors during demo
       update: {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
+        accessToken: this.cipher.encrypt(data.access_token),
+        refreshToken: data.refresh_token
+          ? this.cipher.encrypt(data.refresh_token)
+          : undefined,
         tokenExpiry: expiresAt,
         scope: data.scope,
       },
       create: {
         userId,
         provider: 'FITBIT',
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
+        accessToken: this.cipher.encrypt(data.access_token),
+        refreshToken: data.refresh_token
+          ? this.cipher.encrypt(data.refresh_token)
+          : undefined,
         tokenExpiry: expiresAt,
         scope: data.scope,
       },
@@ -106,10 +135,11 @@ export class GoogleHealthService {
     const clientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_HEALTH_CLIENT_SECRET;
 
+    const refreshToken = this.readToken(connection.refreshToken);
     const body = new URLSearchParams({
       client_id: clientId!,
       client_secret: clientSecret!,
-      refresh_token: connection.refreshToken,
+      refresh_token: refreshToken,
       grant_type: 'refresh_token',
     });
 
@@ -129,8 +159,12 @@ export class GoogleHealthService {
     await this.prisma.wearableConnection.update({
       where: { userId_provider: { userId, provider: 'FITBIT' } },
       data: {
-        accessToken: data.access_token,
+        accessToken: this.cipher.encrypt(data.access_token),
         tokenExpiry: expiresAt,
+        // Un refresh token guardado en texto plano (o con la clave anterior) se cifra de paso
+        ...(this.cipher.needsReencrypt(connection.refreshToken)
+          ? { refreshToken: this.cipher.encrypt(refreshToken) }
+          : {}),
       },
     });
 
@@ -147,7 +181,28 @@ export class GoogleHealthService {
     if (connection.tokenExpiry && connection.tokenExpiry < new Date(Date.now() + 5 * 60 * 1000)) {
       return this.refreshAccessToken(userId);
     }
-    return connection.accessToken;
+    const accessToken = this.readToken(connection.accessToken);
+
+    // Migración progresiva: tokens antiguos en texto plano se cifran al usarse
+    if (
+      this.cipher.needsReencrypt(connection.accessToken) ||
+      this.cipher.needsReencrypt(connection.refreshToken)
+    ) {
+      await this.prisma.wearableConnection.update({
+        where: { userId_provider: { userId, provider: 'FITBIT' } },
+        data: {
+          accessToken: this.cipher.encrypt(accessToken),
+          ...(connection.refreshToken
+            ? {
+                refreshToken: this.cipher.encrypt(
+                  this.readToken(connection.refreshToken),
+                ),
+              }
+            : {}),
+        },
+      });
+    }
+    return accessToken;
   }
 
   async syncGoogleHealthData(userId: string) {
