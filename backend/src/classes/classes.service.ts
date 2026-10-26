@@ -76,7 +76,21 @@ export class ClassesService {
     ownerId?: string,
     trainerUserId?: string,
     includeInactive = false,
+    viewer?: { id: string; canSeeAttendees: boolean },
   ) {
+    // AUD-07: la lista de asistentes (nombre, DNI) solo la ve el staff, y nunca el email.
+    // El resto solo recibe su propia reserva, para saber si ya reservó.
+    const activeStatuses = { in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED] };
+    const reservationsInclude = viewer?.canSeeAttendees
+      ? {
+          where: { status: activeStatuses },
+          select: { id: true, userId: true, status: true, user: { select: { id: true, name: true, role: true, dni: true, avatarUrl: true } } },
+        }
+      : {
+          where: { status: activeStatuses, userId: viewer?.id ?? '' },
+          select: { id: true, userId: true, status: true },
+        };
+
     // If userId passed, return only classes where this user has a reservation
     if (userId) {
       const reservations = await this.prisma.reservation.findMany({
@@ -90,10 +104,7 @@ export class ClassesService {
         include: {
           gym: { select: { name: true, city: true, ownerId: true } },
           trainer: { include: { user: { select: { name: true, avatarUrl: true } } } },
-          reservations: {
-            where: { status: { in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED] } },
-            select: { id: true, userId: true, status: true, user: { select: { id: true, name: true, role: true, dni: true, email: true, avatarUrl: true } } }
-          },
+          reservations: reservationsInclude,
           _count: { select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } } },
         },
         orderBy: { scheduledAt: 'asc' },
@@ -114,10 +125,7 @@ export class ClassesService {
             user: { select: { name: true, avatarUrl: true } },
           },
         },
-        reservations: {
-          where: { status: { in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED] } },
-          select: { id: true, userId: true, status: true, user: { select: { id: true, name: true, role: true, dni: true, email: true, avatarUrl: true } } }
-        },
+        reservations: reservationsInclude,
         _count: {
           select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
         },
@@ -137,13 +145,8 @@ export class ClassesService {
             user: { select: { name: true, avatarUrl: true } },
           },
         },
-
-        reservations: {
-          where: { status: ReservationStatus.CONFIRMED },
-          include: {
-            user: { select: { id: true, name: true, role: true, dni: true, email: true, avatarUrl: true } },
-          },
-        },
+        // AUD-07: endpoint público, solo el conteo de reservas (sin datos de atletas)
+        _count: { select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } } },
       },
     });
 
