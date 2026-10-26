@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import type { AuthUser } from '../common/gym-access/gym-access.service';
 
 @Controller('marketing')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,18 +18,18 @@ export class MarketingController {
 
   @Post('gym/:gymId/campaigns')
   @Roles('ADMIN', 'GYM_OWNER')
-  async createCampaign(@Param('gymId') gymId: string, @Body() data: any, @CurrentUser() user: any) {
+  async createCampaign(@Param('gymId') gymId: string, @Body() data: any, @CurrentUser() user: AuthUser) {
     if (user.role !== UserRole.ADMIN) {
-      await this.gymsService.validateOwnership(gymId, user.id);
+      await this.gymsService.validateOwnership(gymId, user);
     }
     return this.marketingService.createCampaign(gymId, data);
   }
 
   @Get('gym/:gymId/campaigns')
   @Roles('ADMIN', 'GYM_OWNER')
-  async getCampaigns(@Param('gymId') gymId: string, @CurrentUser() user: any) {
+  async getCampaigns(@Param('gymId') gymId: string, @CurrentUser() user: AuthUser) {
     if (user.role !== UserRole.ADMIN) {
-      await this.gymsService.validateOwnership(gymId, user.id);
+      await this.gymsService.validateOwnership(gymId, user);
     }
     return this.marketingService.getCampaigns(gymId);
   }
