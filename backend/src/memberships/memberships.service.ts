@@ -13,6 +13,21 @@ import {
 import { MembershipStatus, PaymentStatus, InvoiceStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
+// AUD-11: el número sale del id del pago (único por factura) y de la fecha de emisión
+// en Lima, en vez de los últimos 6 dígitos de la hora, que chocaban con facilidad.
+export function buildInvoiceNumber(paymentId: string, issuedAt: Date = new Date()): string {
+  const day = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(issuedAt)
+    .replace(/-/g, '');
+  const suffix = paymentId.replace(/-/g, '').slice(0, 12).toUpperCase();
+  return `INV-${day}-${suffix}`;
+}
+
 @Injectable()
 export class MembershipsService {
   constructor(private prisma: PrismaService) {}
@@ -143,7 +158,7 @@ export class MembershipsService {
           paymentId: payment.id,
           userId: payment.userId,
           gymId: plan.gymId,
-          invoiceNum: `INV-${Date.now().toString().slice(-6)}`,
+          invoiceNum: buildInvoiceNumber(payment.id),
           amount: invoiceAmount,
           tax: taxAmount,
           total: invoiceAmount + taxAmount,
