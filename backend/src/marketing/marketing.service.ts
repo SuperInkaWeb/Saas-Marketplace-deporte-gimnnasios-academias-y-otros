@@ -1,8 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignType, CampaignStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../notifications/email.service';
+import { CreateCampaignDto } from './dto/campaign.dto';
+
+// AUD-22: tope de campañas por gimnasio en 24 horas, para que el envío no sirva como canal de spam.
+const MAX_CAMPAIGNS_PER_DAY = Number(process.env.MARKETING_MAX_CAMPAIGNS_PER_DAY) || 10;
 
 @Injectable()
 export class MarketingService {
@@ -12,7 +16,17 @@ export class MarketingService {
     private readonly emailService: EmailService
   ) {}
 
-  async createCampaign(gymId: string, data: any) {
+  async createCampaign(gymId: string, data: CreateCampaignDto) {
+    const sentLastDay = await this.prisma.marketingCampaign.count({
+      where: { gymId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    });
+    if (sentLastDay >= MAX_CAMPAIGNS_PER_DAY) {
+      throw new HttpException(
+        `Se alcanzó el límite de ${MAX_CAMPAIGNS_PER_DAY} campañas en 24 horas para este gimnasio`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     let sentCount = 0;
     
     // Obtener los destinatarios reales
@@ -60,7 +74,7 @@ export class MarketingService {
         const sendPromises = recipients.map(recipient => 
           this.emailService.sendMarketingCampaign(recipient, {
             name: recipient,
-            subject: data.subject || data.title,
+            subject: data.subject,
             headline: data.subject || '¡Tenemos novedades para ti!',
             body: data.content,
             ctaText: 'Ir a la Plataforma',
@@ -87,7 +101,7 @@ export class MarketingService {
     const campaign = await this.prisma.marketingCampaign.create({
       data: {
         gymId,
-        title: data.title,
+        title: data.title || data.subject,
         subject: data.subject,
         content: data.content,
         type: data.type || CampaignType.EMAIL,

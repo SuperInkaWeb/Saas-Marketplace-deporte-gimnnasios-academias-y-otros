@@ -150,7 +150,8 @@ const CRMView: React.FC = () => {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error('Error sending campaign:', err);
-      toast.error('Error al enviar la campaña');
+      const msg = (err as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
+      toast.error(Array.isArray(msg) ? msg.join('. ') : msg || 'Error al enviar la campaña');
     } finally {
       setSaving(false);
     }
@@ -247,6 +248,7 @@ const CRMView: React.FC = () => {
               <input 
                 type="text" 
                 value={formData.subject}
+                maxLength={200}
                 onChange={e => setFormData({...formData, subject: e.target.value})}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-primary-light transition-colors" 
                 placeholder="Ej. ¡20% Descuento en Tienda!" 
@@ -290,6 +292,7 @@ const CRMView: React.FC = () => {
               <textarea 
                 rows={5} 
                 value={formData.content}
+                maxLength={5000}
                 onChange={e => setFormData({...formData, content: e.target.value})}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-primary-light transition-colors resize-none" 
                 placeholder="Escribe el cuerpo del mensaje..." 
