@@ -29,7 +29,7 @@
 ### Configuración
 - **Runtime**: Node.js 20
 - **Build Command**: `npm install --include=dev && npx prisma generate && npm run build`
-- **Start Command**: `npx prisma db push && node dist/main`
+- **Start Command**: `node dist/src/main` (las migraciones se aplican aparte: ver `docs/MIGRACIONES.md`)
 - **Auto-deploy**: Sí (al push en `main`)
 
 ### Limitaciones del plan Free
@@ -240,5 +240,5 @@ AUTH0_AUDIENCE="https://sportnexus-api"
 - [ ] Crear servicio en **Render** → configurar todas las variables de entorno
 - [ ] Crear proyecto en **Vercel** → configurar `VITE_API_URL`
 - [ ] Actualizar **Fitbit Redirect URLs** con la nueva URL de Vercel
-- [ ] Ejecutar `npx prisma db push` para crear tablas
+- [ ] Ejecutar `npx prisma migrate deploy` para crear tablas (ver `docs/MIGRACIONES.md`)
 - [ ] Verificar con `curl` que el backend responde correctamente
