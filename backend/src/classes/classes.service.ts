@@ -155,66 +155,26 @@ export class ClassesService {
   }
 
   async book(userId: string, classId: string) {
-    // 1. Check class existence and capacity
     const classItem = await this.prisma.class.findUnique({
       where: { id: classId },
-      include: {
-        _count: {
-          select: {
-            reservations: { where: { status: ReservationStatus.CONFIRMED } },
-          },
-        },
-      },
+      select: { price: true },
     });
 
     if (!classItem) throw new NotFoundException('Clase no encontrada');
-    if (!classItem.isActive) throw new BadRequestException('Esta clase no está activa');
-    if (classItem.scheduledAt <= new Date()) {
-     throw new BadRequestException('Esta clase ya comenzó o ya pasó');
-   }
     if (Number(classItem.price) > 0) {throw new BadRequestException('Esta clase requiere pago');}
-    if (classItem._count.reservations >= classItem.capacity) {
-      throw new BadRequestException('La clase está llena');
-    }
 
     // El flujo ahora usará Pay-per-class, por lo que no exigimos membresía activa aquí.
 
-    // 2. Check if already booked
-    const existing = await this.prisma.reservation.findUnique({
-      where: {
-        classId_userId: { classId, userId },
-      },
-    });
-
-    if (existing && existing.status === ReservationStatus.CONFIRMED) {
+    // AUD-21: mismo cupo con bloqueo que el flujo pagado; sin él, dos reservas
+    // simultáneas leían el mismo conteo y la clase quedaba sobrerreservada.
+    const reservation = await this.prisma.$transaction((tx) =>
+      this.reservePaidSeat(tx, userId, classId),
+    );
+    if (!reservation) {
       throw new BadRequestException('Ya tienes una reserva para esta clase');
     }
 
-    // 3. Create or update reservation
-    const reservation = await this.prisma.reservation.upsert({
-      where: {
-        classId_userId: { classId, userId },
-      },
-      update: { status: ReservationStatus.CONFIRMED, bookedAt: new Date() },
-      create: {
-        classId,
-        userId,
-        status: ReservationStatus.CONFIRMED,
-      },
-      include: {
-        user: { select: { name: true } },
-        class: { include: { gym: true } }
-      }
-    });
-
-    // 4. Notify Gym Owner
-    if (reservation.class.gym?.ownerId) {
-      await this.notificationsService.create(reservation.class.gym.ownerId, {
-        title: 'Nueva Reserva de Clase',
-        description: `${reservation.user.name} ha reservado la clase: ${reservation.class.title}`,
-        type: 'RESERVATION'
-      });
-    }
+    await this.notifyNewReservation(reservation);
 
     return reservation;
   }
@@ -279,6 +239,9 @@ export class ClassesService {
     });
 
     if (!reservation) throw new NotFoundException('Reserva no encontrada');
+    if (reservation.status !== ReservationStatus.CONFIRMED) {
+      throw new BadRequestException('Solo se puede cancelar una reserva confirmada');
+    }
 
     return this.prisma.reservation.update({
       where: { id: reservation.id },
@@ -309,6 +272,13 @@ export class ClassesService {
   async markAttendance(reservationId: string, actor: AuthUser) {
     const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
 
+    // AUD-21: una reserva cancelada no tiene asistencia, y marcarla dos veces sumaba
+    // las calorías de la clase otra vez.
+    if (reservation.status === ReservationStatus.ATTENDED) return reservation;
+    if (reservation.status === ReservationStatus.CANCELLED) {
+      throw new BadRequestException('No se puede marcar asistencia en una reserva cancelada');
+    }
+
     // Trigger automatic calorie calculation
     try {
       await this.healthService.calculateCaloriesFromClass(
@@ -337,6 +307,12 @@ export class ClassesService {
 
   async unmarkAttendance(reservationId: string, actor: AuthUser) {
     const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
+
+    // AUD-21: solo se deshace una asistencia; volver a CONFIRMED una reserva cancelada
+    // ocupaba un cupo sin pasar por el control de capacidad.
+    if (reservation.status !== ReservationStatus.ATTENDED) {
+      throw new BadRequestException('Esta reserva no tiene asistencia marcada');
+    }
 
     const updated = await this.prisma.reservation.update({
       where: { id: reservationId },
