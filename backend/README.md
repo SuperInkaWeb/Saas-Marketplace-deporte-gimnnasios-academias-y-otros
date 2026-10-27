@@ -46,7 +46,7 @@ Asegúrate de tener instalado:
    Genera el cliente de Prisma y aplica las tablas a la base de datos:
    ```bash
    npx prisma generate
-   npx prisma db push
+   npx prisma migrate deploy
    ```
 
 4. **Ejecutar Datos de Semilla (Seed - Opcional)**:
@@ -89,5 +89,5 @@ El backend está configurado para desplegarse fácilmente en **Render**:
 3. Configura el directorio raíz a `backend`.
 4. Define los comandos:
    - **Build Command**: `npm install --include=dev && npx prisma generate && npm run build`
-   - **Start Command**: `npx prisma db push && node dist/main`
+   - **Start Command**: `node dist/src/main` (las migraciones se aplican aparte: ver `docs/MIGRACIONES.md`)
 5. Agrega las variables de entorno en el panel de Render.

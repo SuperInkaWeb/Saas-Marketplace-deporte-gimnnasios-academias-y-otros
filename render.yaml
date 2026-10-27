@@ -5,7 +5,9 @@ services:
     runtime: node
     rootDir: backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npx prisma db push && node dist/src/main
+    # El arranque no modifica el schema. Las migraciones se aplican aparte,
+    # tras un backup verificado: ver docs/MIGRACIONES.md.
+    startCommand: node dist/src/main
     envVars:
       - key: NODE_ENV
         value: production

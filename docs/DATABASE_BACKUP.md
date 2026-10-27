@@ -113,9 +113,6 @@ psql -h localhost -U postgres sportnexus_restore < backup_sportnexus_20260427.sq
 Si solo necesitas recrear las tablas (sin datos):
 ```bash
 # Desde el directorio backend/
-npx prisma db push
-
-# O con migraciones:
 npx prisma migrate deploy
 ```
 
@@ -132,7 +129,7 @@ Para regenerar todas las tablas desde cero en cualquier BD PostgreSQL:
 ```bash
 cd backend
 # Configura DATABASE_URL en .env con la nueva BD
-npx prisma db push        # Crea todas las tablas
+npx prisma migrate deploy # Crea todas las tablas
 npx prisma generate       # Genera el cliente TypeScript
 ```
 

@@ -80,7 +80,7 @@ cp .env.example .env
 # Editar .env con tus credenciales (ver docs/SERVICES.md)
 
 npm install
-npx prisma db push        # Crear tablas en BD
+npx prisma migrate deploy # Crear tablas en BD (migraciones versionadas)
 npx prisma generate       # Generar cliente Prisma
 npm run start:dev         # Servidor en http://localhost:3000/api
 ```
