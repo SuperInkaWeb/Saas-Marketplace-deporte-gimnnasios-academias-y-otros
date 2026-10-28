@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, ROLE_LABELS } from '../../context/auth-context';
 import type { Role } from '../../context/auth-context';
-import { Building2, Dumbbell, Users, LogIn, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Building2, Dumbbell, Users, LogIn, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -35,18 +35,8 @@ const LoginPage: React.FC = () => {
     }
   }, [navigate]);
 
+  // El Superadmin (rol ADMIN) no aparece aquí: ingresa por la URL aparte /admin (AdminLoginPage).
   const roles: PortalCard[] = [
-    {
-      // Internamente es el rol ADMIN; en pantalla se muestra como "Superadmin"
-      title: 'Superadmin',
-      icon: ShieldCheck,
-      desc: 'Control total de la plataforma: usuarios, solicitudes, soporte y métricas globales.',
-      color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-400Hover',
-      accent: 'bg-purple-500',
-      image: '/assets/super_admin_gateway.png',
-      allowSignUp: false,
-      portalRole: 'ADMIN',
-    },
     {
       title: 'Dueño (Owner)',
       icon: Building2,
@@ -109,8 +99,8 @@ const LoginPage: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Interactive Gateway Cards Grid - 4 perfiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full max-w-7xl relative z-10 mb-8">
+      {/* Interactive Gateway Cards Grid - 3 perfiles */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-10 mb-8">
         {roles.map((r, i) => {
           const Icon = r.icon;
           return (
