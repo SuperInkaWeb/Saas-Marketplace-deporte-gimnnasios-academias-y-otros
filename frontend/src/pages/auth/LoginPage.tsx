@@ -27,8 +27,11 @@ const LoginPage: React.FC = () => {
     if (params.get('denied') === 'role_mismatch') {
       const role = params.get('role') as Role | null;
       const label = role && ROLE_LABELS[role] ? ROLE_LABELS[role] : 'seleccionado';
-      toast.error(
-        `Esta cuenta no tiene acceso al perfil ${label}. Ingresa con el perfil que corresponde a tu cuenta.`,
+      // Se difiere un ciclo: el <Toaster> se monta después de esta página y el aviso se perdería
+      setTimeout(() =>
+        toast.error(
+          `Esta cuenta no tiene acceso al perfil ${label}. Ingresa con el perfil que corresponde a tu cuenta.`,
+        ),
       );
       // Limpia la URL para que el aviso no se repita al recargar
       navigate('/login', { replace: true });

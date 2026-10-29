@@ -29,7 +29,8 @@ const AdminLoginPage: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('denied')) {
-      toast.error('Acceso no autorizado.');
+      // Se difiere un ciclo: el <Toaster> se monta después de esta página y el aviso se perdería
+      setTimeout(() => toast.error('Acceso no autorizado.'));
       navigate('/admin', { replace: true });
     }
   }, [navigate]);
