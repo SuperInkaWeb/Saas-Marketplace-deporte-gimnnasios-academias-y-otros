@@ -19,6 +19,8 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { UserRole } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
+import { LIMITS } from '../common/security/throttle';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -27,12 +29,14 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Register a new user' })
   @Post('register')
+  @Throttle(LIMITS.register)
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @ApiOperation({ summary: 'Login and receive JWT tokens' })
   @Post('login')
+  @Throttle(LIMITS.login)
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -40,6 +44,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Refresh JWT tokens' })
   @Post('refresh')
+  @Throttle(LIMITS.refresh)
   @HttpCode(HttpStatus.OK)
   refresh(@Body() dto: { userId: string; refreshToken: string }) {
     if (!dto.userId || !dto.refreshToken) {

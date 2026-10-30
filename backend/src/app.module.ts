@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { THROTTLER_OPTIONS, HercixThrottlerGuard } from './common/security/throttle';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonAccessModule } from './common/common-access.module';
@@ -33,6 +36,7 @@ import { HealthModule } from './health/health.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ThrottlerModule.forRoot(THROTTLER_OPTIONS),
     PrismaModule,
     CommonAccessModule, 
     AuthModule,
@@ -59,7 +63,8 @@ import { HealthModule } from './health/health.module';
 
 
   controllers: [AppController],
-  providers: [],
+  // Límite de peticiones global (AUD-14)
+  providers: [{ provide: APP_GUARD, useClass: HercixThrottlerGuard }],
 })
 export class AppModule {}
 

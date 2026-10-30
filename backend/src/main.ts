@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { configureSecurity } from './app.setup';
 import { json, urlencoded } from 'express';
 
 async function bootstrap() {
@@ -14,16 +14,8 @@ async function bootstrap() {
   // Global API prefix
   app.setGlobalPrefix('api');
 
-  // Swagger Documentation Setup
-  const config = new DocumentBuilder()
-    .setTitle('Sports SaaS + Marketplace API')
-    .setDescription('The core API for managing gyms, trainers, classes, and marketplace products.')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Proxy, cabeceras de seguridad (helmet) y Swagger (solo fuera de producción)
+  const { swagger } = configureSecurity(app);
 
   // Enable CORS for React frontend
   const allowedOrigins = [
@@ -56,7 +48,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`🚀 Server running on http://localhost:${port}/api`);
-  console.log(`📄 Documentation available at http://localhost:${port}/api/docs`);
+  if (swagger) console.log(`📄 Documentation available at http://localhost:${port}/api/docs`);
 }
 bootstrap();
 

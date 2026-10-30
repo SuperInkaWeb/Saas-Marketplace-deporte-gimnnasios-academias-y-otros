@@ -4,6 +4,9 @@ import { GeminiService } from './gemini.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { LIMITS } from '../common/security/throttle';
+import { ChatMessageDto } from './dto/chat-message.dto';
 
 @ApiTags('AI Recommendations')
 @Controller('recommendations')
@@ -39,11 +42,12 @@ export class RecommendationsController {
 
   @Post('chat')
   @UseGuards(JwtAuthGuard)
+  @Throttle(LIMITS.aiChat)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Chat with the AI sports assistant (Gemini)' })
   async chat(
     @CurrentUser() user: any,
-    @Body() body: { message: string },
+    @Body() body: ChatMessageDto,
   ) {
     const userContext = `Usuario: ${user.name}, Rol: ${user.role}`;
     const response = await this.geminiService.chatWithAssistant(body.message, userContext);
