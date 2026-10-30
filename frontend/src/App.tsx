@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/auth-context';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import LoginPage from './pages/auth/LoginPage';
+import AdminLoginPage from './pages/auth/AdminLoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import Dashboard from './pages/dashboard/Dashboard';
 import GymsPage from './pages/gyms/GymsPage';
@@ -75,6 +76,8 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+          {/* Acceso del Superadmin: URL aparte, no enlazada desde la web pública */}
+          <Route path="/admin" element={<AdminLoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           
           {/* 

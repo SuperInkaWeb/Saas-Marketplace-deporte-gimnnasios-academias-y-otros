@@ -88,11 +88,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       setUser(null);
-      auth0Logout({
-        logoutParams: {
-          returnTo: `${window.location.origin}/login?denied=role_mismatch&role=${portalRole}`,
-        },
-      });
+      // El acceso de Superadmin vuelve a su propia URL, sin nombrar el rol
+      const returnTo =
+        portalRole === 'ADMIN'
+          ? `${window.location.origin}/admin?denied=1`
+          : `${window.location.origin}/login?denied=role_mismatch&role=${portalRole}`;
+      auth0Logout({ logoutParams: { returnTo } });
       return null;
     }
 

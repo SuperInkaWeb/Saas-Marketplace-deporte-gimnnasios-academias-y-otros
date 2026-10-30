@@ -56,6 +56,10 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const prevNotificationsCount = useRef(0);
   const [activePlan, setActivePlan] = useState<any | null>(null);
 
+  // El panel de Superadmin solo se abre desde /admin: "Administrador" aparece en el selector
+  // únicamente mientras ya es la vista activa (para poder salir de ella), nunca para entrar.
+  const switchableRoles = (user?.roles ?? []).filter((r) => r !== 'ADMIN' || user?.role === 'ADMIN');
+
   const fetchActivePlan = async () => {
     try {
       const { data } = await api.get('/memberships/me');
@@ -233,7 +237,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           </div>
 
-          {user?.roles && user.roles.length > 1 && (
+          {user && switchableRoles.length > 1 && (
             <div className="px-2 space-y-1">
               <label className="text-[10px] uppercase font-bold text-slate-500 block">Vista Activa</label>
               <select
@@ -249,7 +253,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 }}
                 className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:border-primary outline-none cursor-pointer"
               >
-                {user.roles.map(r => (
+                {switchableRoles.map(r => (
                   <option key={r} value={r}>
                     {r === 'USER' ? '🏃 Atleta / Cliente' :
                      r === 'GYM_OWNER' ? '💼 Dueño (Owner)' :
