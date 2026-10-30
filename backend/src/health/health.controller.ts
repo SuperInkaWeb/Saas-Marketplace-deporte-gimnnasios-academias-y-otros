@@ -1,7 +1,11 @@
 import { Controller, Get, Post, Body, Delete, Param, UseGuards, Request, Patch } from '@nestjs/common';
 import { HealthService } from './health.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
+import { UpdateGoalDto, UpsertMetDto, CreateRecommendationDto } from './dto/health.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('health')
@@ -27,7 +31,8 @@ export class HealthController {
 
   @Get('metrics/:userId')
   @ApiOperation({ summary: 'Obtener todas las métricas de un usuario específico' })
-  async findUserMetrics(@Param('userId') userId: string) {
+  async findUserMetrics(@Request() req, @Param('userId') userId: string) {
+    await this.healthService.assertCanViewAthlete(req.user, userId);
     return this.healthService.findAll(userId);
   }
 
@@ -41,7 +46,8 @@ export class HealthController {
 
   @Get('goals/:userId')
   @ApiOperation({ summary: 'Obtener las metas de salud de un usuario específico' })
-  async findUserGoal(@Param('userId') userId: string) {
+  async findUserGoal(@Request() req, @Param('userId') userId: string) {
+    await this.healthService.assertCanViewAthlete(req.user, userId);
     return this.healthService.findGoal(userId);
   }
 
@@ -49,7 +55,7 @@ export class HealthController {
   @ApiOperation({ summary: 'Crear o actualizar metas de salud' })
   async updateGoal(
     @Request() req,
-    @Body() dto: { targetCalories: number; targetSteps: number; targetWater: number; targetWeight?: number }
+    @Body() dto: UpdateGoalDto,
   ) {
     return this.healthService.createOrUpdateGoal(req.user.id, dto);
   }
@@ -57,20 +63,24 @@ export class HealthController {
   // ── Super Admin: MET configurations ───────────────────────────────────────
 
   @Get('admin/met')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Obtener lista maestra de valores MET' })
   async getMETs() {
     return this.healthService.findMETs();
   }
 
   @Post('admin/met')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Crear o actualizar valor MET de actividad' })
-  async upsertMET(
-    @Body() dto: { name: string; metValue: number; intensity: string; defaultDuration?: number }
-  ) {
+  async upsertMET(@Body() dto: UpsertMetDto) {
     return this.healthService.createOrUpdateMET(dto);
   }
 
   @Delete('admin/met/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Eliminar configuración MET de actividad' })
   async deleteMET(@Param('id') id: string) {
     return this.healthService.deleteMET(id);
@@ -80,13 +90,15 @@ export class HealthController {
 
   @Post('recommendations')
   @ApiOperation({ summary: 'Registrar recomendación/observación de coach para un atleta' })
-  async addRecommendation(@Request() req, @Body() dto: { athleteId: string; observation: string }) {
+  async addRecommendation(@Request() req, @Body() dto: CreateRecommendationDto) {
+    await this.healthService.assertCanCoachAthlete(req.user, dto.athleteId);
     return this.healthService.createRecommendation(req.user.id, dto.athleteId, dto.observation);
   }
 
   @Get('recommendations/:athleteId')
   @ApiOperation({ summary: 'Obtener recomendaciones de coach de un atleta' })
-  async getRecommendations(@Param('athleteId') athleteId: string) {
+  async getRecommendations(@Request() req, @Param('athleteId') athleteId: string) {
+    await this.healthService.assertCanViewAthlete(req.user, athleteId);
     return this.healthService.findRecommendations(athleteId);
   }
 

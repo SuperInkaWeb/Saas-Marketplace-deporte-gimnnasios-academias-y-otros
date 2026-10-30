@@ -422,7 +422,8 @@ const HealthView: React.FC = () => {
   const handleUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/health/goals', editGoal);
+      const { targetCalories, targetSteps, targetWater, targetWeight } = editGoal;
+      await api.post('/health/goals', { targetCalories, targetSteps, targetWater, targetWeight });
       toast.success('Metas de salud actualizadas');
       setShowManageModal(false);
       fetchData();
