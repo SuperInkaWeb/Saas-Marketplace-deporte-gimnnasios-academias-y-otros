@@ -18,6 +18,7 @@ describe('Campañas de marketing: contención de AUD-22', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       marketingCampaign: {
+        count: jest.fn().mockResolvedValue(0),
         create: jest
           .fn()
           .mockImplementation(({ data }) =>
