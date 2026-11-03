@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { DARK_TILES } from '../../components/maps/mapTiles';
 
 const redPinIcon = L.divIcon({
   html: `
@@ -474,8 +475,8 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
                     zoomControl={false}
                   >
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution={DARK_TILES.attribution}
+                      url={DARK_TILES.url}
                     />
                     <LocationMarker 
                       position={position} 
