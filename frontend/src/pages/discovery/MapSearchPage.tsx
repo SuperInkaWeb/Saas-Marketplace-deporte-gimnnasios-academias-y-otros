@@ -11,6 +11,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useAuth } from '../../context/auth-context';
+import { DARK_TILES, SATELLITE_TILES, DARK_THUMBNAIL, SATELLITE_THUMBNAIL } from '../../components/maps/mapTiles';
 
 // ─── Tipos de Movilidad Comercial ────────────────────────────────────────────
 interface MobilityData {
@@ -604,15 +605,10 @@ const initiateBooking = async (cls: any) => {
             className="z-0"
             ref={setMap as any}
           >
-            <TileLayer 
-              attribution={mapLayer === 'dark' 
-                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                : 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
-              }
-              url={mapLayer === 'dark'
-                ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              } 
+            <TileLayer
+              key={mapLayer}
+              attribution={mapLayer === 'dark' ? DARK_TILES.attribution : SATELLITE_TILES.attribution}
+              url={mapLayer === 'dark' ? DARK_TILES.url : SATELLITE_TILES.url}
             />
 
             {/* Pulsing User Current Location Marker (San Isidro Center) */}
@@ -698,10 +694,7 @@ const initiateBooking = async (cls: any) => {
               <span className="text-[10px] font-bold text-white uppercase tracking-tighter shadow-lg">Capas</span>
             </div>
             <img 
-              src={mapLayer === 'dark' 
-                ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/15/18525/11252" 
-                : "https://a.basemaps.cartocdn.com/dark_all/15/18525/11252.png"
-              } 
+              src={mapLayer === 'dark' ? SATELLITE_THUMBNAIL : DARK_THUMBNAIL}
               alt="Toggle Layer"
               className="w-full h-full object-cover"
             />
