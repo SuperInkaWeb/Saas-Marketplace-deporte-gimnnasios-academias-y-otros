@@ -26,7 +26,7 @@
    - **Root Directory**: `backend`
    - **Runtime**: `Node`
    - **Build Command**: `npm install --include=dev && npx prisma generate && npm run build`
-   - **Start Command**: `npx prisma db push && node dist/main`
+   - **Start Command**: `node dist/src/main` (las migraciones se aplican aparte: ver `docs/MIGRACIONES.md`)
    - **Plan**: Free
 
 5. En **Environment Variables**, agrega todas las variables (ver sección 4)
@@ -138,12 +138,12 @@ VITE_API_URL="https://sportnexus-platform.onrender.com/api"
 
 ### Ejecutar migraciones
 ```bash
-# Aplicar schema a la BD (crea todas las tablas)
-npx prisma db push
-
-# O con migraciones versionadas:
+# Aplicar las migraciones versionadas (crea todas las tablas)
 npx prisma migrate deploy
 ```
+
+> En producción no se usa `prisma db push`. Procedimiento completo (backup, baseline y
+> nuevas migraciones) en [`MIGRACIONES.md`](MIGRACIONES.md).
 
 ---
 
