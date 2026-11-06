@@ -108,6 +108,37 @@ describe('Asistente de IA (GeminiService)', () => {
     });
   });
 
+  it('reintenta una vez si Google está saturado (503) y responde', async () => {
+    const service = new GeminiService(config({ GEMINI_API_KEY: 'k' }));
+    service.retryDelayMs = 0;
+    generateContent
+      .mockRejectedValueOnce(
+        Object.assign(new Error('high demand'), { status: 503 }),
+      )
+      .mockResolvedValueOnce(reply('Respuesta tras reintento'));
+
+    const result = await service.chatWithAssistant('Hola', { role: 'USER' });
+
+    expect(generateContent).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      response: 'Respuesta tras reintento',
+      aiAnswered: true,
+    });
+  });
+
+  it('no reintenta errores permanentes (clave o modelo)', async () => {
+    const service = new GeminiService(config({ GEMINI_API_KEY: 'k' }));
+    service.retryDelayMs = 0;
+    generateContent.mockRejectedValue(
+      Object.assign(new Error('API key not valid'), { status: 400 }),
+    );
+
+    const result = await service.chatWithAssistant('Hola', { role: 'USER' });
+
+    expect(generateContent).toHaveBeenCalledTimes(1);
+    expect(result.aiAnswered).toBe(false);
+  });
+
   it('sin GEMINI_API_KEY avisa que no está disponible', async () => {
     const service = new GeminiService(config({}));
     const result = await service.chatWithAssistant('Hola', { role: 'USER' });
