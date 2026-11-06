@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../../api/api-client';
+import { useAuth } from '../../context/auth-context';
 import { Bot, X, Send, Loader2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,13 +10,24 @@ interface Message {
   text: string;
 }
 
+// Preguntas sugeridas según el perfil activo
+const QUICK_QUESTIONS: Record<string, string[]> = {
+  USER: ['¿Cómo reservo una clase?', '¿Cómo compro una membresía?', '¿Cómo registro mi progreso de salud?'],
+  GYM_OWNER: ['¿Cómo creo una clase?', '¿Cómo envío una campaña a mis socios?', '¿Dónde veo mis facturas?'],
+  TRAINER: ['¿Cómo tomo asistencia?', '¿Cómo me vinculo a un gimnasio?', '¿Cómo veo la salud de mis atletas?'],
+  ADMIN: ['¿Cómo apruebo una solicitud de rol?', '¿Dónde gestiono las cuentas?', '¿Cómo respondo un ticket?'],
+};
+
 const AIChatWidget: React.FC = () => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  // null = aún no se ha preguntado; false = la última respuesta no vino de la IA
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
       role: 'assistant',
-      text: '¡Hola! Soy el asistente de Hercix 🏆. Puedo ayudarte a encontrar clases, resolver dudas sobre membresías, eventos y mucho más. ¿En qué te puedo asistir?',
+      text: '¡Hola! Soy el asistente de Hercix 🏆. Puedo explicarte cómo usar la plataforma y darte consejos de entrenamiento. ¿En qué te ayudo?',
     },
   ]);
   const [input, setInput] = useState('');
@@ -37,6 +49,7 @@ const AIChatWidget: React.FC = () => {
 
     try {
       const { data } = await api.post('/recommendations/chat', { message: text });
+      setAiAvailable(data.aiEnabled === true);
       const aiMsg: Message = {
         id: Date.now().toString() + 'ai',
         role: 'assistant',
@@ -64,11 +77,7 @@ const AIChatWidget: React.FC = () => {
     }
   };
 
-  const quickQuestions = [
-    '¿Cómo reservo una clase?',
-    '¿Qué membresías hay?',
-    '¿Hay torneos próximos?',
-  ];
+  const quickQuestions = QUICK_QUESTIONS[user?.role ?? 'USER'] ?? QUICK_QUESTIONS.USER;
 
   return (
     <>
@@ -114,8 +123,12 @@ const AIChatWidget: React.FC = () => {
               <div>
                 <h3 className="text-white font-bold text-sm">Asistente Hercix</h3>
                 <p className="text-slate-400 text-xs flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
-                  IA activa · Siempre disponible
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full inline-block ${
+                      aiAvailable === false ? 'bg-amber-400' : 'bg-green-400 animate-pulse'
+                    }`}
+                  />
+                  {aiAvailable === false ? 'IA no disponible por ahora' : 'Asistente con IA'}
                 </p>
               </div>
             </div>
@@ -130,7 +143,7 @@ const AIChatWidget: React.FC = () => {
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                    className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
                       msg.role === 'user'
                         ? 'bg-primary text-white rounded-br-sm'
                         : 'bg-white/5 text-slate-200 border border-white/5 rounded-bl-sm'
