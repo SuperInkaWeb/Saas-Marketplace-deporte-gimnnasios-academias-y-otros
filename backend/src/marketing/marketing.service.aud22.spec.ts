@@ -26,7 +26,7 @@ describe('Campañas de marketing: contención de AUD-22', () => {
           ),
       },
     };
-    email = { sendMarketingCampaign: jest.fn().mockResolvedValue(undefined) };
+    email = { sendMarketingCampaign: jest.fn().mockResolvedValue(true) };
     service = new MarketingService(
       prisma as PrismaService,
       {
