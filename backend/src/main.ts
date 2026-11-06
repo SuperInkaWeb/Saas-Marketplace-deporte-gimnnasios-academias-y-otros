@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { configureSecurity } from './app.setup';
 import { json, urlencoded } from 'express';
+import { checkPaymentsEnv } from './payments/payments-env';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -49,6 +50,14 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 Server running on http://localhost:${port}/api`);
   if (swagger) console.log(`📄 Documentation available at http://localhost:${port}/api/docs`);
+
+  // AUD-10: avisar en los logs si falta configuración de Mercado Pago (no detiene la API)
+  const paymentsLogger = new Logger('PaymentsConfig');
+  const production = process.env.NODE_ENV === 'production';
+  for (const problem of checkPaymentsEnv()) {
+    if (production) paymentsLogger.error(problem);
+    else paymentsLogger.warn(problem);
+  }
 }
 bootstrap();
 
