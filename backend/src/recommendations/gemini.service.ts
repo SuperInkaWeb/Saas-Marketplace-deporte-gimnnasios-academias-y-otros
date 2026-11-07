@@ -1,24 +1,48 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { buildSystemInstruction } from './hercix-knowledge';
+
+// Modelo por defecto. Se puede cambiar sin tocar código con GEMINI_MODEL
+// (Google retira modelos: gemini-1.5-flash dejó de existir y el chat caía siempre al respaldo).
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+
+export const CHAT_UNAVAILABLE_MESSAGE =
+  'El asistente no está disponible en este momento. Puedes revisar las secciones del menú o escribirnos desde "Soporte / Tickets".';
+
+export interface ChatUser {
+  name?: string;
+  role?: string;
+}
+
+export interface ChatResult {
+  response: string;
+  // true solo si la respuesta la generó la IA (no el mensaje de "no disponible")
+  aiAnswered: boolean;
+}
 
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private genAI: GoogleGenerativeAI | null = null;
-  private model: any = null;
+  private model: GenerativeModel | null = null;
   private readonly isEnabled: boolean;
+  readonly modelName: string;
+  // Espera antes de reintentar un error temporal (las pruebas lo ponen en 0)
+  retryDelayMs = 1500;
 
   constructor(private config: ConfigService) {
     const apiKey = this.config.get<string>('GEMINI_API_KEY');
+    this.modelName =
+      this.config.get<string>('GEMINI_MODEL')?.trim() || DEFAULT_GEMINI_MODEL;
     if (apiKey && apiKey !== 'your_gemini_api_key_here') {
       this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      this.model = this.genAI.getGenerativeModel({ model: this.modelName });
       this.isEnabled = true;
-      this.logger.log('✅ Gemini AI enabled with gemini-1.5-flash');
+      this.logger.log(`Gemini AI habilitado con el modelo ${this.modelName}`);
     } else {
       this.isEnabled = false;
-      this.logger.warn('⚠️  Gemini AI disabled — set GEMINI_API_KEY in .env to enable');
+      this.logger.warn('Gemini AI deshabilitado: falta GEMINI_API_KEY');
     }
   }
 
@@ -44,7 +68,7 @@ export class GeminiService {
 
     try {
       const prompt = `Eres el Asistente de Élite de Hercix 🏆, la plataforma SaaS deportiva líder en Latinoamérica.
-      
+
 Tu objetivo es motivar y guiar a "${context.userName}" para que alcance su máximo potencial.
 
 Contexto del usuario:
@@ -65,55 +89,89 @@ Responde SOLO con el mensaje.`;
 
       const result = await this.model.generateContent(prompt);
       const text = result.response.text().trim();
-      return text || `¡Hola ${context.userName.split(' ')[0]}! Tus recomendaciones personalizadas están listas. 💪`;
+      return (
+        text ||
+        `¡Hola ${context.userName.split(' ')[0]}! Tus recomendaciones personalizadas están listas. 💪`
+      );
     } catch (error) {
-      this.logger.error('Gemini API error:', error);
+      this.logger.error(`Gemini API error (${describeGeminiError(error)})`);
       return `¡Hola ${context.userName.split(' ')[0]}! Tus recomendaciones personalizadas están listas. 💪`;
     }
   }
 
-  async chatWithAssistant(message: string, userContext: string): Promise<string> {
-    if (!this.isEnabled || !this.model) {
-      return this.getFallbackChatResponse(message);
+  // Chat del asistente. Las reglas y la guía de Hercix van como instrucción de sistema y el
+  // mensaje del usuario por separado, para que el usuario no pueda reescribir las reglas.
+  async chatWithAssistant(
+    message: string,
+    user: ChatUser,
+  ): Promise<ChatResult> {
+    if (!this.isEnabled || !this.genAI) {
+      return { response: CHAT_UNAVAILABLE_MESSAGE, aiAnswered: false };
     }
 
     try {
-      const prompt = `
-        Eres el Asistente de Élite de Hercix 🏆. Tu tono debe ser el de un Consultor Senior de Negocios Deportivos y un Coach de Alto Rendimiento combined.
-        
-        REGLAS DE ORO:
-        1. Si el usuario es un DUEÑO, háblale de ROI, retención de clientes y optimización financiera.
-        2. Si el usuario es un COACH, háblale de programación de atletas, biomecánica y motivación de equipo.
-        3. Si el usuario es un ATLETA, háblale de disciplina, superación personal y salud basada en métricas.
-        4. TIENES ACCESO A DATOS DE WEARABLES: Si el usuario menciona fatiga o rendimiento, recuérdale que Hercix monitoriza sus pasos, ritmo cardíaco y calorías para darle el plan perfecto. Mantente siempre motivador pero con autoridad científica.
-        5. Branding: Usa "Hercix" como la plataforma definitiva que une SaaS y Marketplace.
-        6. Personalidad: Eres audaz, directo y buscas la excelencia del usuario.
-      
-Contexto del usuario actual:
-${userContext}
-
-Mensaje del usuario: "${message}"`;
-
-      const result = await this.model.generateContent(prompt);
-      return result.response.text().trim();
+      const model = this.genAI.getGenerativeModel({
+        model: this.modelName,
+        systemInstruction: buildSystemInstruction(user.role, user.name),
+        generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
+      });
+      const request = {
+        contents: [{ role: 'user', parts: [{ text: message }] }],
+      };
+      // Google devuelve 503/500 en picos de demanda: se reintenta una vez antes de rendirse.
+      let result: Awaited<ReturnType<typeof model.generateContent>>;
+      try {
+        result = await model.generateContent(request);
+      } catch (error) {
+        if (!isTransientGeminiError(error)) throw error;
+        this.logger.warn(
+          `Gemini chat: reintentando (${describeGeminiError(error)})`,
+        );
+        await new Promise((r) => setTimeout(r, this.retryDelayMs));
+        result = await model.generateContent(request);
+      }
+      const text = result.response.text().trim();
+      if (!text) {
+        this.logger.warn('Gemini devolvió una respuesta vacía');
+        return { response: CHAT_UNAVAILABLE_MESSAGE, aiAnswered: false };
+      }
+      return { response: text, aiAnswered: true };
     } catch (error) {
-      this.logger.error('Gemini chat error:', error);
-      return this.getFallbackChatResponse(message);
+      // No se registra el mensaje del usuario, solo el tipo de error.
+      this.logger.error(`Gemini chat error (${describeGeminiError(error)})`);
+      return { response: CHAT_UNAVAILABLE_MESSAGE, aiAnswered: false };
     }
   }
+}
 
-  private getFallbackChatResponse(message: string): string {
-    const lower = message.toLowerCase();
-    if (lower.includes('clase') || lower.includes('reserva'))
-      return 'Puedes reservar clases desde la sección "Clases" del menú. Tenemos yoga, CrossFit, fútbol y más. ¡Elige la que más te guste!';
-    if (lower.includes('membresía') || lower.includes('plan') || lower.includes('precio'))
-      return 'Tenemos planes de membresía flexibles. Ve a la sección "Membresías" para ver todos los precios y beneficios disponibles.';
-    if (lower.includes('gimnasio') || lower.includes('gym'))
-      return 'Puedes explorar todos los gimnasios disponibles en la sección "Gimnasios" o usar el mapa en "Descubrir" para encontrar el más cercano.';
-    if (lower.includes('evento') || lower.includes('torneo'))
-      return 'Revisa la sección "Eventos" para ver torneos, masterclasses y workshops próximos en tu ciudad.';
-    if (lower.includes('tienda') || lower.includes('producto') || lower.includes('equipo'))
-      return 'En nuestra "Tienda" encuentras equipamiento deportivo de los mejores proveedores. ¡Agrega lo que necesites al carrito!';
-    return 'Estoy aquí para ayudarte con Hercix. Puedes preguntar sobre clases, membresías, gimnasios, eventos o la tienda deportiva. ¿En qué te puedo asistir?';
-  }
+// Errores temporales de Google (alta demanda o falla interna) que vale la pena reintentar.
+export function isTransientGeminiError(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  return status === 503 || status === 500;
+}
+
+// Resume el error de Gemini para el log sin volcar el objeto completo.
+export function describeGeminiError(error: unknown): string {
+  const status = (error as { status?: number })?.status;
+  const message = error instanceof Error ? error.message : String(error);
+  // El mensaje incluye la URL (".../models/x:generateContent"), así que se buscan
+  // palabras completas para no confundir "generateContent" con "rate".
+  if (
+    status === 401 ||
+    status === 403 ||
+    /API_KEY_INVALID|api key not valid|\bapi key\b/i.test(message)
+  )
+    return 'clave de API inválida o sin permisos: revisar GEMINI_API_KEY';
+  if (status === 404 || /\bnot found\b/i.test(message))
+    return 'modelo no encontrado: revisar GEMINI_MODEL';
+  if (
+    status === 429 ||
+    /RESOURCE_EXHAUSTED|\bquota\b|\brate limit/i.test(message)
+  )
+    return 'cuota o límite de uso excedido';
+  if (isTransientGeminiError(error))
+    return 'servicio de Google saturado o con falla temporal';
+  if (/safety|blocked/i.test(message))
+    return 'respuesta bloqueada por filtros de seguridad';
+  return `error inesperado: ${message.slice(0, 200)}`;
 }
