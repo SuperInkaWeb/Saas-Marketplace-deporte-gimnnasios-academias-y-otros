@@ -23,6 +23,9 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Opcional: por defecto gemini-3.5-flash
+      - key: GEMINI_MODEL
+        sync: false
       - key: BACKEND_URL
         sync: false
       # Mercado Pago (AUD-10): token de producción APP_USR-… y clave secreta del webhook
