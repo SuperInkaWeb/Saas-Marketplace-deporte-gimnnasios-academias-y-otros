@@ -79,7 +79,7 @@ export class MarketingService {
             body: data.content,
             ctaText: 'Ir a la Plataforma',
             ctaUrl: process.env.FRONTEND_URL || 'https://hercix.com'
-          }).then(() => sentCount++)
+          }).then((sent) => { if (sent) sentCount++; }) // AUD-30: solo cuenta lo que Resend aceptó
             .catch(err => console.error("Error en campaña individual", err))
         );
         
@@ -105,7 +105,11 @@ export class MarketingService {
         subject: data.subject,
         content: data.content,
         type: data.type || CampaignType.EMAIL,
-        status: CampaignStatus.SENT,
+        // AUD-30: si había destinatarios y no salió ningún correo, la campaña no se marca como enviada.
+        status:
+          recipients.length > 0 && (!data.type || data.type === 'EMAIL') && sentCount === 0
+            ? CampaignStatus.FAILED
+            : CampaignStatus.SENT,
         sentCount: sentCount,
         scheduledAt: new Date(),
       },
