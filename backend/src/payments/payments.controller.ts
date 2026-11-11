@@ -8,7 +8,9 @@ import {
   Req,
   UseGuards,
   HttpCode,
+  Logger,
 } from '@nestjs/common';
+import { MPNotFoundError } from 'mercadopago';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MercadoPagoSignatureGuard } from './guards/mercadopago-signature.guard';
@@ -22,6 +24,8 @@ import {
 
 @Controller('payments')
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -76,7 +80,23 @@ export class PaymentsController {
     const type = body?.type ?? query?.type ?? query?.topic;
     const id = String(body?.data?.id ?? query?.['data.id'] ?? query?.id ?? '');
     if (type === 'payment' && /^\d{1,20}$/.test(id)) {
-      await this.paymentsService.processMercadoPagoPayment(id);
+      try {
+        await this.paymentsService.processMercadoPagoPayment(id);
+      } catch (err) {
+        // Un pago que no existe en Mercado Pago (p. ej. "Simular notificación" del panel)
+        // no se va a poder procesar nunca: se responde 200 para que MP no reintente.
+        // Cualquier otro error sigue devolviendo 500 y MP reintenta la notificación.
+        if (
+          err instanceof MPNotFoundError ||
+          (err as { status?: number })?.status === 404
+        ) {
+          this.logger.warn(
+            `Webhook de Mercado Pago ignorado: el pago ${id} no existe`,
+          );
+          return { ok: true, ignored: true };
+        }
+        throw err;
+      }
     }
     return { ok: true };
   }
