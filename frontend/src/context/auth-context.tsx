@@ -24,7 +24,10 @@ interface User {
 }
 
 interface LoginOptions {
+  /** Si el perfil puede crear cuenta (muestra el enlace "Regístrate" en Auth0). */
   allowSignUp?: boolean;
+  /** Pantalla inicial de Auth0. Por defecto, "Iniciar sesión". */
+  screenHint?: 'login' | 'signup';
   /** Perfil elegido en el portal (/login). Se valida al volver de Auth0. */
   portalRole?: Role;
 }
@@ -177,7 +180,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await loginWithRedirect({
         authorizationParams: {
           allow_signup: options?.allowSignUp === false ? 'false' : 'true',
-          screen_hint: options?.allowSignUp ? 'signup' : 'login',
+          // Permitir el registro no significa abrir el formulario de registro:
+          // ingresar siempre empieza en "Iniciar sesión" salvo que se pida lo contrario.
+          screen_hint: options?.screenHint ?? 'login',
         },
       });
     } catch (error: any) {
