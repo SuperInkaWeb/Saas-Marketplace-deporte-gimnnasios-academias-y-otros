@@ -30,7 +30,8 @@ const LOGIN_PATH = /\/auth\/login\/?$/;
 
 @Injectable()
 export class HercixThrottlerGuard extends ThrottlerGuard {
-  private readonly logger = new Logger('Throttler');
+  // Nombre propio: desde @nestjs/throttler 6.7 la clase base ya define `logger`.
+  private readonly throttleLogger = new Logger('Throttler');
 
   // En el login se cuenta por IP + correo: frena la fuerza bruta contra una cuenta y,
   // si detrás de un proxy todos llegaran con la misma IP, no bloquea a los demás usuarios.
@@ -50,7 +51,7 @@ export class HercixThrottlerGuard extends ThrottlerGuard {
     detail: ThrottlerLimitDetail,
   ): Promise<void> {
     const req = context.switchToHttp().getRequest<Request>();
-    this.logger.warn(
+    this.throttleLogger.warn(
       `429 ${req.method} ${req.path} ip=${req.ip} xff=${String(req.headers['x-forwarded-for'] ?? '-')} limit=${detail.limit}/${detail.ttl}ms`,
     );
     return super.throwThrottlingException(context, detail);
