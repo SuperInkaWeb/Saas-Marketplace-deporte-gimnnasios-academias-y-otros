@@ -1,0 +1,60 @@
+# Actualizaciones automáticas de dependencias.
+# Dependabot solo abre PR; ninguno se mergea solo. Cada merge a main despliega
+# (Render: backend, Vercel: frontend), así que revisar el preview antes de mergear.
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/Lima"
+    # Esperar a que una versión nueva tenga unos días antes de proponerla.
+    # No aplica a las actualizaciones de seguridad.
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      backend-produccion:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      backend-desarrollo:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+    ignore:
+      # Prisma 7 requiere migración aparte (riesgo de deepmerge-ts aceptado).
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      # Los paquetes @nestjs/* deben subir juntos y alineados; se hace a mano.
+      - dependency-name: "@nestjs/*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/Lima"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      frontend-produccion:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      frontend-desarrollo:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
