@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, CreateOrderDto } from './dto/marketplace.dto';
 import { OrderStatus } from '@prisma/client';
+import { assertGymStatusActive, visibleGymWhere } from '../common/gym-access/gym-status';
 
 @Injectable()
 export class MarketplaceService {
@@ -27,14 +28,17 @@ export class MarketplaceService {
     });
   }
 
-  async findAllProducts(gymId?: string) {
+  async findAllProducts(gymId?: string, viewer?: { id: string; role?: string } | null) {
+    // AUD-17: productos de gimnasios inactivos solo para su dueño y el ADMIN.
+    const gymFilter = visibleGymWhere(viewer);
     return this.prisma.product.findMany({
       where: {
         ...(gymId ? { gymId } : {}),
+        ...(gymFilter ? { gym: gymFilter } : {}),
         isActive: true,
       },
       include: {
-        gym: { select: { id: true, name: true, ownerId: true } },
+        gym: { select: { id: true, name: true, ownerId: true, status: true } },
       },
     });
   }
@@ -80,9 +84,11 @@ export class MarketplaceService {
       for (const item of dto.items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
+          include: { gym: { select: { status: true } } },
         });
 
         if (!product) throw new NotFoundException(`Producto ${item.productId} no encontrado`);
+        assertGymStatusActive(product.gym);
         if (Number(product.price) > 0) {
           throw new BadRequestException(
             `"${product.name}" requiere pago con Mercado Pago`,

@@ -9,6 +9,7 @@ import {
 import { MercadoPagoConfig, Preference, Payment as MpPayment } from 'mercadopago';
 import { PaymentStatus, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertGymStatusActive } from '../common/gym-access/gym-status';
 import { MembershipsService } from '../memberships/memberships.service';
 import { ClassesService } from '../classes/classes.service';
 import { ProfessionalsService } from '../professionals/professionals.service';
@@ -82,8 +83,12 @@ export class PaymentsService {
   }
 
   async createMembershipCheckout(userId: string, email: string, planId: string) {
-    const plan = await this.prisma.membershipPlan.findUnique({ where: { id: planId } });
+    const plan = await this.prisma.membershipPlan.findUnique({
+      where: { id: planId },
+      include: { gym: { select: { status: true } } },
+    });
     if (!plan || !plan.isActive) throw new NotFoundException('Plan no disponible');
+    assertGymStatusActive(plan.gym);
 
     const payment = await this.prisma.payment.create({
       data: {
@@ -122,12 +127,15 @@ export class PaymentsService {
 
     const products = await this.prisma.product.findMany({
       where: { id: { in: [...qtyById.keys()] } },
+      include: { gym: { select: { status: true } } },
     });
     if (products.length !== qtyById.size) throw new NotFoundException('Producto no encontrado');
 
     if (new Set(products.map((p) => p.gymId)).size > 1) {
       throw new BadRequestException('Paga por separado los productos de cada vendedor');
     }
+
+    assertGymStatusActive(products[0].gym);
 
     for (const p of products) {
       const qty = qtyById.get(p.id)!;
@@ -205,9 +213,11 @@ export class PaymentsService {
         _count: {
           select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
         },
+        gym: { select: { status: true } },
       },
     });
     if (!cls || !cls.isActive) throw new NotFoundException('Clase no disponible');
+    assertGymStatusActive(cls.gym);
         if (cls.scheduledAt <= new Date()) {
       throw new BadRequestException('Esta clase ya comenzó o ya pasó');
     }

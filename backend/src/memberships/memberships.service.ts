@@ -12,6 +12,7 @@ import {
 } from './dto/membership.dto';
 import { MembershipStatus, PaymentStatus, InvoiceStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertGymStatusActive, visibleGymWhere } from '../common/gym-access/gym-status';
 
 // AUD-11: el número sale del id del pago (único por factura) y de la fecha de emisión
 // en Lima, en vez de los últimos 6 dígitos de la hora, que chocaban con facilidad.
@@ -50,14 +51,17 @@ export class MembershipsService {
   // AUD-25: endpoint público de solo lectura. Antes, si no había planes activos,
   // creaba planes de ejemplo (y hasta un gimnasio o un usuario ADMIN sin contraseña).
   // Si no hay planes se devuelve la lista vacía; el frontend ya muestra ese estado.
-  async findAllPlans(gymId?: string) {
+  async findAllPlans(gymId?: string, viewer?: { id: string; role?: string } | null) {
+    // AUD-17: planes de gimnasios inactivos solo para su dueño y el ADMIN.
+    const gymFilter = visibleGymWhere(viewer);
     return this.prisma.membershipPlan.findMany({
       where: {
         ...(gymId ? { gymId } : {}),
+        ...(gymFilter ? { gym: gymFilter } : {}),
         isActive: true,
       },
       include: {
-        gym: { select: { name: true } },
+        gym: { select: { name: true, status: true } },
       },
     });
   }
@@ -66,10 +70,12 @@ export class MembershipsService {
     // 1. Get plan
     const plan = await this.prisma.membershipPlan.findUnique({
       where: { id: dto.planId },
+      include: { gym: { select: { status: true } } },
     });
 
     if (!plan) throw new NotFoundException('Plan no encontrado');
     if (!plan.isActive) throw new BadRequestException('Este plan no está disponible');
+    assertGymStatusActive(plan.gym);
     if (Number(plan.price) > 0) {
       throw new BadRequestException('Este plan requiere pago con Mercado Pago');
     }

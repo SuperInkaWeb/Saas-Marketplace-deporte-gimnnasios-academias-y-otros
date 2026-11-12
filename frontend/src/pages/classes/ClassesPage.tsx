@@ -33,7 +33,9 @@ const ClassCard: React.FC<{
   const isTrainerAssigned = user?.role === 'TRAINER' && classItem.trainer?.user?.name === user?.name;
   const isOwnerClass = user?.role === 'ADMIN' || (user?.role === 'GYM_OWNER' && classItem.gym?.ownerId === user?.id);
   const canManageAttendance = isOwnerClass || isTrainerAssigned;
-  
+  // AUD-17: un negocio inactivo no acepta reservas; las ya hechas se siguen mostrando.
+  const gymInactive = !!classItem.gym?.status && classItem.gym.status !== 'ACTIVE';
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -46,6 +48,11 @@ const ClassCard: React.FC<{
           <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'bg-secondary/20 text-secondary-light border border-secondary/30' : 'bg-primary/20 text-primary-light border border-primary/30'}`}>
             {isOnline ? 'Online' : 'Presencial'}
           </span>
+          {gymInactive && (
+            <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Negocio inactivo
+            </span>
+          )}
         </div>
         <div className="absolute bottom-4 left-4 right-4 z-20">
           <h3 className="text-xl font-bold text-white group-hover:text-primary-light transition-colors">{classItem.title}</h3>
@@ -140,9 +147,9 @@ const ClassCard: React.FC<{
             <button 
               onClick={() => onBook(classItem.id)}
               className="btn-primary py-2 px-6 text-sm active:scale-95"
-              disabled={classItem._count?.reservations >= classItem.capacity}
+              disabled={gymInactive || classItem._count?.reservations >= classItem.capacity}
             >
-              {classItem._count?.reservations >= classItem.capacity ? 'Agotado' : 'Reservar'}
+              {gymInactive ? 'No disponible' : classItem._count?.reservations >= classItem.capacity ? 'Agotado' : 'Reservar'}
             </button>
           )}
         </div>
