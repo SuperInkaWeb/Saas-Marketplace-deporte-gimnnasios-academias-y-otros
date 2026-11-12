@@ -125,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setBackendLoading(true);
         try {
           const token = await getAccessTokenSilently();
+          if (!token) throw new Error('Auth0 no devolvió un token de acceso');
           localStorage.setItem('token', token);
 
           const profile = await fetchProfile();
