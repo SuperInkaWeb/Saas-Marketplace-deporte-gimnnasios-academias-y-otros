@@ -12,6 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { HealthService } from '../health/health.service';
 import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
 import { AuditService } from '../common/audit/audit.service';
+import { assertGymStatusActive } from '../common/gym-access/gym-status';
 
 @Injectable()
 export class ClassesService {
@@ -77,6 +78,7 @@ export class ClassesService {
     trainerUserId?: string,
     includeInactive = false,
     viewer?: { id: string; canSeeAttendees: boolean },
+    gymFilter?: Prisma.GymWhereInput,
   ) {
     // AUD-07: la lista de asistentes (nombre, DNI) solo la ve el staff, y nunca el email.
     // El resto solo recibe su propia reserva, para saber si ya reservó.
@@ -102,7 +104,7 @@ export class ClassesService {
       return this.prisma.class.findMany({
         where: { id: { in: classIds }, isActive: true },
         include: {
-          gym: { select: { name: true, city: true, ownerId: true } },
+          gym: { select: { name: true, city: true, ownerId: true, status: true } },
           trainer: { include: { user: { select: { name: true, avatarUrl: true } } } },
           reservations: reservationsInclude,
           _count: { select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } } },
@@ -114,12 +116,13 @@ export class ClassesService {
     return this.prisma.class.findMany({
       where: {
         ...(gymId ? { gymId } : {}),
-        ...(ownerId ? { gym: { ownerId } } : {}),
+        // AUD-17: gymFilter oculta las clases de gimnasios inactivos a quien no es staff.
+        ...(ownerId || gymFilter ? { gym: { ...(ownerId ? { ownerId } : {}), ...gymFilter } } : {}),
         ...(trainerUserId ? { trainer: { userId: trainerUserId } } : {}),
         ...(includeInactive ? {} : { isActive: true }),
       },
       include: {
-        gym: { select: { name: true, city: true, ownerId: true } },
+        gym: { select: { name: true, city: true, ownerId: true, status: true } },
         trainer: {
           include: {
             user: { select: { name: true, avatarUrl: true } },
@@ -157,10 +160,11 @@ export class ClassesService {
   async book(userId: string, classId: string) {
     const classItem = await this.prisma.class.findUnique({
       where: { id: classId },
-      select: { price: true },
+      select: { price: true, gym: { select: { status: true } } },
     });
 
     if (!classItem) throw new NotFoundException('Clase no encontrada');
+    assertGymStatusActive(classItem.gym);
     if (Number(classItem.price) > 0) {throw new BadRequestException('Esta clase requiere pago');}
 
     // El flujo ahora usará Pay-per-class, por lo que no exigimos membresía activa aquí.

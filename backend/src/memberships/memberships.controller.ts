@@ -16,6 +16,7 @@ import {
   SubscribeDto,
 } from './dto/membership.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -46,10 +47,11 @@ export class MembershipsController {
   }
 
   @Get('plans')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Listar planes de membresía disponibles' })
   @ApiQuery({ name: 'gymId', required: false })
-  findAllPlans(@Query('gymId') gymId?: string) {
-    return this.membershipsService.findAllPlans(gymId);
+  findAllPlans(@Query('gymId') gymId?: string, @CurrentUser() user?: any) {
+    return this.membershipsService.findAllPlans(gymId, user);
   }
 
   @Post('subscribe')

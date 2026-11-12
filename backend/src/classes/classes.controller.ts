@@ -17,6 +17,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import { visibleGymWhere } from '../common/gym-access/gym-status';
 import {
   ApiTags,
   ApiOperation,
@@ -69,6 +70,8 @@ export class ClassesController {
       trainerUserId,
       includeInactive === 'true' && isStaff,
       user ? { id: user.id, canSeeAttendees } : undefined,
+      // AUD-17: atletas no ven clases de gimnasios inactivos (sus reservas sí, vía myReservations).
+      isStaff ? undefined : visibleGymWhere(user),
     );
   }
 

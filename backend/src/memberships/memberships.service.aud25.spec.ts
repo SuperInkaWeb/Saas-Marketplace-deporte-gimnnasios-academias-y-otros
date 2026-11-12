@@ -55,7 +55,7 @@ describe('MembershipsService.findAllPlans (AUD-25)', () => {
 
     await expect(service.findAllPlans('g1')).resolves.toEqual([plan]);
     expect(prisma.membershipPlan.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { gymId: 'g1', isActive: true } }),
+      expect.objectContaining({ where: { gymId: 'g1', isActive: true, gym: { status: 'ACTIVE' } } }),
     );
   });
 });

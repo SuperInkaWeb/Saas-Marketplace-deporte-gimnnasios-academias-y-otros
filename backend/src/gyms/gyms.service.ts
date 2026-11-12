@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GYM_INACTIVE_MESSAGE } from '../common/gym-access/gym-status';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
 import { GymStatus, GymLocationSource, UserRole } from '@prisma/client';
@@ -389,7 +390,7 @@ async assertGymActive(gymId: string) {
   });
   if (!gym) throw new NotFoundException('Gimnasio no encontrado');
   if (gym.status !== GymStatus.ACTIVE) {
-    throw new ConflictException('Este gimnasio está inactivo temporalmente.');
+    throw new ConflictException(GYM_INACTIVE_MESSAGE);
   }
 }
 

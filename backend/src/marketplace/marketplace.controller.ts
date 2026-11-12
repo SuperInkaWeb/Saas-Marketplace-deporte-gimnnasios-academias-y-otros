@@ -12,6 +12,7 @@ import {
 import { MarketplaceService } from './marketplace.service';
 import { CreateProductDto, CreateOrderDto } from './dto/marketplace.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -42,10 +43,11 @@ export class MarketplaceController {
   }
 
   @Get('products')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Listar productos disponibles' })
   @ApiQuery({ name: 'gymId', required: false })
-  findAllProducts(@Query('gymId') gymId?: string) {
-    return this.marketplaceService.findAllProducts(gymId);
+  findAllProducts(@Query('gymId') gymId?: string, @CurrentUser() user?: any) {
+    return this.marketplaceService.findAllProducts(gymId, user);
   }
 
   @Delete('products/:id')
