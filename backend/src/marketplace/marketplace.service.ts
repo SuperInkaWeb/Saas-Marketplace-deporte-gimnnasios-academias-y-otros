@@ -3,9 +3,14 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProductDto, CreateOrderDto } from './dto/marketplace.dto';
+import {
+  CreateProductDto,
+  CreateOrderDto,
+  UpdateProductDto,
+} from './dto/marketplace.dto';
 import { OrderStatus } from '@prisma/client';
 import { assertGymStatusActive, visibleGymWhere } from '../common/gym-access/gym-status';
 
@@ -54,12 +59,24 @@ export class MarketplaceService {
       throw new ForbiddenException('No tienes permisos para eliminar este producto');
     }
 
+    // AUD-16: si el producto ya figura en pedidos, se desactiva (sale de la tienda)
+    // en vez de borrarse, para conservar el historial de esos pedidos.
+    const enPedidos = await this.prisma.orderItem.count({
+      where: { productId },
+    });
+    if (enPedidos > 0) {
+      return this.prisma.product.update({
+        where: { id: productId },
+        data: { isActive: false },
+      });
+    }
+
     return this.prisma.product.delete({
       where: { id: productId },
     });
   }
 
-  async updateProduct(id: string, ownerId: string, dto: any) {
+  async updateProduct(id: string, ownerId: string, dto: UpdateProductDto) {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { gym: true },
@@ -69,9 +86,12 @@ export class MarketplaceService {
       throw new ForbiddenException('No tienes permisos para editar este producto');
     }
 
+    // AUD-16: solo los campos del DTO (sin gymId); precio y stock ya vienen validados (>= 0).
+    const { name, description, price, stock, category, imageUrl, isActive } =
+      dto;
     return this.prisma.product.update({
       where: { id },
-      data: dto,
+      data: { name, description, price, stock, category, imageUrl, isActive },
     });
   }
 
@@ -89,18 +109,31 @@ export class MarketplaceService {
 
         if (!product) throw new NotFoundException(`Producto ${item.productId} no encontrado`);
         assertGymStatusActive(product.gym);
+        // AUD-16: el pedido queda en el gimnasio dueño de los productos, no en el que diga el body.
+        if (product.gymId !== dto.gymId) {
+          throw new BadRequestException(
+            `"${product.name}" no pertenece a este gimnasio`,
+          );
+        }
+        if (!product.isActive) {
+          throw new BadRequestException(
+            `Producto no disponible: ${product.name}`,
+          );
+        }
         if (Number(product.price) > 0) {
           throw new BadRequestException(
             `"${product.name}" requiere pago con Mercado Pago`,
           );
         }
-        
 
-        // Update stock
-        await tx.product.update({
-          where: { id: product.id },
+        // AUD-16: descuento atómico; si no alcanza el stock no se toca nada (igual que en pagos).
+        const descontado = await tx.product.updateMany({
+          where: { id: product.id, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } },
         });
+        if (descontado.count === 0) {
+          throw new ConflictException(`Stock insuficiente: ${product.name}`);
+        }
 
         totalAmount += Number(product.price) * item.quantity;
         orderItems.push({
