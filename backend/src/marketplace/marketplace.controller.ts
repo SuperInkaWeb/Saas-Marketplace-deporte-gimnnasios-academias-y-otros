@@ -10,7 +10,11 @@ import {
   Patch,
 } from '@nestjs/common';
 import { MarketplaceService } from './marketplace.service';
-import { CreateProductDto, CreateOrderDto } from './dto/marketplace.dto';
+import {
+  CreateProductDto,
+  CreateOrderDto,
+  UpdateProductDto,
+} from './dto/marketplace.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -64,7 +68,11 @@ export class MarketplaceController {
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar un producto de la tienda' })
-  updateProduct(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: any) {
+  updateProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: UpdateProductDto,
+  ) {
     return this.marketplaceService.updateProduct(id, user.id, dto);
   }
 

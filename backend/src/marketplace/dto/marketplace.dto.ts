@@ -7,6 +7,7 @@ import {
   IsBoolean,
   MaxLength,
   IsArray,
+  ArrayMinSize,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -38,6 +39,7 @@ export class CreateProductDto {
   imageUrl?: string;
 }
 
+// AUD-16: sin gymId; el ValidationPipe global (forbidNonWhitelisted) rechaza cualquier campo extra.
 export class UpdateProductDto {
   @IsString()
   @MaxLength(200)
@@ -93,6 +95,7 @@ export class CreateOrderDto {
   notes?: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
