@@ -4,7 +4,9 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,6 +16,16 @@ import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
 import { sanitizeName } from '../common/utils/normalize-name';
 import { EmailService } from '../notifications/email.service';
+import { INVITABLE_ROLES } from './dto/invite-user.dto';
+
+function isInvitableRole(role: UserRole): boolean {
+  return (INVITABLE_ROLES as readonly UserRole[]).includes(role);
+}
+
+function frontendBaseUrl(): string {
+  const url = process.env.FRONTEND_URL?.trim() || 'https://www.hercix.com';
+  return url.replace(/\/+$/, '');
+}
 
 
 @Injectable()
@@ -580,7 +592,8 @@ export class AuthService {
     let gymIdToLink: string | null = null;
 
     // AUD-03: nunca se asigna ADMIN al registrarse; lo otorga otro ADMIN desde la gestión de usuarios.
-    if (invitation && emailVerified) {
+    // AUD-19: una invitación antigua con un rol no invitable (p. ej. ADMIN) no otorga privilegios.
+    if (invitation && emailVerified && isInvitableRole(invitation.role)) {
       console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
       assignedRole = invitation.role;
       gymIdToLink = invitation.gymId;
@@ -668,49 +681,88 @@ export class AuthService {
   // ── Invitation Flow ──────────────────────────────────────────────────────
 
   async inviteUser(invitedBy: { id: string; role: UserRole }, email: string, role: UserRole, gymId?: string) {
-    // 1. Validate that only ADMIN can invite other ADMINs or GYM_OWNERs
-    if (role === UserRole.ADMIN || role === UserRole.GYM_OWNER) {
-      if (invitedBy.role !== UserRole.ADMIN) {
-        throw new UnauthorizedException('Solo los administradores de Hercix pueden invitar a dueños de gimnasios.');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // AUD-19: solo se invita como GYM_OWNER o TRAINER (el DTO ya lo exige; esto cubre llamadas internas).
+    if (!isInvitableRole(role)) {
+      throw new BadRequestException('Solo se puede invitar como GYM_OWNER o TRAINER.');
+    }
+
+    // 1. Solo ADMIN invita dueños de negocio
+    if (role === UserRole.GYM_OWNER && invitedBy.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Solo los administradores de Hercix pueden invitar a dueños de gimnasios.');
+    }
+
+    // 2. Gimnasio: solo aplica a entrenadores y debe ser del invitador (o cualquiera si es ADMIN)
+    if (role === UserRole.GYM_OWNER && gymId) {
+      throw new BadRequestException('La invitación de dueño no lleva gimnasio.');
+    }
+    if (role === UserRole.TRAINER) {
+      if (!gymId && invitedBy.role !== UserRole.ADMIN) {
+        throw new BadRequestException('Indica el gimnasio al que se vincula el entrenador.');
+      }
+      if (gymId) {
+        const gym = await this.prisma.gym.findUnique({
+          where: { id: gymId },
+          select: { id: true, ownerId: true },
+        });
+        if (!gym) {
+          throw new NotFoundException('Gimnasio no encontrado.');
+        }
+        if (invitedBy.role !== UserRole.ADMIN && gym.ownerId !== invitedBy.id) {
+          throw new ForbiddenException('Solo puedes invitar entrenadores a tus propios gimnasios.');
+        }
       }
     }
 
-    // 2. Prevent duplicate active invitations or existing users
+    // 3. Usuario existente
     const userExists = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
     if (userExists) {
       throw new ConflictException('Este correo electrónico ya está registrado como usuario activo.');
     }
 
-    // Delete any old pending invitation for this email
-    await this.prisma.invitation.deleteMany({
-      where: { email: email.toLowerCase() },
+    // 4. Invitación previa (el correo es único en la tabla): no se pisa la vigente de otro invitador
+    const previous = await this.prisma.invitation.findUnique({
+      where: { email: normalizedEmail },
     });
+    if (previous) {
+      const stillPending = previous.status === 'PENDING' && previous.expiresAt > new Date();
+      if (stillPending && previous.invitedById !== invitedBy.id && invitedBy.role !== UserRole.ADMIN) {
+        throw new ConflictException('Este correo ya tiene una invitación vigente de otra cuenta.');
+      }
+      await this.prisma.invitation.delete({ where: { id: previous.id } });
+    }
 
-    const token = require('crypto').randomBytes(32).toString('hex');
+    const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days validity
 
     const invitation = await this.prisma.invitation.create({
       data: {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         role,
-        gymId,
+        gymId: role === UserRole.TRAINER ? gymId ?? null : null,
         token,
         invitedById: invitedBy.id,
         expiresAt,
       },
     });
 
-    // Send invitation email using EmailService
-    const invitationLink = `http://localhost:5173/login?inviteToken=${token}&email=${encodeURIComponent(email)}`;
-    await this.emailService.sendInvitation(email.toLowerCase(), role, invitationLink).catch(() => {});
+    // AUD-19: el enlace usa FRONTEND_URL (antes estaba fijo en localhost)
+    const invitationLink = `${frontendBaseUrl()}/login?inviteToken=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+    const emailSent = await this.emailService
+      .sendInvitation(normalizedEmail, role, invitationLink)
+      .catch(() => false);
 
     return {
-      message: 'Invitación creada y enviada con éxito',
+      message: emailSent
+        ? 'Invitación creada y enviada con éxito'
+        : 'Invitación creada, pero no se pudo enviar el correo',
       invitationId: invitation.id,
       expiresAt: invitation.expiresAt,
+      emailSent,
     };
   }
 }

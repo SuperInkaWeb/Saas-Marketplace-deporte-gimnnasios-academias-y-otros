@@ -13,6 +13,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AnyAuthGuard } from './guards/any-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -98,7 +99,7 @@ export class AuthController {
   @Roles(UserRole.ADMIN, UserRole.GYM_OWNER)
   invite(
     @CurrentUser() user: { id: string; role: UserRole },
-    @Body() dto: { email: string; role: UserRole; gymId?: string },
+    @Body() dto: InviteUserDto,
   ) {
     return this.authService.inviteUser(user, dto.email, dto.role, dto.gymId);
   }
