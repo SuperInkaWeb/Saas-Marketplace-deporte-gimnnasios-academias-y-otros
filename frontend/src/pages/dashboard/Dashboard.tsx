@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
+import { ROLE_REQUEST_EVENT } from '../../api/role-requests';
 import {
   Users, Dumbbell, Calendar, TrendingUp, Clock, AlertCircle,
   ShoppingBag, Trophy, CreditCard, ArrowRight, Star, Activity,
@@ -345,6 +346,15 @@ const Dashboard: React.FC = () => {
       }).catch(console.error);
     }
   }, [user]);
+
+  // AUD-20: si el modal de perfil crea una solicitud de rol, refrescar su estado en el panel
+  useEffect(() => {
+    const refresh = () => {
+      api.get('/users/role-requests/mine').then(({ data }) => setActiveRoleRequest(data)).catch(() => {});
+    };
+    window.addEventListener(ROLE_REQUEST_EVENT, refresh);
+    return () => window.removeEventListener(ROLE_REQUEST_EVENT, refresh);
+  }, []);
 
   // Sync with persistent local storage
   useEffect(() => {

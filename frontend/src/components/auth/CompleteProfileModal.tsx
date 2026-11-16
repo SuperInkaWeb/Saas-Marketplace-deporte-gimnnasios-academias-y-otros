@@ -3,6 +3,12 @@ import { useAuth } from '../../context/auth-context';
 import { Loader2, ShieldCheck, User, Phone, FileText, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { createRoleRequest, type RequestableRole } from '../../api/role-requests';
+
+const backendMessage = (err: unknown): string | undefined => {
+  const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  return Array.isArray(msg) ? msg[0] : msg;
+};
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
@@ -75,18 +81,35 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOp
       return;
     }
 
+    // AUD-20: el rol no se cambia al guardar el perfil; si se eligió Entrenador o Dueño
+    // se crea una solicitud real para que el administrador la apruebe.
+    const wantsRole = formData.role !== 'USER' && formData.role !== user?.role;
+
     setLoading(true);
     try {
-      await updateUserProfile({ ...formData, name: finalName });
-      toast.success('🎉 ¡Perfil completado con éxito! Bienvenido a Hercix.');
-      if (onSuccess) onSuccess();
-    } catch (err: any) {
+      await updateUserProfile({ name: finalName, phone: formData.phone, dni: formData.dni });
+    } catch (err) {
       // CAMBIO (mejora A): mostrar el mensaje real del backend
-      const msg = err?.response?.data?.message;
-      toast.error(`❌ ${Array.isArray(msg) ? msg[0] : msg || 'Error al actualizar los datos de perfil.'}`);
-    } finally {
+      toast.error(`❌ ${backendMessage(err) || 'Error al actualizar los datos de perfil.'}`);
       setLoading(false);
+      return;
     }
+
+    if (wantsRole) {
+      const roleLabel = formData.role === 'GYM_OWNER' ? 'Dueño' : 'Entrenador';
+      try {
+        await createRoleRequest(formData.role as RequestableRole, 'Solicitado al completar el perfil');
+        toast.success(`🎉 Perfil completado. Tu solicitud para ser ${roleLabel} quedó PENDIENTE de aprobación.`);
+      } catch (err) {
+        toast.warning(
+          `Perfil guardado, pero no se pudo enviar la solicitud de ${roleLabel}: ${backendMessage(err) || 'error desconocido'}. Puedes solicitarla desde tu panel.`,
+        );
+      }
+    } else {
+      toast.success('🎉 ¡Perfil completado con éxito! Bienvenido a Hercix.');
+    }
+    setLoading(false);
+    if (onSuccess) onSuccess();
   };
 
   return (

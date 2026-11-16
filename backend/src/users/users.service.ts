@@ -247,6 +247,23 @@ async update(
       throw new BadRequestException('Ya tienes el rol de Atleta por defecto.');
     }
 
+    // AUD-20: no se solicita un rol que ya se tiene ni se duplican solicitudes pendientes.
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (user.role === requestedRole) {
+      throw new BadRequestException('Ya tienes ese rol.');
+    }
+    const pending = await this.prisma.roleRequest.findFirst({
+      where: { userId, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (pending) {
+      throw new ConflictException('Ya tienes una solicitud de rol pendiente de revisión.');
+    }
+
     return this.prisma.roleRequest.create({
       data: { 
         userId, 

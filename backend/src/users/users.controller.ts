@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Delete, Patch, UseGuards, Req } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserAdminDto, UpdateUserAdminDto } from './dto/user.dto';
+import { CreateRoleRequestDto } from './dto/role-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AnyAuthGuard } from '../auth/guards/any-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -67,7 +68,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Solicitar cambio de rol (Entrenador o Dueño)' })
   createRoleRequest(
     @CurrentUser() user: { id: string },
-    @Body() dto: { requestedRole: UserRole; reason?: string },
+    @Body() dto: CreateRoleRequestDto,
   ) {
     return this.usersService.createRoleRequest(user.id, dto.requestedRole, dto.reason);
   }
