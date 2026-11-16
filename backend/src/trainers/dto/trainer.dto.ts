@@ -5,6 +5,7 @@ import {
   IsArray,
   Min,
   Max,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -48,4 +49,11 @@ export class AssignTrainerDto {
   @ApiProperty({ example: true, required: false })
   @IsOptional()
   canCreateClasses?: boolean;
+}
+
+/** AUD-26: respuesta del dueño a una postulación; "approve" debe ser booleano real. */
+export class RespondLinkRequestDto {
+  @ApiProperty({ example: true, description: 'true = aprobar, false = rechazar' })
+  @IsBoolean({ message: 'approve debe ser true o false' })
+  approve: boolean;
 }

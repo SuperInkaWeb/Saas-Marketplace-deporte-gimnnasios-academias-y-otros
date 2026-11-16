@@ -77,6 +77,7 @@ model Gym {
   updatedAt       DateTime         @updatedAt @map("updated_at")
   classes         Class[]
   gymTrainers     GymTrainer[]
+  trainerRequests GymTrainerRequest[]
   owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   membershipPlans    MembershipPlan[]
   orders             Order[]
@@ -104,6 +105,7 @@ model TrainerProfile {
   updatedAt       DateTime     @updatedAt @map("updated_at")
   classes         Class[]
   gymTrainers     GymTrainer[]
+  gymRequests     GymTrainerRequest[]
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("trainer_profiles")
@@ -120,6 +122,26 @@ model GymTrainer {
 
   @@unique([gymId, trainerId])
   @@map("gym_trainers")
+}
+
+/// AUD-26: postulaciones de entrenadores a gimnasios (antes en pending-requests.json, que se perdía en cada deploy).
+/// Una fila por par gimnasio-entrenador; al volver a postular tras una respuesta, la fila vuelve a PENDING.
+model GymTrainerRequest {
+  id            String         @id @default(uuid())
+  gymId         String         @map("gym_id")
+  trainerId     String         @map("trainer_id")
+  status        String         @default("PENDING") @db.VarChar(20)
+  respondedById String?        @map("responded_by_id")
+  respondedAt   DateTime?      @map("responded_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  gym           Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  trainer       TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([gymId, trainerId])
+  @@index([trainerId, status])
+  @@index([gymId, status])
+  @@map("gym_trainer_requests")
 }
 
 model Class {
