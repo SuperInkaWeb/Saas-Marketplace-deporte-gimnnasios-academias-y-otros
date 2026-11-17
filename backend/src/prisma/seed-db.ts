@@ -11,6 +11,12 @@ const prisma = new PrismaClient({
 
 
 async function main() {
+  // database/seed.sql crea cuentas de ejemplo con contraseñas conocidas: solo para desarrollo local.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Este script no se puede ejecutar con NODE_ENV=production.');
+    process.exit(1);
+  }
+
   console.log('🌱 Starting seeding process...');
   
   const seedSqlPath = path.join(__dirname, '../../../../database/seed.sql');

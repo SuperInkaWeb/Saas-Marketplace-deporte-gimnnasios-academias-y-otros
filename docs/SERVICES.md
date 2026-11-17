@@ -23,8 +23,8 @@
 ## 1. Render — Backend Hosting
 
 **URL**: https://dashboard.render.com  
-**Servicio**: `sportnexus-platform` (Web Service)  
-**URL producción**: https://sportnexus-platform.onrender.com
+**Servicio**: `<nombre-del-proyecto>` (Web Service)  
+**URL producción**: https://<TU-BACKEND>.onrender.com
 
 ### Configuración
 - **Runtime**: Node.js 20
@@ -52,8 +52,8 @@ NODE_ENV=production, PORT=3000
 ## 2. Vercel — Frontend Hosting
 
 **URL**: https://vercel.com  
-**Proyecto**: `sportnexus-platform`  
-**URL producción**: https://sportnexus-platform.vercel.app
+**Proyecto**: `<nombre-del-proyecto>`  
+**URL producción**: https://<TU-FRONTEND>.vercel.app
 
 ### Configuración
 - **Framework**: Vite
@@ -65,7 +65,7 @@ NODE_ENV=production, PORT=3000
 
 ### Variables de entorno en Vercel
 ```
-VITE_API_URL = https://sportnexus-platform.onrender.com/api
+VITE_API_URL = https://<TU-BACKEND>.onrender.com/api
 ```
 
 ---
@@ -174,7 +174,7 @@ FITBIT_CLIENT_SECRET="<FITBIT_CLIENT_SECRET>"
 ### Redirect URLs configuradas
 ```
 http://localhost:5173/dashboard/wearables/fitbit-callback     (desarrollo)
-https://sportnexus-platform.vercel.app/dashboard/wearables/fitbit-callback  (producción)
+https://<TU-FRONTEND>.vercel.app/dashboard/wearables/fitbit-callback  (producción)
 ```
 
 ### Datos que sincroniza

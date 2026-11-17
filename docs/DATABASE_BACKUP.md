@@ -22,7 +22,7 @@
 
 ```bash
 # Exportar toda la base de datos a un archivo SQL
-pg_dump "postgresql://neondb_owner:PASSWORD@ep-tiny-cell-amwm2qa6.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require" \
+pg_dump "postgresql://neondb_owner:PASSWORD@<HOST>.neon.tech/neondb?sslmode=require" \
   --no-password \
   --format=plain \
   --no-owner \
@@ -68,7 +68,7 @@ $filename = "backup_sportnexus_$timestamp.sql"
 $env:PGPASSWORD = "<PASSWORD_DEL_ROL_NEON>"
 
 pg_dump `
-  --host=ep-tiny-cell-amwm2qa6.c-5.us-east-1.aws.neon.tech `
+  --host=<HOST>.neon.tech `
   --port=5432 `
   --username=neondb_owner `
   --dbname=neondb `
@@ -93,7 +93,7 @@ Ejecutar:
 ### Restaurar en Neon (misma BD)
 ```bash
 # ADVERTENCIA: Esto sobreescribe los datos existentes
-psql "postgresql://neondb_owner:PASSWORD@ep-tiny-cell-amwm2qa6.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require" \
+psql "postgresql://neondb_owner:PASSWORD@<HOST>.neon.tech/neondb?sslmode=require" \
   --file=backup_sportnexus_20260427.sql
 ```
 

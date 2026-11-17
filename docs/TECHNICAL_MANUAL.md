@@ -22,14 +22,14 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         CLIENTE (Browser)                           │
 │                    React 18 + Vite + TailwindCSS                    │
-│            https://sportnexus-platform.vercel.app                   │
+│            https://<TU-FRONTEND>.vercel.app                         │
 └──────────────────────────┬──────────────────────────────────────────┘
                            │ HTTPS / REST API (JSON)
                            │ Authorization: Bearer <JWT>
 ┌──────────────────────────▼──────────────────────────────────────────┐
 │                      BACKEND (Render)                               │
 │                   NestJS 10 + TypeScript 5                          │
-│            https://sportnexus-platform.onrender.com/api             │
+│            https://<TU-BACKEND>.onrender.com/api                    │
 │                                                                     │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
 │  │   Auth   │ │  Gyms    │ │ Classes  │ │Marketplace│ │Wearables │  │
@@ -46,7 +46,7 @@
 ┌──────────────────────────▼──────────────────────────────────────────┐
 │                   BASE DE DATOS (Neon Cloud)                        │
 │                  PostgreSQL 15 + Connection Pooling                 │
-│              ep-tiny-cell-xxxx.neon.tech                            │
+│              <HOST>.neon.tech                                       │
 └─────────────────────────────────────────────────────────────────────┘
 
 SERVICIOS EXTERNOS:
@@ -106,7 +106,7 @@ Notification ── User
 
 ## 5. Endpoints de la API
 
-**Base URL Producción**: `https://sportnexus-platform.onrender.com/api`  
+**Base URL Producción**: `https://<TU-BACKEND>.onrender.com/api`  
 **Base URL Local**: `http://localhost:3000/api`  
 **Swagger Docs**: `/api/docs`
 

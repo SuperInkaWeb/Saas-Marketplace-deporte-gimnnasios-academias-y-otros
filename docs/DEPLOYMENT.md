@@ -8,8 +8,8 @@
 
 | Servicio | Plataforma | URL |
 |---|---|---|
-| **Backend API** | Render (Free) | https://sportnexus-platform.onrender.com |
-| **Frontend** | Vercel (Free) | https://sportnexus-platform.vercel.app |
+| **Backend API** | Render (Free) | https://<TU-BACKEND>.onrender.com |
+| **Frontend** | Vercel (Free) | https://<TU-FRONTEND>.vercel.app |
 | **Base de Datos** | Neon PostgreSQL (Free) | Panel: console.neon.tech |
 
 ---
@@ -52,7 +52,7 @@ En Render Dashboard → tu servicio → click **"Manual Deploy"** → **"Deploy 
 
 4. En **Environment Variables**, agrega:
    ```
-   VITE_API_URL = https://sportnexus-platform.onrender.com/api
+   VITE_API_URL = https://<TU-BACKEND>.onrender.com/api
    ```
 5. Click **"Deploy"**
 
@@ -66,14 +66,14 @@ En Render Dashboard → tu servicio → click **"Manual Deploy"** → **"Deploy 
 
 El backend permite peticiones desde los orígenes definidos en `FRONTEND_URL`. En producción:
 ```
-FRONTEND_URL=https://sportnexus-platform.vercel.app
+FRONTEND_URL=https://<TU-FRONTEND>.vercel.app
 ```
 
 ### Configuración API URL en Frontend
 
 El frontend usa la variable:
 ```
-VITE_API_URL=https://sportnexus-platform.onrender.com/api
+VITE_API_URL=https://<TU-BACKEND>.onrender.com/api
 ```
 
 Todos los llamados del frontend usan el cliente en `frontend/src/api/api-client.ts`:
@@ -93,15 +93,15 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST-pooler.neon.tech/neondb?sslmode=re
 DIRECT_URL="postgresql://USER:PASSWORD@HOST.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 # ── JWT ───────────────────────────────────────────────────────────
-JWT_SECRET="clave_super_secreta_minimo_32_caracteres"
-JWT_REFRESH_SECRET="clave_refresh_diferente_minimo_32_caracteres"
+JWT_SECRET="<CLAVE_ALEATORIA_DE_AL_MENOS_32_CARACTERES>"
+JWT_REFRESH_SECRET="<OTRA_CLAVE_ALEATORIA_DE_AL_MENOS_32_CARACTERES>"
 JWT_EXPIRES_IN="24h"
 JWT_REFRESH_EXPIRES_IN="7d"
 
 # ── App ───────────────────────────────────────────────────────────
 PORT=3000
 NODE_ENV=production
-FRONTEND_URL="https://sportnexus-platform.vercel.app"
+FRONTEND_URL="https://<TU-FRONTEND>.vercel.app"
 
 # ── Email (Resend) ────────────────────────────────────────────────
 RESEND_API_KEY="re_..."
@@ -123,7 +123,7 @@ FITBIT_CLIENT_SECRET="tu_client_secret_de_fitbit"
 ### Frontend (`frontend/.env`)
 
 ```env
-VITE_API_URL="https://sportnexus-platform.onrender.com/api"
+VITE_API_URL="https://<TU-BACKEND>.onrender.com/api"
 ```
 
 ---
@@ -179,7 +179,7 @@ Render Free pausea el servicio tras 15 minutos sin tráfico. El primer request t
 3. **Redirect URLs** (una por línea):
    ```
    http://localhost:5173/dashboard/wearables/fitbit-callback
-   https://sportnexus-platform.vercel.app/dashboard/wearables/fitbit-callback
+   https://<TU-FRONTEND>.vercel.app/dashboard/wearables/fitbit-callback
    ```
 4. Copia **Client ID** y **Client Secret** al `.env` del backend
 
@@ -189,10 +189,10 @@ Render Free pausea el servicio tras 15 minutos sin tráfico. El primer request t
 
 ```bash
 # Test del backend (debe retornar JSON)
-curl https://sportnexus-platform.onrender.com/api
+curl https://<TU-BACKEND>.onrender.com/api
 
 # Test de autenticación
-curl -X POST https://sportnexus-platform.onrender.com/api/auth/login \
+curl -X POST https://<TU-BACKEND>.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@hercix.com","password":"<TU_PASSWORD>"}'
 ```
