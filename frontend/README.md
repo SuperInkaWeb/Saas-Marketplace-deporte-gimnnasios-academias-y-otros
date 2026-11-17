@@ -68,5 +68,5 @@ El frontend está optimizado para su despliegue en **Vercel**:
 2. Conecta el repositorio de GitHub.
 3. Configura el directorio raíz a `frontend`.
 4. El framework preset se detectará automáticamente como `Vite`.
-5. Configura la variable de entorno `VITE_API_URL` apuntando a tu backend de producción (ej. `https://sportnexus-platform.onrender.com/api`).
+5. Configura la variable de entorno `VITE_API_URL` apuntando a tu backend de producción (ej. `https://<TU-BACKEND>.onrender.com/api`).
 6. Haz clic en **Deploy**.

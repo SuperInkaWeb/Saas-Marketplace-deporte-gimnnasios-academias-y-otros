@@ -5,8 +5,8 @@
 -- psql -U postgres -d sports_saas -f seed.sql
 -- ============================================================
 
--- Passwords below are hashed with bcrypt (cost 10)
--- Plain text for dev: "Password123!"
+-- SOLO PARA DESARROLLO LOCAL. No cargar en bases de staging ni de producción:
+-- crea cuentas de ejemplo (incluida una ADMIN) con contraseñas de prueba.
 
 -- ============================================================
 -- USERS
@@ -17,7 +17,7 @@ INSERT INTO users (id, name, email, password_hash, role, phone, is_active, email
     '00000000-0000-0000-0000-000000000001',
     'Admin Principal',
     'admin@sportssaas.com',
-    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- Password123!
+    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
     'ADMIN', '+573001000001', TRUE, TRUE
 ),
 (
