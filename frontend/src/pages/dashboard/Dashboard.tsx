@@ -1512,15 +1512,18 @@ const Dashboard: React.FC = () => {
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         activeRoleRequest.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
                         activeRoleRequest.status === 'APPROVED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                        activeRoleRequest.status === 'REVOKED' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
                         'bg-red-500/10 text-red-400 border border-red-500/20'
                       }`}>
-                        {activeRoleRequest.status === 'PENDING' ? 'Pendiente' : 
-                         activeRoleRequest.status === 'APPROVED' ? 'Aprobado' : 'Rechazado'}
+                        {activeRoleRequest.status === 'PENDING' ? 'Pendiente' :
+                         activeRoleRequest.status === 'APPROVED' ? 'Aprobado' :
+                         activeRoleRequest.status === 'REVOKED' ? 'Revocado' : 'Rechazado'}
                       </span>
                     </div>
                     <p className="text-slate-400 text-xs mt-1 leading-relaxed">
                       {activeRoleRequest.status === 'PENDING' ? 'Tu solicitud está siendo revisada por un administrador.' :
                        activeRoleRequest.status === 'APPROVED' ? '¡Tu solicitud ha sido aprobada! Cambia de rol en la barra lateral.' :
+                       activeRoleRequest.status === 'REVOKED' ? 'Un administrador retiró este rol. Si lo necesitas de nuevo, envía una nueva solicitud.' :
                        `Solicitud rechazada: ${activeRoleRequest.adminNote || 'Sin notas.'}`}
                     </p>
                   </div>

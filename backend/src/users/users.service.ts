@@ -1,7 +1,22 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserAdminDto } from './dto/user.dto';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
+import {
+  GRANTABLE_ROLES,
+  GrantableRole,
+  ROLE_REQUEST_APPROVED,
+  ROLE_REQUEST_REVOKED,
+  computeEligibleRoles,
+  isGrantableRole,
+  latestRoleDecisions,
+} from '../common/roles/role-eligibility';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -169,7 +184,22 @@ async update(
     throw new NotFoundException('Usuario no encontrado');
   }
 
-  if (updateDto.isActive === false && id === currentUserId) {
+  const isSelf = !!currentUserId && id === currentUserId;
+
+  // AUD-18: un administrador no modifica a otro administrador (ni rol, ni estado,
+  // ni correo). Igual que ya ocurría con "eliminar".
+  if (user.role === UserRole.ADMIN && !isSelf) {
+    throw new ForbiddenException(
+      'No puedes modificar a otro administrador. Los cambios de administradores los gestiona el responsable de la plataforma.',
+    );
+  }
+
+  // AUD-18: tampoco puede quitarse a sí mismo el rol (evita quedarse sin administradores).
+  if (isSelf && updateDto.role !== user.role) {
+    throw new BadRequestException('No puedes cambiar tu propio rol');
+  }
+
+  if (updateDto.isActive === false && isSelf) {
     throw new BadRequestException('No puedes desactivar tu propia cuenta');
   }
 
@@ -204,29 +234,90 @@ async update(
       }
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        name: updateDto.name,
-        email: updateDto.email.toLowerCase(),
-        phone: updateDto.phone || null,
-        dni: updateDto.dni || null,
-        role: updateDto.role,
-        isActive: updateDto.isActive,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        phone: true,
-        dni: true,
-        isActive: true,
-        createdAt: true,
+    // AUD-18: cuando el admin cambia el rol, el usuario queda SOLO con el rol
+    // elegido. Los demás roles a los que podía cambiar (por solicitudes
+    // aprobadas, gimnasios o perfil de entrenador) se revocan de forma explícita;
+    // si no, el usuario los recuperaba desde "Vista Activa" (/auth/switch-role).
+    const roleChanged = updateDto.role !== user.role;
+    let rolesToRevoke: GrantableRole[] = [];
+    let regrant = false;
+    if (roleChanged && updateDto.role !== UserRole.ADMIN) {
+      const eligible = await computeEligibleRoles(this.prisma, user);
+      rolesToRevoke = GRANTABLE_ROLES.filter(
+        (r) => r !== updateDto.role && eligible.includes(r),
+      );
+    }
+    if (roleChanged && isGrantableRole(updateDto.role)) {
+      const latest = await latestRoleDecisions(this.prisma, id);
+      regrant = latest[updateDto.role] === ROLE_REQUEST_REVOKED;
+    }
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      for (const role of rolesToRevoke) {
+        await this.revokeRole(tx, id, role);
       }
+      if (regrant) {
+        // Deja una decisión APPROVED más reciente que la revocación anterior.
+        await tx.roleRequest.create({
+          data: {
+            userId: id,
+            requestedRole: updateDto.role,
+            status: ROLE_REQUEST_APPROVED,
+            reason: 'Asignado por un administrador',
+            adminNote: 'Rol asignado desde la gestión de usuarios',
+          },
+        });
+      }
+      return tx.user.update({
+        where: { id },
+        data: {
+          name: updateDto.name,
+          email: updateDto.email.toLowerCase(),
+          phone: updateDto.phone || null,
+          dni: updateDto.dni || null,
+          role: updateDto.role,
+          isActive: updateDto.isActive,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          phone: true,
+          dni: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
     });
 
     return updatedUser;
+  }
+
+  /** AUD-18: deja constancia de que el rol fue revocado (status REVOKED). */
+  private async revokeRole(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    role: GrantableRole,
+  ) {
+    const adminNote = 'Rol revocado por un administrador';
+    const { count } = await tx.roleRequest.updateMany({
+      where: { userId, requestedRole: role, status: ROLE_REQUEST_APPROVED },
+      data: { status: ROLE_REQUEST_REVOKED, adminNote },
+    });
+    if (count === 0) {
+      // El rol venía de tener gimnasios o perfil de entrenador, sin solicitud:
+      // se crea el registro de la revocación.
+      await tx.roleRequest.create({
+        data: {
+          userId,
+          requestedRole: role,
+          status: ROLE_REQUEST_REVOKED,
+          reason: 'Revocación de rol',
+          adminNote,
+        },
+      });
+    }
   }
 
   // ── Actualizar última sesión ────────────────────────────────────────────
@@ -253,6 +344,10 @@ async update(
       select: { role: true },
     });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
+    // AUD-18: si otro admin aprobara la solicitud de un ADMIN, este perdería su rol.
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestException('Los administradores no solicitan roles.');
+    }
     if (user.role === requestedRole) {
       throw new BadRequestException('Ya tienes ese rol.');
     }
