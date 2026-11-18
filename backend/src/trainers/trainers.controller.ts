@@ -10,6 +10,7 @@ import {
 import { TrainersService } from './trainers.service';
 import { AssignTrainerDto, UpdateTrainerProfileDto } from './dto/trainer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -63,9 +64,13 @@ export class TrainersController {
   }
 
   @Get('gym/:gymId')
-  @ApiOperation({ summary: 'Listar entrenadores de un gimnasio específico' })
-  getGymTrainers(@Param('gymId') gymId: string) {
-    return this.trainersService.getGymTrainers(gymId);
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({
+    summary: 'Listar entrenadores de un gimnasio específico',
+    description: 'Público. El email del entrenador solo se incluye para el dueño del gimnasio o un ADMIN.',
+  })
+  getGymTrainers(@Param('gymId') gymId: string, @CurrentUser() user: any) {
+    return this.trainersService.getGymTrainers(gymId, user);
   }
 
   @Delete(':gymId/trainer/:trainerId')

@@ -6,8 +6,21 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTrainerProfileDto } from './dto/trainer.dto';
+import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// AUD-27: lo que cualquiera (sin login) puede ver de un entrenador. Sin email.
+const TRAINER_USER_PUBLIC_SELECT = {
+  id: true,
+  name: true,
+  avatarUrl: true,
+} as const;
+// Lo que ve el dueño del gimnasio (o un ADMIN) de su propio staff.
+const TRAINER_USER_STAFF_SELECT = {
+  ...TRAINER_USER_PUBLIC_SELECT,
+  email: true,
+} as const;
 
 @Injectable()
 export class TrainersService {
@@ -62,14 +75,7 @@ export class TrainersService {
   async findAll() {
     return this.prisma.trainerProfile.findMany({
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatarUrl: true,
-          },
-        },
+        user: { select: TRAINER_USER_PUBLIC_SELECT },
       },
     });
   }
@@ -118,24 +124,36 @@ export class TrainersService {
     });
   }
 
-  async getGymTrainers(gymId: string) {
+  /**
+   * Entrenadores vinculados a un gimnasio. Es público, pero el email solo se
+   * incluye si quien consulta es el dueño de ese gimnasio o un ADMIN (AUD-27).
+   */
+  async getGymTrainers(gymId: string, viewer?: AuthUser | null) {
+    const canSeeContact = await this.canSeeStaffContact(gymId, viewer);
     return this.prisma.gymTrainer.findMany({
       where: { gymId },
       include: {
         trainer: {
           include: {
             user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatarUrl: true,
-              },
+              select: canSeeContact
+                ? TRAINER_USER_STAFF_SELECT
+                : TRAINER_USER_PUBLIC_SELECT,
             },
           },
         },
       },
     });
+  }
+
+  private async canSeeStaffContact(gymId: string, viewer?: AuthUser | null) {
+    if (!viewer) return false;
+    if (isGlobalAdmin(viewer)) return true;
+    const gym = await this.prisma.gym.findUnique({
+      where: { id: gymId },
+      select: { ownerId: true },
+    });
+    return !!gym && gym.ownerId === viewer.id;
   }
 
   async unassignTrainer(gymId: string, currentOwnerId: string, trainerId: string) {

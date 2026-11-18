@@ -153,7 +153,8 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated,
                   <option value="" className="bg-slate-900 text-slate-400">-- Sin Entrenador Asignado --</option>
                   {trainers.map(t => (
                     <option key={t.trainer.id} value={t.trainer.id} className="bg-slate-900 text-white">
-                      {t.trainer.user.name} ({t.trainer.user.email || 'Sin email'})
+                      {t.trainer.user.name}
+                      {t.trainer.user.email ? ` (${t.trainer.user.email})` : ''}
                     </option>
                   ))}
                 </select>
