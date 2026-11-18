@@ -1,5 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -16,10 +15,8 @@ export class RegisterDto {
   @MinLength(8)
   password!: string;
 
-  @ApiProperty({ enum: UserRole, required: false, default: UserRole.USER })
-  @IsEnum(UserRole)
-  @IsOptional()
-  role?: UserRole;
+  // AUD-18: ya no se acepta `role`. Con forbidNonWhitelisted, enviarlo responde 400.
+  // Toda cuenta nueva es USER; los demás roles se piden con /users/role-requests.
 
   @ApiProperty({ example: '+573001234567', required: false })
   @IsString()

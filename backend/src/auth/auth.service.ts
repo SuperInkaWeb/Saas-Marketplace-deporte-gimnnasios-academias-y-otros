@@ -15,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
 import { sanitizeName } from '../common/utils/normalize-name';
+import { computeEligibleRoles } from '../common/roles/role-eligibility';
 import { EmailService } from '../notifications/email.service';
 import { INVITABLE_ROLES } from './dto/invite-user.dto';
 
@@ -48,9 +49,9 @@ export class AuthService {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Prevent direct ADMIN registration through the public endpoint
-    const role: UserRole =
-      dto.role === UserRole.ADMIN ? UserRole.USER : (dto.role ?? UserRole.USER);
+    // AUD-18: el registro público SIEMPRE crea un atleta (USER). Los roles de
+    // dueño o entrenador se piden con una solicitud que aprueba un ADMIN.
+    const role: UserRole = UserRole.USER;
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
@@ -156,31 +157,9 @@ export class AuthService {
     email: string;
     role: UserRole;
   }): Promise<string[]> {
-    const roles: string[] = ['USER'];
-
-    if (user.role === 'ADMIN') {
-      roles.push('ADMIN');
-    }
-
-    const [gymCount, ownerRequest, trainerProfile, trainerRequest] = await Promise.all([
-      this.prisma.gym.count({ where: { ownerId: user.id } }),
-      this.prisma.roleRequest.findFirst({
-        where: { userId: user.id, requestedRole: 'GYM_OWNER', status: 'APPROVED' },
-      }),
-      this.prisma.trainerProfile.findUnique({ where: { userId: user.id } }),
-      this.prisma.roleRequest.findFirst({
-        where: { userId: user.id, requestedRole: 'TRAINER', status: 'APPROVED' },
-      }),
-    ]);
-
-    if (gymCount > 0 || user.role === 'GYM_OWNER' || ownerRequest) {
-      roles.push('GYM_OWNER');
-    }
-    if (trainerProfile || user.role === 'TRAINER' || trainerRequest) {
-      roles.push('TRAINER');
-    }
-
-    return roles;
+    // AUD-18: un rol revocado por un admin ya no vuelve por una solicitud
+    // aprobada antigua, por tener gimnasios ni por tener perfil de entrenador.
+    return computeEligibleRoles(this.prisma, user);
   }
 
   // ── Get current user ──────────────────────────────────────────────────────

@@ -278,6 +278,7 @@ const statusCount = (key: string) =>
       PENDING: { color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: 'Pendiente' },
       APPROVED: { color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', label: 'Aprobado' },
       REJECTED: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Rechazado' },
+      REVOKED: { color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', label: 'Revocado' },
     };
     const c = cfg[status] || cfg.PENDING;
     return (
@@ -464,13 +465,25 @@ const statusCount = (key: string) =>
                       </td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                             <button
+                          {/* AUD-18: un admin no modifica a otro admin (el backend responde 403). */}
+                          {u.role === 'ADMIN' && u.id !== user?.id ? (
+                            <span
+                              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 rounded-md"
+                              title="Los administradores no pueden modificar a otros administradores"
+                            >
+                              Protegido
+                            </span>
+                          ) : (
+                          <>
+                          {u.id !== user?.id && (
+                            <button
                               onClick={(e) => { e.stopPropagation(); handleToggleActive(u); }}
                               className="p-2 text-slate-500 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors"
                               title={u.isActive === false ? 'Activar usuario' : 'Desactivar usuario'}
                             >
                               <Power className="w-4 h-4" />
                             </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -492,6 +505,8 @@ const statusCount = (key: string) =>
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                          )}
+                          </>
                           )}
                         </div>
                       </td>
@@ -702,16 +717,23 @@ const statusCount = (key: string) =>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Rol</label>
-                  <select value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary">
+                  <select
+                    value={editFormData.role}
+                    onChange={e => setEditFormData({...editFormData, role: e.target.value})}
+                    disabled={editFormData.id === user?.id}
+                    title={editFormData.id === user?.id ? 'No puedes cambiar tu propio rol' : undefined}
+                    className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     <option value="USER">Atleta (USER)</option>
                     <option value="TRAINER">Entrenador (TRAINER)</option>
                     <option value="GYM_OWNER">Dueño de Gimnasio (GYM_OWNER)</option>
                     <option value="ADMIN">Administrador (ADMIN)</option>
                   </select>
                 </div>
+                {editFormData.id !== user?.id && (
                 <div className="flex items-center gap-3 py-2">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="edit_isActive"
                     checked={editFormData.isActive} 
                     onChange={e => setEditFormData({...editFormData, isActive: e.target.checked})} 
@@ -719,6 +741,7 @@ const statusCount = (key: string) =>
                   />
                   <label htmlFor="edit_isActive" className="text-sm font-semibold text-slate-300 cursor-pointer select-none">Cuenta Activa</label>
                 </div>
+                )}
 
                 <div className="pt-4 flex gap-3">
                   <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors font-medium">Cancelar</button>
