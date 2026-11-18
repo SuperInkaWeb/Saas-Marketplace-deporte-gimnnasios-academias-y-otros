@@ -1526,6 +1526,19 @@ const Dashboard: React.FC = () => {
                        activeRoleRequest.status === 'REVOKED' ? 'Un administrador retiró este rol. Si lo necesitas de nuevo, envía una nueva solicitud.' :
                        `Solicitud rechazada: ${activeRoleRequest.adminNote || 'Sin notas.'}`}
                     </p>
+                    {/* Tras un rechazo o una revocación se puede volver a solicitar
+                        (el backend solo impide tener dos solicitudes pendientes). */}
+                    {(activeRoleRequest.status === 'REJECTED' || activeRoleRequest.status === 'REVOKED') && (
+                      <button
+                        onClick={() => {
+                          setReqRole(activeRoleRequest.requestedRole === 'GYM_OWNER' ? 'GYM_OWNER' : 'TRAINER');
+                          setShowRoleRequestModal(true);
+                        }}
+                        className="w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 py-2.5 mt-3 text-xs font-bold rounded-xl transition-all"
+                      >
+                        Solicitar de nuevo
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-3">
