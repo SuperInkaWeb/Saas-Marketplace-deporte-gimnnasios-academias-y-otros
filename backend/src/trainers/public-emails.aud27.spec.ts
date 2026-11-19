@@ -99,13 +99,13 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
 
     it('el dueño del gimnasio sí ve el email de su staff', async () => {
       const [link] = await service.getGymTrainers('gym-1', { id: 'owner-1', role: 'GYM_OWNER' });
-      expect(link.trainer.user.email).toBe('trainer-1@example.com');
+      expect((link.trainer.user as { email?: string }).email).toBe('trainer-1@example.com');
       expect(link.trainer.user).not.toHaveProperty('passwordHash');
     });
 
     it('un ADMIN sí ve el email', async () => {
       const [link] = await service.getGymTrainers('gym-1', { id: 'admin-1', role: 'ADMIN' });
-      expect(link.trainer.user.email).toBe('trainer-1@example.com');
+      expect((link.trainer.user as { email?: string }).email).toBe('trainer-1@example.com');
       expect(prisma.gym.findUnique).not.toHaveBeenCalled();
     });
   });
