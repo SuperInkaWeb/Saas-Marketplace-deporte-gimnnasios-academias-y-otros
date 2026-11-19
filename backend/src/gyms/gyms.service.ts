@@ -182,11 +182,11 @@ export class GymsService {
       return await this.prisma.gym.findMany({
         where,
         include: {
+          // AUD-27: listado público, sin el email personal del dueño.
           owner: {
             select: {
               id: true,
               name: true,
-              email: true,
               avatarUrl: true,
             },
           },

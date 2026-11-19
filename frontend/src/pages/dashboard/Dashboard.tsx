@@ -1222,7 +1222,8 @@ const Dashboard: React.FC = () => {
                     <option value="">-- Elige un Entrenador --</option>
                     {allPlatformTrainers.map((t: any) => (
                       <option key={t.id} value={t.user.id}>
-                        {t.user.name} ({t.user.email || 'Sin correo'})
+                        {t.user.name}
+                        {t.specialties?.length ? ` · ${t.specialties.slice(0, 3).join(', ')}` : ''}
                       </option>
                     ))}
                   </select>

@@ -44,9 +44,8 @@ const BOOKING_SELF_SELECT = { id: true, name: true } as const;
     return this.prisma.professionalService.findMany({
       where: { isActive: true },
       include: {
-        provider: {
-          select: { id: true, name: true, email: true, avatarUrl: true },
-        },
+        // AUD-27: catálogo público, sin el email personal del profesional.
+        provider: { select: PROVIDER_PUBLIC_SELECT },
       },
       orderBy: { createdAt: 'desc' },
     });
