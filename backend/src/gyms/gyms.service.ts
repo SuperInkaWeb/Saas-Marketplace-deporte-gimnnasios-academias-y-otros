@@ -10,6 +10,10 @@ import { GYM_INACTIVE_MESSAGE } from '../common/gym-access/gym-status';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
 import { GymStatus, GymLocationSource, UserRole } from '@prisma/client';
+import { withPublicName } from '../common/utils/normalize-name';
+
+const OWNER_LABEL = 'Dueño de gimnasio';
+const TRAINER_LABEL = 'Entrenador';
 
 /**
  * Hash de cadena estable (djb2) usado para separar negocios del mismo distrito.
@@ -179,7 +183,7 @@ export class GymsService {
         };
       }
 
-      return await this.prisma.gym.findMany({
+      const gyms = await this.prisma.gym.findMany({
         where,
         include: {
           // AUD-27: listado público, sin el email personal del dueño.
@@ -202,6 +206,11 @@ export class GymsService {
           },
         },
       });
+      // AUD-27: cuentas antiguas con el email guardado como nombre.
+      return gyms.map((gym) => ({
+        ...gym,
+        owner: withPublicName(gym.owner, OWNER_LABEL)!,
+      }));
     } catch (err: any) {
       this.logger.error(`Error in findAll gyms: ${err.message}`, err.stack);
       throw err;
@@ -292,7 +301,17 @@ async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null)
       throw new NotFoundException(`Gimnasio con ID ${id} no encontrado`);
     }
 
-    return gym;
+    // AUD-27: cuentas antiguas con el email guardado como nombre.
+    return {
+      ...gym,
+      gymTrainers: gym.gymTrainers.map((link) => ({
+        ...link,
+        trainer: {
+          ...link.trainer,
+          user: withPublicName(link.trainer.user, TRAINER_LABEL)!,
+        },
+      })),
+    };
   }
 
   async update(

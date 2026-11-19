@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTrainerProfileDto } from './dto/trainer.dto';
 import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
+import { withPublicName } from '../common/utils/normalize-name';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -21,6 +22,7 @@ const TRAINER_USER_STAFF_SELECT = {
   ...TRAINER_USER_PUBLIC_SELECT,
   email: true,
 } as const;
+const TRAINER_LABEL = 'Entrenador';
 
 @Injectable()
 export class TrainersService {
@@ -73,11 +75,16 @@ export class TrainersService {
   }
 
   async findAll() {
-    return this.prisma.trainerProfile.findMany({
+    const trainers = await this.prisma.trainerProfile.findMany({
       include: {
         user: { select: TRAINER_USER_PUBLIC_SELECT },
       },
     });
+    // AUD-27: cuentas antiguas con el email guardado como nombre.
+    return trainers.map((t) => ({
+      ...t,
+      user: withPublicName(t.user, TRAINER_LABEL)!,
+    }));
   }
 
   async assignToGym(
@@ -130,7 +137,7 @@ export class TrainersService {
    */
   async getGymTrainers(gymId: string, viewer?: AuthUser | null) {
     const canSeeContact = await this.canSeeStaffContact(gymId, viewer);
-    return this.prisma.gymTrainer.findMany({
+    const links = await this.prisma.gymTrainer.findMany({
       where: { gymId },
       include: {
         trainer: {
@@ -144,6 +151,15 @@ export class TrainersService {
         },
       },
     });
+    // El dueño/ADMIN ve los datos tal cual; el público, sin nombres que sean emails (AUD-27).
+    if (canSeeContact) return links;
+    return links.map((link) => ({
+      ...link,
+      trainer: {
+        ...link.trainer,
+        user: withPublicName(link.trainer.user, TRAINER_LABEL)!,
+      },
+    })) as typeof links;
   }
 
   private async canSeeStaffContact(gymId: string, viewer?: AuthUser | null) {

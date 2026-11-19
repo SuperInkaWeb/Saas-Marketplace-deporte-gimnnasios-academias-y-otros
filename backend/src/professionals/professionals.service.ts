@@ -4,6 +4,7 @@
   import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
   import { NotificationsService } from '../notifications/notifications.service';
   import { ConflictException } from '@nestjs/common';
+import { withPublicName } from '../common/utils/normalize-name';
 import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.util';
 
 // AUD-08: nunca devolver la fila User completa (passwordHash, dni, auth0Id) en las reservas.
@@ -22,6 +23,7 @@ const BOOKING_CLIENT_SELECT = {
 } as const;
 // Lo que el atleta recibe de sí mismo al reservar:
 const BOOKING_SELF_SELECT = { id: true, name: true } as const;
+const PROVIDER_LABEL = 'Profesional';
 
 
   @Injectable()
@@ -41,7 +43,7 @@ const BOOKING_SELF_SELECT = { id: true, name: true } as const;
   }
 
   async findAll() {
-    return this.prisma.professionalService.findMany({
+    const services = await this.prisma.professionalService.findMany({
       where: { isActive: true },
       include: {
         // AUD-27: catálogo público, sin el email personal del profesional.
@@ -49,6 +51,11 @@ const BOOKING_SELF_SELECT = { id: true, name: true } as const;
       },
       orderBy: { createdAt: 'desc' },
     });
+    // AUD-27: cuentas antiguas con el email guardado como nombre.
+    return services.map((s) => ({
+      ...s,
+      provider: withPublicName(s.provider, PROVIDER_LABEL)!,
+    }));
   }
 
   async findOne(id: string) {
@@ -61,7 +68,10 @@ const BOOKING_SELF_SELECT = { id: true, name: true } as const;
       },
     });
     if (!service) throw new NotFoundException('Servicio no encontrado');
-    return service;
+    return {
+      ...service,
+      provider: withPublicName(service.provider, PROVIDER_LABEL)!,
+    };
   }
   
   
