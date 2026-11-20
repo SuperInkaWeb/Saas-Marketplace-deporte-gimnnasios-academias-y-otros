@@ -6,7 +6,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,6 +21,23 @@ import { INVITABLE_ROLES } from './dto/invite-user.dto';
 
 function isInvitableRole(role: UserRole): boolean {
   return (INVITABLE_ROLES as readonly UserRole[]).includes(role);
+}
+
+const INVALID_REFRESH = 'Refresh token inválido o expirado';
+
+/**
+ * AUD-24: huella SHA-256 del refresh token COMPLETO. Antes se usaba bcrypt, que solo mira los
+ * primeros 72 bytes: en un JWT esos bytes son la cabecera fija + el id del usuario, así que un
+ * token inventado con solo el userId pasaba la comparación.
+ */
+function hashRefreshToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function sameHash(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
 function frontendBaseUrl(): string {
@@ -109,37 +126,113 @@ export class AuthService {
 
   // ── Refresh Tokens ────────────────────────────────────────────────────────
 
+  /**
+   * AUD-24: el refresh token se verifica como JWT (firma con JWT_REFRESH_SECRET y vencimiento),
+   * se busca directo por su jti (= id de la fila) y se compara su huella completa.
+   * Cada token sirve UNA vez: al usarlo se revoca y se entrega uno nuevo (rotación).
+   * Si llega un token ya revocado se asume robo y se cierran todas las sesiones del usuario.
+   */
   async refreshTokens(userId: string, refreshToken: string) {
+    const payload = await this.verifyRefreshToken(refreshToken);
+    if (!payload || payload.sub !== userId) {
+      throw new UnauthorizedException(INVALID_REFRESH);
+    }
+
+    const saved = await this.prisma.refreshToken.findUnique({
+      where: { id: payload.jti },
+    });
+    if (
+      !saved ||
+      saved.userId !== userId ||
+      !sameHash(saved.tokenHash, hashRefreshToken(refreshToken))
+    ) {
+      throw new UnauthorizedException(INVALID_REFRESH);
+    }
+    if (saved.revoked) {
+      await this.revokeAllRefreshTokens(userId);
+      throw new UnauthorizedException(INVALID_REFRESH);
+    }
+    if (saved.expiresAt <= new Date()) {
+      throw new UnauthorizedException(INVALID_REFRESH);
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
-
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Acceso denegado o usuario inactivo');
     }
 
-    // Find valid refresh token
-    const savedTokens = await this.prisma.refreshToken.findMany({
-      where: { userId, expiresAt: { gt: new Date() } },
+    // Rotación: solo una petición puede consumir el token (si dos llegan a la vez, la segunda es reuso).
+    const used = await this.prisma.refreshToken.updateMany({
+      where: { id: saved.id, revoked: false },
+      data: { revoked: true },
     });
-
-    let tokenValid = false;
-    for (const token of savedTokens) {
-      const isValid = await bcrypt.compare(refreshToken, token.tokenHash);
-      if (isValid) {
-        tokenValid = true;
-        break;
-      }
-    }
-
-    if (!tokenValid) {
-      throw new UnauthorizedException('Refresh token inválido o expirado');
+    if (used.count === 0) {
+      await this.revokeAllRefreshTokens(userId);
+      throw new UnauthorizedException(INVALID_REFRESH);
     }
 
     const { passwordHash: _pw, ...safeUser } = user;
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
     return { user: safeUser, ...tokens };
+  }
+
+  /** AUD-24: cierra la sesión del refresh token recibido. Siempre responde igual (no revela si existía). */
+  async logout(refreshToken: string): Promise<void> {
+    const payload = await this.verifyRefreshToken(refreshToken);
+    if (!payload) return;
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        id: payload.jti,
+        userId: payload.sub,
+        tokenHash: hashRefreshToken(refreshToken),
+        revoked: false,
+      },
+      data: { revoked: true },
+    });
+  }
+
+  private async revokeAllRefreshTokens(userId: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    });
+  }
+
+  private refreshSecret(): string {
+    const secret = this.config.get<string>('JWT_REFRESH_SECRET');
+    if (!secret) {
+      // Sin esto, @nestjs/jwt firmaría con JWT_SECRET y un refresh token serviría como access token.
+      throw new Error('JWT_REFRESH_SECRET no está configurado');
+    }
+    return secret;
+  }
+
+  private async verifyRefreshToken(
+    token: string,
+  ): Promise<{ sub: string; jti: string } | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        sub?: unknown;
+        jti?: unknown;
+        type?: unknown;
+      }>(token, {
+        secret: this.refreshSecret(),
+      });
+      const { sub, jti, type } = payload ?? {};
+      if (
+        type !== 'refresh' ||
+        typeof sub !== 'string' ||
+        typeof jti !== 'string'
+      ) {
+        return null;
+      }
+      return { sub, jti };
+    } catch {
+      return null;
+    }
   }
 
   // ── Roles elegibles (única fuente de verdad para getMe y switchRole) ─────
@@ -633,25 +726,43 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string, role: UserRole) {
     const payload = { sub: userId, email, role };
+    // AUD-24: jti = id de la fila en refresh_tokens (búsqueda directa, sin recorrer todos los tokens).
+    const jti = randomUUID();
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.config.get<string>('JWT_SECRET')!,
         expiresIn: (this.config.get<string>('JWT_EXPIRES_IN') || '15m') as any,
       }),
-      this.jwtService.signAsync(payload, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET')!,
-        expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
-      }),
+      this.jwtService.signAsync(
+        { sub: userId, jti, type: 'refresh' },
+        {
+          secret: this.refreshSecret(),
+          expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ||
+            '7d') as any,
+        },
+      ),
     ]);
 
-    // Store hashed refresh token
-    const tokenHash = await bcrypt.hash(refreshToken, 10);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    // El vencimiento en BD es el mismo que el del token (antes se fijaba 7 días aparte).
+    const exp = this.jwtService.decode<{ exp?: number } | null>(
+      refreshToken,
+    )?.exp;
+    const expiresAt = exp
+      ? new Date(exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+    // Limpieza: se borran los tokens vencidos del usuario para que la tabla no crezca sin límite.
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
+    });
     await this.prisma.refreshToken.create({
-      data: { userId, tokenHash, expiresAt },
+      data: {
+        id: jti,
+        userId,
+        tokenHash: hashRefreshToken(refreshToken),
+        expiresAt,
+      },
     });
 
     return { accessToken, refreshToken };
