@@ -7,15 +7,10 @@ import {
   IsEnum,
   IsIn,
   IsInt,
-  IsArray,
   Min,
   Max,
   MaxLength,
-  Matches,
-  ArrayMaxSize,
-  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ServiceType } from '@prisma/client';
 
 export class CreateProfessionalDto {
@@ -48,34 +43,6 @@ export class CreateProfessionalDto {
 
 export class UpdateProfessionalDto extends CreateProfessionalDto {}
 
-export class ScheduleDayDto {
-  @IsInt() @Min(0) @Max(6) dayOfWeek: number;
-  @IsBoolean() isActive: boolean;
-  @IsInt() @Min(0) @Max(1439) openMinute: number;
-  @IsInt() @Min(1) @Max(1440) closeMinute: number;
-  @IsInt() @Min(1) @Max(50) capacity: number;
-}
-
-export class SaveScheduleDto {
-  @IsArray()
-  @ArrayMaxSize(7)
-  @ValidateNested({ each: true })
-  @Type(() => ScheduleDayDto)
-  days: ScheduleDayDto[];
-}
-
-export class BookServiceDto {
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  date: string;
-
-  @IsInt() @Min(0) @Max(1439)
-  startMinute: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  notes?: string;
-}
 /** AUD-28: estados de una reserva de servicio profesional. */
 export const BOOKING_STATUS = {
   PENDING: 'PENDING',
