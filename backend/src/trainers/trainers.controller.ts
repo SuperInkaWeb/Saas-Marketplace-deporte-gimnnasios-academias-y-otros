@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { TrainersService } from './trainers.service';
-import { AssignTrainerDto, UpdateTrainerProfileDto } from './dto/trainer.dto';
+import { AssignTrainerDto, RespondLinkRequestDto, UpdateTrainerProfileDto } from './dto/trainer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -120,9 +120,9 @@ export class TrainersController {
   @ApiOperation({ summary: 'Responder (Aceptar/Rechazar) a una postulación de entrenador' })
   respondRequest(
     @Param('requestId') requestId: string,
-    @Body('approve') approve: boolean,
+    @Body() dto: RespondLinkRequestDto,
     @CurrentUser() user: any,
   ) {
-    return this.trainersService.respondToRequest(requestId, user.id, approve);
+    return this.trainersService.respondToRequest(requestId, user, dto.approve);
   }
 }
