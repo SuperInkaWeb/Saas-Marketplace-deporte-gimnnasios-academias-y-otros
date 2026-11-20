@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { LogoutDto, RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AnyAuthGuard } from './guards/any-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -47,11 +48,16 @@ export class AuthController {
   @Post('refresh')
   @Throttle(LIMITS.refresh)
   @HttpCode(HttpStatus.OK)
-  refresh(@Body() dto: { userId: string; refreshToken: string }) {
-    if (!dto.userId || !dto.refreshToken) {
-      throw new Error('Missing userId or refreshToken');
-    }
+  refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto.userId, dto.refreshToken);
+  }
+
+  @ApiOperation({ summary: 'Logout: invalida el refresh token recibido' })
+  @Post('logout')
+  @Throttle(LIMITS.refresh)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(@Body() dto: LogoutDto): Promise<void> {
+    await this.authService.logout(dto.refreshToken);
   }
 
   @ApiOperation({ summary: 'Get current user profile (JWT or Auth0)' })
