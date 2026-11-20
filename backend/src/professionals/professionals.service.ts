@@ -1,7 +1,12 @@
   import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
   import { Prisma } from '@prisma/client';
   import { PrismaService } from '../prisma/prisma.service'; 
-  import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
+  import {
+    BOOKING_STATUS,
+    BookingStatus,
+    CreateProfessionalDto,
+    UpdateProfessionalDto,
+  } from './dto/professional.dto';
   import { NotificationsService } from '../notifications/notifications.service';
   import { ConflictException } from '@nestjs/common';
 import { withPublicName } from '../common/utils/normalize-name';
@@ -24,6 +29,24 @@ const BOOKING_CLIENT_SELECT = {
 // Lo que el atleta recibe de sí mismo al reservar:
 const BOOKING_SELF_SELECT = { id: true, name: true } as const;
 const PROVIDER_LABEL = 'Profesional';
+
+// AUD-28: transiciones válidas de una reserva. COMPLETED y CANCELLED son finales.
+const BOOKING_TRANSITIONS: Record<string, readonly BookingStatus[]> = {
+  [BOOKING_STATUS.PENDING]: [
+    BOOKING_STATUS.CONFIRMED,
+    BOOKING_STATUS.CANCELLED,
+  ],
+  [BOOKING_STATUS.CONFIRMED]: [
+    BOOKING_STATUS.COMPLETED,
+    BOOKING_STATUS.CANCELLED,
+  ],
+};
+const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
+  PENDING: 'pendiente',
+  CONFIRMED: 'confirmada',
+  COMPLETED: 'completada',
+  CANCELLED: 'cancelada',
+};
 
 
   @Injectable()
@@ -139,7 +162,14 @@ const PROVIDER_LABEL = 'Profesional';
 
   async bookService(userId: string, serviceId: string, notes?: string) {
     const service = await this.findOne(serviceId);
-        if (Number(service.price) > 0) {
+    // AUD-28: los mismos controles que el checkout; esta vía (POST /professionals/:id/book) no los tenía.
+    if (!service.isActive) {
+      throw new BadRequestException('Servicio no disponible');
+    }
+    if (service.providerId === userId) {
+      throw new BadRequestException('No puedes reservar tu propio servicio');
+    }
+    if (Number(service.price) > 0) {
       throw new BadRequestException('Este servicio requiere pago con Mercado Pago');
     }
     const booking = await this.prisma.professionalBooking.create({
@@ -211,7 +241,7 @@ const PROVIDER_LABEL = 'Profesional';
     });
   }
 
-  async updateBookingStatus(bookingId: string, providerId: string, status: string, isAdmin: boolean) {
+  async updateBookingStatus(bookingId: string, providerId: string, status: BookingStatus, isAdmin: boolean) {
     const booking = await this.prisma.professionalBooking.findUnique({
       where: { id: bookingId },
       include: { service: true }
@@ -222,9 +252,26 @@ const PROVIDER_LABEL = 'Profesional';
       throw new ForbiddenException('No tienes permiso para actualizar esta reserva');
     }
 
-    const updated = await this.prisma.professionalBooking.update({
-      where: { id: bookingId },
+    // AUD-28: solo transiciones válidas (COMPLETED y CANCELLED son finales).
+    const allowed = BOOKING_TRANSITIONS[booking.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `No se puede pasar una reserva de ${booking.status} a ${status}`,
+      );
+    }
+    // Solo se aplica si nadie la cambió entre la lectura y la escritura.
+    const changed = await this.prisma.professionalBooking.updateMany({
+      where: { id: bookingId, status: booking.status },
       data: { status },
+    });
+    if (changed.count === 0) {
+      throw new ConflictException(
+        'La reserva cambió mientras se actualizaba; vuelve a intentarlo',
+      );
+    }
+
+    const updated = await this.prisma.professionalBooking.findUniqueOrThrow({
+      where: { id: bookingId },
       include: {
         service: {
           include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
@@ -235,9 +282,9 @@ const PROVIDER_LABEL = 'Profesional';
 
     // Notify the client about the status change
     try {
-      let statusText = status === 'CONFIRMED' ? 'confirmada' : status === 'CANCELLED' ? 'cancelada' : status.toLowerCase();
+      const statusText = BOOKING_STATUS_TEXT[status];
       await this.notificationsService.create(updated.userId, {
-        title: `Reserva de Servicio ${status === 'CONFIRMED' ? 'Confirmada' : status === 'CANCELLED' ? 'Cancelada' : 'Actualizada'}`,
+        title: `Reserva de Servicio ${statusText.charAt(0).toUpperCase()}${statusText.slice(1)}`,
         description: `Tu reserva para el servicio: ${updated.service.title} con ${updated.service.provider.name} ha sido ${statusText}.`,
         type: 'RESERVATION',
       });

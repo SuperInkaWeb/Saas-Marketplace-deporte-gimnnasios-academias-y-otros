@@ -1,6 +1,11 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { ProfessionalsService } from './professionals.service';
-import { CreateProfessionalDto, UpdateProfessionalDto } from './dto/professional.dto';
+import {
+  CreateProfessionalDto,
+  RequestBookingDto,
+  UpdateBookingStatusDto,
+  UpdateProfessionalDto,
+} from './dto/professional.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -56,10 +61,10 @@ export class ProfessionalsController {
   updateBookingStatus(
     @Param('bookingId') bookingId: string,
     @Request() req,
-    @Body('status') status: string
+    @Body() dto: UpdateBookingStatusDto
   ) {
     const isAdmin = req.user.role === UserRole.ADMIN;
-    return this.professionalsService.updateBookingStatus(bookingId, req.user.id, status, isAdmin);
+    return this.professionalsService.updateBookingStatus(bookingId, req.user.id, dto.status, isAdmin);
   }
 
   @Patch(':id')
@@ -85,7 +90,7 @@ export class ProfessionalsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Book a professional service' })
-  bookService(@Param('id') id: string, @Request() req, @Body('notes') notes: string) {
-    return this.professionalsService.bookService(req.user.id, id, notes);
+  bookService(@Param('id') id: string, @Request() req, @Body() dto: RequestBookingDto) {
+    return this.professionalsService.bookService(req.user.id, id, dto.notes);
   }
 }

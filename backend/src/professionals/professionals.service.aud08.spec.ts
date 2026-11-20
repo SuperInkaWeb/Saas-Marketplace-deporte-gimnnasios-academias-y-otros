@@ -88,8 +88,14 @@ describe('ProfessionalsService: reservas sin datos privados (AUD-08)', () => {
           .mockImplementation((args) => Promise.resolve([bookingFrom(args)])),
         findUnique: jest.fn().mockResolvedValue({
           id: 'booking-1',
+          status: 'PENDING',
           service: { providerId: 'provider' },
         }),
+        // AUD-28: el cambio de estado es condicional (updateMany) y luego se relee la reserva.
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest
+          .fn()
+          .mockImplementation((args) => Promise.resolve(bookingFrom(args))),
       },
     };
     service = new ProfessionalsService(
@@ -168,6 +174,7 @@ describe('ProfessionalsService: reservas sin datos privados (AUD-08)', () => {
     const calls = [
       ...prisma.professionalBooking.create.mock.calls,
       ...prisma.professionalBooking.update.mock.calls,
+      ...prisma.professionalBooking.findUniqueOrThrow.mock.calls,
       ...prisma.professionalBooking.findMany.mock.calls,
     ];
     for (const [args] of calls) {
