@@ -158,7 +158,7 @@ const ClassCard: React.FC<{
   );
 };
 
-const ProfessionalBookingCard: React.FC<{ booking: any }> = ({ booking }) => {
+const ProfessionalBookingCard: React.FC<{ booking: any; onCancel: (id: string) => void }> = ({ booking, onCancel }) => {
   const service = booking.service;
   const provider = service?.provider;
   const serviceTypeLabels: Record<string, string> = {
@@ -187,9 +187,10 @@ const ProfessionalBookingCard: React.FC<{ booking: any }> = ({ booking }) => {
             ? 'bg-red-500/10 text-red-400 border-red-500/20'
             : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
         }`}>
-          {booking.status === 'CONFIRMED' ? '✅ Confirmado' : 
-           booking.status === 'PENDING' ? '⏳ Pendiente' : 
-           booking.status === 'CANCELLED' ? '❌ Cancelado' : booking.status}
+          {booking.status === 'CONFIRMED' ? '✅ Confirmado' :
+           booking.status === 'PENDING' ? '⏳ Pendiente' :
+           booking.status === 'CANCELLED' ? '❌ Cancelado' :
+           booking.status === 'COMPLETED' ? '🏁 Completada' : booking.status}
         </span>
       </div>
 
@@ -211,6 +212,14 @@ const ProfessionalBookingCard: React.FC<{ booking: any }> = ({ booking }) => {
 
       <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-4">
         <div className="text-lg font-extrabold text-white">${Number(service?.price || 0).toFixed(2)}</div>
+        {booking.canCancel && (
+          <button
+            onClick={() => onCancel(booking.id)}
+            className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/20 font-bold py-1.5 px-3 rounded-xl text-xs transition-all active:scale-95"
+          >
+            Cancelar
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -257,6 +266,20 @@ const ClassesPage: React.FC = () => {
   useEffect(() => {
     fetchClasses();
   }, []);
+
+  // AUD-28: el atleta cancela su cita pendiente y no pagada.
+  const handleCancelBooking = async (id: string) => {
+    if (!window.confirm('¿Cancelar esta cita? El profesional recibirá un aviso.')) return;
+    try {
+      await api.patch(`/professionals/bookings/${id}/cancel`);
+      setMessage({ type: 'success', text: 'Cita cancelada.' });
+      fetchClasses();
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setMessage({ type: 'error', text: msg || 'No se pudo cancelar la cita.' });
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const handleBook = async (id: string) => {
     try {
@@ -505,7 +528,7 @@ const ClassesPage: React.FC = () => {
         filteredBookings.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredBookings.map(b => (
-              <ProfessionalBookingCard key={b.id} booking={b} />
+              <ProfessionalBookingCard key={b.id} booking={b} onCancel={handleCancelBooking} />
             ))}
           </div>
         ) : (

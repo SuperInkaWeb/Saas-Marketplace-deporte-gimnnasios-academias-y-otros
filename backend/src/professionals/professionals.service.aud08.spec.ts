@@ -62,6 +62,8 @@ describe('ProfessionalsService: reservas sin datos privados (AUD-08)', () => {
 
   beforeEach(() => {
     prisma = {
+      // AUD-28: getMyBookings consulta los pagos para saber si el atleta puede cancelar.
+      payment: { findMany: jest.fn().mockResolvedValue([]) },
       professionalService: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'service-1',
