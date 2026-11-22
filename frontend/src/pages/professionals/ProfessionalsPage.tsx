@@ -116,7 +116,8 @@ const ProfessionalsPage: React.FC = () => {
   const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
     try {
       await api.patch(`/professionals/bookings/${bookingId}/status`, { status: newStatus });
-      setMessage({ type: 'success', text: `Reserva actualizada a ${newStatus === 'CONFIRMED' ? 'Confirmada' : 'Cancelada'}` });
+      const label = newStatus === 'CONFIRMED' ? 'Confirmada' : newStatus === 'COMPLETED' ? 'Completada' : 'Cancelada';
+      setMessage({ type: 'success', text: `Reserva actualizada a ${label}` });
       fetchReceivedBookings();
     } catch (err: any) {
       setMessage({ type: 'error', text: 'Error al actualizar reserva: ' + (err.response?.data?.message || 'Servidor no disponible') });
@@ -305,10 +306,13 @@ const confirmBooking = async () => {
                         ? 'bg-green-500/10 text-green-400 border-green-500/20'
                         : b.status === 'PENDING'
                         ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                        : b.status === 'COMPLETED'
+                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                         : 'bg-red-500/10 text-red-400 border-red-500/20'
                     }`}>
-                      {b.status === 'CONFIRMED' ? '✅ Confirmado' : 
-                       b.status === 'PENDING' ? '⏳ Pendiente' : '❌ Cancelado'}
+                      {b.status === 'CONFIRMED' ? '✅ Confirmado' :
+                       b.status === 'PENDING' ? '⏳ Pendiente' :
+                       b.status === 'COMPLETED' ? '🏁 Completada' : '❌ Cancelado'}
                     </span>
                   </div>
 
@@ -337,6 +341,22 @@ const confirmBooking = async () => {
                         className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/20 font-bold py-2 rounded-xl text-xs transition-all active:scale-95"
                       >
                         Rechazar
+                      </button>
+                    </div>
+                  )}
+                  {b.status === 'CONFIRMED' && (
+                    <div className="flex gap-2 w-full mt-2">
+                      <button
+                        onClick={() => handleUpdateStatus(b.id, 'COMPLETED')}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs transition-all shadow-md active:scale-95"
+                      >
+                        Marcar como completada
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(b.id, 'CANCELLED')}
+                        className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/20 font-bold py-2 rounded-xl text-xs transition-all active:scale-95"
+                      >
+                        Cancelar
                       </button>
                     </div>
                   )}

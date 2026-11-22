@@ -1,5 +1,5 @@
   import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-  import { Prisma } from '@prisma/client';
+  import { PaymentStatus, Prisma } from '@prisma/client';
   import { PrismaService } from '../prisma/prisma.service'; 
   import {
     BOOKING_STATUS,
@@ -10,7 +10,6 @@
   import { NotificationsService } from '../notifications/notifications.service';
   import { ConflictException } from '@nestjs/common';
 import { withPublicName } from '../common/utils/normalize-name';
-import { buildSlots, isValidDate, dayOfWeek, todayLima, toHHmm } from './slots.util';
 
 // AUD-08: nunca devolver la fila User completa (passwordHash, dni, auth0Id) en las reservas.
 // Lo que el atleta ve del profesional:
@@ -213,7 +212,7 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   }
 
   async getMyBookings(userId: string) {
-    return this.prisma.professionalBooking.findMany({
+    const bookings = await this.prisma.professionalBooking.findMany({
       where: { userId },
       include: {
         service: {
@@ -222,6 +221,63 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       },
       orderBy: { bookedAt: 'desc' },
     });
+    const paid = await this.paidServiceIds(userId);
+    // AUD-28: el frontend muestra "Cancelar" solo si el atleta puede hacerlo.
+    return bookings.map((b) => ({
+      ...b,
+      canCancel: b.status === BOOKING_STATUS.PENDING && !paid.has(b.serviceId),
+    }));
+  }
+
+  /**
+   * AUD-28: el atleta puede cancelar su propia reserva solo si está PENDING y no la pagó.
+   * Las pagadas las cancela el profesional hasta que se defina la política de reembolsos (AUD-09).
+   */
+  async cancelOwnBooking(bookingId: string, userId: string) {
+    const booking = await this.prisma.professionalBooking.findUnique({
+      where: { id: bookingId },
+      include: { service: { select: { title: true, providerId: true } } },
+    });
+    if (!booking || booking.userId !== userId) {
+      throw new NotFoundException('Reserva no encontrada');
+    }
+    if (booking.status !== BOOKING_STATUS.PENDING) {
+      throw new BadRequestException('Solo puedes cancelar una reserva pendiente');
+    }
+    if ((await this.paidServiceIds(userId)).has(booking.serviceId)) {
+      throw new BadRequestException(
+        'Esta reserva fue pagada: pide la cancelación al profesional',
+      );
+    }
+    const changed = await this.prisma.professionalBooking.updateMany({
+      where: { id: bookingId, status: BOOKING_STATUS.PENDING },
+      data: { status: BOOKING_STATUS.CANCELLED },
+    });
+    if (changed.count === 0) {
+      throw new ConflictException(
+        'La reserva cambió mientras se actualizaba; vuelve a intentarlo',
+      );
+    }
+
+    try {
+      await this.notificationsService.create(booking.service.providerId, {
+        title: 'Reserva Cancelada por el Cliente',
+        description: `Un cliente canceló su reserva del servicio: ${booking.service.title}.`,
+        type: 'RESERVATION',
+      });
+    } catch (err) {
+      console.error('Error notificando cancelación al profesional:', err);
+    }
+    return { id: bookingId, status: BOOKING_STATUS.CANCELLED };
+  }
+
+  /** Servicios que el usuario pagó alguna vez (criterio conservador: si pagó, no cancela él). */
+  private async paidServiceIds(userId: string): Promise<Set<string>> {
+    const payments = await this.prisma.payment.findMany({
+      where: { userId, status: PaymentStatus.COMPLETED, serviceId: { not: null } },
+      select: { serviceId: true },
+    });
+    return new Set(payments.map((p) => p.serviceId as string));
   }
 
   async getProviderBookings(providerId: string) {

@@ -67,6 +67,14 @@ export class ProfessionalsController {
     return this.professionalsService.updateBookingStatus(bookingId, req.user.id, dto.status, isAdmin);
   }
 
+  @Patch('bookings/:bookingId/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'El cliente cancela su propia reserva (solo pendiente y no pagada)' })
+  cancelOwnBooking(@Param('bookingId') bookingId: string, @Request() req) {
+    return this.professionalsService.cancelOwnBooking(bookingId, req.user.id);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
