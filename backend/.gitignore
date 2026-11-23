@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# AUD-33: scripts operativos de depuración (no se versionan; ver respaldo fuera del repo)
+scratch/
