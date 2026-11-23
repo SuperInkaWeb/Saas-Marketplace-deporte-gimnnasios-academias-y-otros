@@ -5,6 +5,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +18,7 @@ import { UserRole } from '@prisma/client';
 import { sanitizeName } from '../common/utils/normalize-name';
 import { computeEligibleRoles } from '../common/roles/role-eligibility';
 import { EmailService } from '../notifications/email.service';
+import { maskEmail } from '../common/utils/mask-email';
 import { INVITABLE_ROLES } from './dto/invite-user.dto';
 
 function isInvitableRole(role: UserRole): boolean {
@@ -48,6 +50,9 @@ function frontendBaseUrl(): string {
 
 @Injectable()
 export class AuthService {
+  // AUD-34: los logs identifican a la persona por id y correo enmascarado, nunca por el correo completo.
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -636,7 +641,7 @@ export class AuthService {
         );
       }
 
-      console.log(`Encontrado usuario existente por email (case-insensitive): ${existing.email}. Vinculando a Auth0 ID: ${auth0Id}`);
+      this.logger.log(`Cuenta existente ${existing.id} (${maskEmail(existing.email)}) vinculada a Auth0`);
       user = await this.prisma.user.update({
         where: { id: existing.id },
         data: {
@@ -666,11 +671,11 @@ export class AuthService {
     // AUD-03: nunca se asigna ADMIN al registrarse; lo otorga otro ADMIN desde la gestión de usuarios.
     // AUD-19: una invitación antigua con un rol no invitable (p. ej. ADMIN) no otorga privilegios.
     if (invitation && emailVerified && isInvitableRole(invitation.role)) {
-      console.log(`Invitación encontrada para ${email}. Asignando rol: ${invitation.role}`);
+      this.logger.log(`Invitación aplicada a ${maskEmail(email)}: rol ${invitation.role}`);
       assignedRole = invitation.role;
       gymIdToLink = invitation.gymId;
     } else {
-      console.log(`Sin invitación aplicable para ${email} (verificado: ${emailVerified}). Creando atleta público (USER)`);
+      this.logger.log(`Alta de atleta (USER) para ${maskEmail(email)} sin invitación aplicable (correo verificado: ${emailVerified})`);
     }
 
     const safeName = sanitizeName(name, email);
@@ -712,7 +717,7 @@ export class AuthService {
             canCreateClasses: true,
           },
         });
-        console.log(`TrainerProfile creado y vinculado al gimnasio ${gymIdToLink}`);
+        this.logger.log(`Entrenador ${newUser.id} vinculado al gimnasio ${gymIdToLink}`);
       }
     }
 
