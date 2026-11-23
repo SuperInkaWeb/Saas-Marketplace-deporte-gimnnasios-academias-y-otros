@@ -1,8 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean, IsEnum, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean, IsEnum, IsDateString, MaxLength, Min } from 'class-validator';
+import { PartialType } from '@nestjs/swagger';
 import { EventType } from '@prisma/client';
 
 export class CreateEventDto {
   @IsString()
+  @MaxLength(200)
   @IsNotEmpty()
   title: string;
 
@@ -14,6 +16,7 @@ export class CreateEventDto {
   eventType: EventType;
 
   @IsOptional()
+  @Min(0)
   @IsNumber()
   price?: number;
 
@@ -22,10 +25,12 @@ export class CreateEventDto {
   date: string;
 
   @IsOptional()
+  @MaxLength(300)
   @IsString()
   location?: string;
 
   @IsOptional()
+  @Min(0)
   @IsNumber()
   capacity?: number;
 
@@ -34,4 +39,5 @@ export class CreateEventDto {
   isActive?: boolean;
 }
 
-export class UpdateEventDto extends CreateEventDto {}
+// Al editar se envía solo lo que cambia (antes exigía todos los campos, H-22).
+export class UpdateEventDto extends PartialType(CreateEventDto) {}

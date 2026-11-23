@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, Delete, Patch, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Patch, UseGuards, Req, ParseUUIDPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserAdminDto, UpdateUserAdminDto } from './dto/user.dto';
-import { CreateRoleRequestDto } from './dto/role-request.dto';
+import { CreateRoleRequestDto, ReviewRoleRequestDto } from './dto/role-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AnyAuthGuard } from '../auth/guards/any-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -95,8 +95,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Aprobar solicitud de rol (Solo Admin)' })
   approveRoleRequest(
-    @Param('id') id: string,
-    @Body() dto: { adminNote?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReviewRoleRequestDto,
   ) {
     return this.usersService.approveRoleRequest(id, dto.adminNote);
   }
@@ -106,8 +106,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Rechazar solicitud de rol (Solo Admin)' })
   rejectRoleRequest(
-    @Param('id') id: string,
-    @Body() dto: { adminNote?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReviewRoleRequestDto,
   ) {
     return this.usersService.rejectRoleRequest(id, dto.adminNote);
   }

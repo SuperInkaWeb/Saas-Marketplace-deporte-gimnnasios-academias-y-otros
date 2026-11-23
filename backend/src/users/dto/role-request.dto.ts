@@ -21,3 +21,12 @@ export class CreateRoleRequestDto {
   @MaxLength(500)
   reason?: string;
 }
+
+// Nota opcional del administrador al aprobar o rechazar una solicitud.
+export class ReviewRoleRequestDto {
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(1000)
+  adminNote?: string;
+}
