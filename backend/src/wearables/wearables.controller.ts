@@ -16,6 +16,7 @@ import { Response } from 'express';
 import { WearablesService } from './wearables.service';
 import { GoogleHealthService } from './google-health.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FitbitCallbackDto, SyncWearableDto } from './dto/wearables.dto';
 
 @Controller('wearables')
 @UseGuards(JwtAuthGuard)
@@ -27,7 +28,7 @@ export class WearablesController {
 
   // ── Manual sync (BLE / webhook) ────────────────────────────────────────────
   @Post('sync')
-  async syncData(@Request() req, @Body() data: any) {
+  async syncData(@Request() req, @Body() data: SyncWearableDto) {
     return this.wearablesService.syncData(req.user.id, data);
   }
 
@@ -63,12 +64,8 @@ export class WearablesController {
   @Post('fitbit/callback')
   async fitbitCallback(
     @Request() req,
-    @Body() body: { code: string; redirect_uri: string },
+    @Body() body: FitbitCallbackDto,
   ) {
-    if (!body.code) {
-      return { success: false, message: 'Código de autorización faltante' };
-    }
-
     const tokens = await this.googleHealthService.exchangeCodeForTokens(
       req.user.id,
       body.code,

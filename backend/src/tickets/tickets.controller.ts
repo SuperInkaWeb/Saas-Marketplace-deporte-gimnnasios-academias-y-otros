@@ -7,7 +7,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, TicketStatus } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { ParseEnumPipe } from '@nestjs/common';
+import { ParseEnumPipe, ParseUUIDPipe } from '@nestjs/common';
 
 
 @ApiTags('tickets')
@@ -57,7 +57,7 @@ findAll(
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: responder un ticket' })
-  reply(@Param('id') id: string, @Body() dto: ReplyTicketDto) {
+  reply(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReplyTicketDto) {
     return this.ticketsService.reply(id, dto);
   }
 
@@ -66,7 +66,10 @@ findAll(
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: cambiar estado del ticket' })
-  updateStatus(@Param('id') id: string, @Body('status') status: TicketStatus) {
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status', new ParseEnumPipe(TicketStatus)) status: TicketStatus,
+  ) {
     return this.ticketsService.updateStatus(id, status);
   }
 
@@ -75,7 +78,7 @@ findAll(
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: eliminar ticket' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.ticketsService.remove(id);
   }
 }
