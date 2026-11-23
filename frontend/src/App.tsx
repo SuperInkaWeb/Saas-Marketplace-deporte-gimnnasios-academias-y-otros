@@ -1,33 +1,38 @@
+import { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/auth-context';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
-import LoginPage from './pages/auth/LoginPage';
-import AdminLoginPage from './pages/auth/AdminLoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import Dashboard from './pages/dashboard/Dashboard';
-import GymsPage from './pages/gyms/GymsPage';
-import GymShowroom from './pages/gyms/GymShowroom';
-import ClassesPage from './pages/classes/ClassesPage';
-import MarketplacePage from './pages/marketplace/MarketplacePage';
-import MembershipsPage from './pages/memberships/MembershipsPage';
-import PaymentResultPage from './pages/payment/PaymentResultPage';
-import ProfessionalsPage from './pages/professionals/ProfessionalsPage';
-import MapSearchPage from './pages/discovery/MapSearchPage';
-import EventsPage from './pages/events/EventsPage';
-import AnalyticsView from './pages/dashboard/AnalyticsView';
-import CRMView from './pages/dashboard/CRMView';
-import HealthView from './pages/dashboard/HealthView';
-import CoachHealthView from './pages/dashboard/CoachHealthView';
-import OwnerHealthView from './pages/dashboard/OwnerHealthView';
-import AdminHealthView from './pages/dashboard/AdminHealthView';
-import InvoicesView from './pages/dashboard/InvoicesView';
-import PlatformOverviewView from './pages/dashboard/PlatformOverviewView';
-import UsersManagementView from './pages/dashboard/UsersManagementView';
-import TicketsPage from './pages/tickets/TicketsPage';
-import SportStorePage from './pages/store/SportStorePage';
 import LandingPage from './pages/landing/LandingPage';
 import { Toaster } from 'sonner';
+import { lazyPage } from './lib/lazy-page';
+
+// AUD-36: cada página se descarga recién cuando se abre (antes todo iba en un solo archivo de 2 MB).
+// La Landing se carga de inmediato porque es lo primero que ve un visitante.
+const LoginPage = lazyPage(() => import('./pages/auth/LoginPage'));
+const AdminLoginPage = lazyPage(() => import('./pages/auth/AdminLoginPage'));
+const RegisterPage = lazyPage(() => import('./pages/auth/RegisterPage'));
+const Dashboard = lazyPage(() => import('./pages/dashboard/Dashboard'));
+const GymsPage = lazyPage(() => import('./pages/gyms/GymsPage'));
+const GymShowroom = lazyPage(() => import('./pages/gyms/GymShowroom'));
+const ClassesPage = lazyPage(() => import('./pages/classes/ClassesPage'));
+const MarketplacePage = lazyPage(() => import('./pages/marketplace/MarketplacePage'));
+const MembershipsPage = lazyPage(() => import('./pages/memberships/MembershipsPage'));
+const PaymentResultPage = lazyPage(() => import('./pages/payment/PaymentResultPage'));
+const ProfessionalsPage = lazyPage(() => import('./pages/professionals/ProfessionalsPage'));
+const MapSearchPage = lazyPage(() => import('./pages/discovery/MapSearchPage'));
+const EventsPage = lazyPage(() => import('./pages/events/EventsPage'));
+const AnalyticsView = lazyPage(() => import('./pages/dashboard/AnalyticsView'));
+const CRMView = lazyPage(() => import('./pages/dashboard/CRMView'));
+const HealthView = lazyPage(() => import('./pages/dashboard/HealthView'));
+const CoachHealthView = lazyPage(() => import('./pages/dashboard/CoachHealthView'));
+const OwnerHealthView = lazyPage(() => import('./pages/dashboard/OwnerHealthView'));
+const AdminHealthView = lazyPage(() => import('./pages/dashboard/AdminHealthView'));
+const InvoicesView = lazyPage(() => import('./pages/dashboard/InvoicesView'));
+const PlatformOverviewView = lazyPage(() => import('./pages/dashboard/PlatformOverviewView'));
+const UsersManagementView = lazyPage(() => import('./pages/dashboard/UsersManagementView'));
+const TicketsPage = lazyPage(() => import('./pages/tickets/TicketsPage'));
+const SportStorePage = lazyPage(() => import('./pages/store/SportStorePage'));
 
 // Componente para la página de inicio. Si está autenticado, redirige al panel según su rol; si no, muestra la Landing Page de Hercix.
 const HomeRoute = () => {
@@ -69,10 +74,17 @@ const HomeRoute = () => {
   return <LandingPage />;
 };
 
+const PageLoader = () => (
+  <div className="flex bg-background-darker h-screen items-center justify-center">
+    <div className="border-primary border-t-2 rounded-full w-12 h-12 animate-spin"></div>
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -120,6 +132,7 @@ function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </Router>
       <Toaster position="top-right" richColors theme="dark" />
     </AuthProvider>

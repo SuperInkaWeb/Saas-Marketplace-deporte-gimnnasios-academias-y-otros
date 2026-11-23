@@ -7,6 +7,33 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 export const isSwaggerEnabled = (env: NodeJS.ProcessEnv = process.env) =>
   env.NODE_ENV !== 'production' || env.SWAGGER_ENABLED === 'true';
 
+// AUD-36: solo los dominios propios pueden llamar a la API desde el navegador.
+// Antes se aceptaba cualquier *.vercel.app y *.onrender.com (sitios de terceros incluidos).
+// Las llamadas servidor a servidor (webhooks de pagos, Auth0) no envían Origin y no se ven afectadas.
+export const getAllowedOrigins = (
+  env: NodeJS.ProcessEnv = process.env,
+): string[] =>
+  [
+    'https://hercix.com',
+    'https://www.hercix.com',
+    env.FRONTEND_URL,
+    // Desarrollo local
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+  ].filter((o): o is string => Boolean(o));
+
+export function configureCors(
+  app: INestApplication,
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  app.enableCors({
+    origin: getAllowedOrigins(env),
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  });
+}
+
 // Configuración de seguridad de la app (AUD-14), compartida por main.ts y los tests.
 export function configureSecurity(
   app: INestApplication,
