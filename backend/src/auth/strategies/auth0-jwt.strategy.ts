@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
@@ -18,6 +18,9 @@ export interface Auth0JwtPayload {
 
 @Injectable()
 export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
+  // AUD-34: sin datos personales en los logs (ni el payload del token ni correos).
+  private readonly logger = new Logger(Auth0JwtStrategy.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly authService: AuthService,
@@ -87,7 +90,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
    * Return value is attached to request.user
    */
    async validate(req: any, payload: Auth0JwtPayload) {
-    console.log('Validando Payload de Auth0:', JSON.stringify(payload, null, 2));
     const { sub, picture } = payload;
     let email = payload.email;
     let emailVerified = payload.email_verified;
@@ -108,17 +110,15 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
           domain = 'dev-khvop4d61s5ip8d3.us.auth0.com';
         }
         try {
-          console.log(`Fetching userinfo from Auth0 to retrieve real email for ${sub}...`);
           const userInfo = await this.fetchUserInfo(domain, token);
           if (userInfo && userInfo.email) {
             email = userInfo.email;
             emailVerified = userInfo.email_verified === true;
             name = userInfo.name || name;
-            console.log(`Retrieved real email from userinfo: ${email}`);
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error('Error fetching userinfo from Auth0:', msg);
+          this.logger.warn(`No se pudo consultar /userinfo de Auth0: ${msg}`);
         }
       }
     }
