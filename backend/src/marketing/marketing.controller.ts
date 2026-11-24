@@ -14,12 +14,16 @@ import { CreateCampaignDto } from './dto/campaign.dto';
 export class MarketingController {
   constructor(
     private readonly marketingService: MarketingService,
-    private readonly gymsService: GymsService
+    private readonly gymsService: GymsService,
   ) {}
 
   @Post('gym/:gymId/campaigns')
   @Roles('ADMIN', 'GYM_OWNER')
-  async createCampaign(@Param('gymId') gymId: string, @Body() data: CreateCampaignDto, @CurrentUser() user: AuthUser) {
+  async createCampaign(
+    @Param('gymId') gymId: string,
+    @Body() data: CreateCampaignDto,
+    @CurrentUser() user: AuthUser,
+  ) {
     if (user.role !== UserRole.ADMIN) {
       await this.gymsService.validateOwnership(gymId, user);
     }
@@ -28,7 +32,10 @@ export class MarketingController {
 
   @Get('gym/:gymId/campaigns')
   @Roles('ADMIN', 'GYM_OWNER')
-  async getCampaigns(@Param('gymId') gymId: string, @CurrentUser() user: AuthUser) {
+  async getCampaigns(
+    @Param('gymId') gymId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     if (user.role !== UserRole.ADMIN) {
       await this.gymsService.validateOwnership(gymId, user);
     }

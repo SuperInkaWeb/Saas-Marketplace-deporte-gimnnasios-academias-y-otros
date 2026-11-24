@@ -18,8 +18,16 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
       user: {
         findUnique: jest.fn().mockResolvedValue(null),
         findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn().mockImplementation(({ where, data }) => Promise.resolve({ id: where.id, ...data })),
-        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'new', isActive: true, ...data })),
+        update: jest
+          .fn()
+          .mockImplementation(({ where, data }) =>
+            Promise.resolve({ id: where.id, ...data }),
+          ),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'new', isActive: true, ...data }),
+          ),
       },
       invitation: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -32,7 +40,9 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
       prisma as PrismaService,
       {} as JwtService,
       {} as ConfigService,
-      { sendWelcome: jest.fn().mockResolvedValue(undefined) } as unknown as EmailService,
+      {
+        sendWelcome: jest.fn().mockResolvedValue(undefined),
+      } as unknown as EmailService,
     );
   });
 
@@ -50,7 +60,12 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
 
   it('does not promote an already linked account to ADMIN based on its email', async () => {
     prisma.user.findUnique.mockResolvedValue({
-      id: 'u1', name: 'Soporte', email: FORMER_ADMIN_EMAIL, role: UserRole.USER, isActive: true, avatarUrl: null,
+      id: 'u1',
+      name: 'Soporte',
+      email: FORMER_ADMIN_EMAIL,
+      role: UserRole.USER,
+      isActive: true,
+      avatarUrl: null,
     });
 
     const user = await service.findOrCreateAuth0User({
@@ -61,13 +76,19 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
     });
 
     expect(user.role).toBe(UserRole.USER);
-    const roleUpdates = prisma.user.update.mock.calls.filter(([args]: any[]) => 'role' in args.data);
+    const roleUpdates = prisma.user.update.mock.calls.filter(
+      ([args]: any[]) => 'role' in args.data,
+    );
     expect(roleUpdates).toHaveLength(0);
   });
 
   it('refuses to link an existing account by email when Auth0 has not verified the email', async () => {
     prisma.user.findFirst.mockResolvedValue({
-      id: 'admin1', email: 'admin@hercix.com', role: UserRole.ADMIN, isActive: true, avatarUrl: null,
+      id: 'admin1',
+      email: 'admin@hercix.com',
+      role: UserRole.ADMIN,
+      isActive: true,
+      avatarUrl: null,
     });
 
     await expect(
@@ -83,7 +104,11 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
 
   it('links an existing account by email when the email is verified, keeping its role', async () => {
     prisma.user.findFirst.mockResolvedValue({
-      id: 'owner1', email: 'owner@gym.pe', role: UserRole.GYM_OWNER, isActive: true, avatarUrl: null,
+      id: 'owner1',
+      email: 'owner@gym.pe',
+      role: UserRole.GYM_OWNER,
+      isActive: true,
+      avatarUrl: null,
     });
 
     const user = await service.findOrCreateAuth0User({
@@ -94,14 +119,21 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
     });
 
     expect(prisma.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'owner1' }, data: expect.objectContaining({ auth0Id: 'auth0|owner1' }) }),
+      expect.objectContaining({
+        where: { id: 'owner1' },
+        data: expect.objectContaining({ auth0Id: 'auth0|owner1' }),
+      }),
     );
     expect(user).toMatchObject({ id: 'owner1', auth0Id: 'auth0|owner1' });
   });
 
   it('ignores pending invitations when the email is not verified', async () => {
     prisma.invitation.findFirst.mockResolvedValue({
-      id: 'inv1', email: 'coach@gym.pe', role: UserRole.TRAINER, gymId: 'g1', status: 'PENDING',
+      id: 'inv1',
+      email: 'coach@gym.pe',
+      role: UserRole.TRAINER,
+      gymId: 'g1',
+      status: 'PENDING',
     });
 
     const user = await service.findOrCreateAuth0User({
@@ -118,7 +150,11 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
 
   it('still applies a pending invitation when the email is verified', async () => {
     prisma.invitation.findFirst.mockResolvedValue({
-      id: 'inv1', email: 'coach@gym.pe', role: UserRole.TRAINER, gymId: 'g1', status: 'PENDING',
+      id: 'inv1',
+      email: 'coach@gym.pe',
+      role: UserRole.TRAINER,
+      gymId: 'g1',
+      status: 'PENDING',
     });
     prisma.trainerProfile.create.mockResolvedValue({ id: 'tp1' });
 
@@ -130,7 +166,10 @@ describe('AuthService.findOrCreateAuth0User (AUD-03)', () => {
     });
 
     expect(user.role).toBe(UserRole.TRAINER);
-    expect(prisma.invitation.update).toHaveBeenCalledWith({ where: { id: 'inv1' }, data: { status: 'ACCEPTED' } });
+    expect(prisma.invitation.update).toHaveBeenCalledWith({
+      where: { id: 'inv1' },
+      data: { status: 'ACCEPTED' },
+    });
     expect(prisma.gymTrainer.create).toHaveBeenCalled();
   });
 });

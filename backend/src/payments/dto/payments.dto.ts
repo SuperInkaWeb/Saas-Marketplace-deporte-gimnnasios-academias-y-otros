@@ -73,6 +73,4 @@ export class ConfirmPaymentDto {
   @IsNumberString({ no_symbols: true })
   @Length(1, 20)
   paymentId: string;
-
-  
 }

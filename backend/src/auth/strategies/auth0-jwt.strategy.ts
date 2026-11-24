@@ -7,7 +7,7 @@ import { AuthService } from '../auth.service';
 import * as https from 'https';
 
 export interface Auth0JwtPayload {
-  sub: string;      // Auth0 user ID e.g. "auth0|abc123"
+  sub: string; // Auth0 user ID e.g. "auth0|abc123"
   email?: string;
   email_verified?: boolean;
   name?: string;
@@ -25,14 +25,22 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
     private readonly config: ConfigService,
     private readonly authService: AuthService,
   ) {
-    let domain = config.get<string>('AUTH0_DOMAIN') || 'dev-khvop4d61s5ip8d3.us.auth0.com';
+    let domain =
+      config.get<string>('AUTH0_DOMAIN') || 'dev-khvop4d61s5ip8d3.us.auth0.com';
     let audience = config.get<string>('AUTH0_AUDIENCE') || 'https://hercix-api';
 
     // Si están configuradas con las credenciales de desarrollo viejas o de prueba, forzar las corporativas oficiales de Mario (Hercix)
-    if (domain === 'dev-6d0mok1v1ohx5iez.us.auth0.com' || domain === 'dev-vdhdedydkqqaxog0.us.auth0.com' || domain === 'dev-vdhdedydkqqaxog0') {
+    if (
+      domain === 'dev-6d0mok1v1ohx5iez.us.auth0.com' ||
+      domain === 'dev-vdhdedydkqqaxog0.us.auth0.com' ||
+      domain === 'dev-vdhdedydkqqaxog0'
+    ) {
       domain = 'dev-khvop4d61s5ip8d3.us.auth0.com';
     }
-    if (audience === 'https://sportnexus-api' || !audience.startsWith('https://')) {
+    if (
+      audience === 'https://sportnexus-api' ||
+      !audience.startsWith('https://')
+    ) {
       audience = 'https://hercix-api';
     }
 
@@ -59,13 +67,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
         path: '/userinfo',
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       };
 
       const req = https.request(options, (res) => {
         let body = '';
-        res.on('data', (chunk) => body += chunk);
+        res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           if (res.statusCode === 200) {
             try {
@@ -89,7 +97,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
    * Finds or creates the user in our Prisma DB.
    * Return value is attached to request.user
    */
-   async validate(req: any, payload: Auth0JwtPayload) {
+  async validate(req: any, payload: Auth0JwtPayload) {
     const { sub, picture } = payload;
     let email = payload.email;
     let emailVerified = payload.email_verified;
@@ -105,8 +113,14 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
       const authHeader = req.headers?.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        let domain = this.config.get<string>('AUTH0_DOMAIN') || 'dev-khvop4d61s5ip8d3.us.auth0.com';
-        if (domain === 'dev-6d0mok1v1ohx5iez.us.auth0.com' || domain === 'dev-vdhdedydkqqaxog0.us.auth0.com' || domain === 'dev-vdhdedydkqqaxog0') {
+        let domain =
+          this.config.get<string>('AUTH0_DOMAIN') ||
+          'dev-khvop4d61s5ip8d3.us.auth0.com';
+        if (
+          domain === 'dev-6d0mok1v1ohx5iez.us.auth0.com' ||
+          domain === 'dev-vdhdedydkqqaxog0.us.auth0.com' ||
+          domain === 'dev-vdhdedydkqqaxog0'
+        ) {
           domain = 'dev-khvop4d61s5ip8d3.us.auth0.com';
         }
         try {
@@ -138,4 +152,3 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
     return user;
   }
 }
-

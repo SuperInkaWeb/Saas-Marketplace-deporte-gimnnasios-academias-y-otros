@@ -50,9 +50,13 @@ export class WearablesController {
    * Step 1: Get the Google Health authorization URL
    */
   @Get('fitbit/auth-url')
-  async getFitbitAuthUrl(@Request() req, @Query('redirect_uri') redirectUri?: string) {
+  async getFitbitAuthUrl(
+    @Request() req,
+    @Query('redirect_uri') redirectUri?: string,
+  ) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const callbackUri = redirectUri || `${frontendUrl}/dashboard/wearables/fitbit-callback`;
+    const callbackUri =
+      redirectUri || `${frontendUrl}/dashboard/wearables/fitbit-callback`;
 
     const url = this.googleHealthService.getAuthorizationUrl(callbackUri);
     return { url, callbackUri };
@@ -62,10 +66,7 @@ export class WearablesController {
    * Step 2: Exchange code for tokens (called by frontend)
    */
   @Post('fitbit/callback')
-  async fitbitCallback(
-    @Request() req,
-    @Body() body: FitbitCallbackDto,
-  ) {
+  async fitbitCallback(@Request() req, @Body() body: FitbitCallbackDto) {
     const tokens = await this.googleHealthService.exchangeCodeForTokens(
       req.user.id,
       body.code,
@@ -84,8 +85,10 @@ export class WearablesController {
    */
   @Post('fitbit/sync')
   async syncFitbitData(@Request() req) {
-    const data = await this.googleHealthService.syncGoogleHealthData(req.user.id);
-    
+    const data = await this.googleHealthService.syncGoogleHealthData(
+      req.user.id,
+    );
+
     // Save the real data to the database!
     await this.wearablesService.syncData(req.user.id, data);
 

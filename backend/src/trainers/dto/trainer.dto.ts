@@ -53,7 +53,10 @@ export class AssignTrainerDto {
 
 /** AUD-26: respuesta del dueño a una postulación; "approve" debe ser booleano real. */
 export class RespondLinkRequestDto {
-  @ApiProperty({ example: true, description: 'true = aprobar, false = rechazar' })
+  @ApiProperty({
+    example: true,
+    description: 'true = aprobar, false = rechazar',
+  })
   @IsBoolean({ message: 'approve debe ser true o false' })
   approve: boolean;
 }

@@ -13,12 +13,15 @@ import type { AuthUser } from '../common/gym-access/gym-access.service';
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
-    private readonly gymsService: GymsService
+    private readonly gymsService: GymsService,
   ) {}
 
   @Get('gym/:gymId/dashboard')
   @Roles('ADMIN', 'GYM_OWNER')
-  async getDashboardStats(@Param('gymId') gymId: string, @CurrentUser() user: AuthUser) {
+  async getDashboardStats(
+    @Param('gymId') gymId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     // Blindaje de Seguridad Real
     const isAdmin = user.role === UserRole.ADMIN;
     if (!isAdmin) {

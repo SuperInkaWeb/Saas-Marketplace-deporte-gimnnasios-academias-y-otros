@@ -8,7 +8,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { TrainersService } from './trainers.service';
-import { AssignTrainerDto, RespondLinkRequestDto, UpdateTrainerProfileDto } from './dto/trainer.dto';
+import {
+  AssignTrainerDto,
+  RespondLinkRequestDto,
+  UpdateTrainerProfileDto,
+} from './dto/trainer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -67,7 +71,8 @@ export class TrainersController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: 'Listar entrenadores de un gimnasio específico',
-    description: 'Público. El email del entrenador solo se incluye para el dueño del gimnasio o un ADMIN.',
+    description:
+      'Público. El email del entrenador solo se incluye para el dueño del gimnasio o un ADMIN.',
   })
   getGymTrainers(@Param('gymId') gymId: string, @CurrentUser() user: any) {
     return this.trainersService.getGymTrainers(gymId, user);
@@ -99,7 +104,9 @@ export class TrainersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener postulaciones pendientes para mis gimnasios' })
+  @ApiOperation({
+    summary: 'Obtener postulaciones pendientes para mis gimnasios',
+  })
   getOwnerRequests(@CurrentUser() user: any) {
     return this.trainersService.getPendingRequestsForOwner(user.id);
   }
@@ -117,7 +124,9 @@ export class TrainersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Responder (Aceptar/Rechazar) a una postulación de entrenador' })
+  @ApiOperation({
+    summary: 'Responder (Aceptar/Rechazar) a una postulación de entrenador',
+  })
   respondRequest(
     @Param('requestId') requestId: string,
     @Body() dto: RespondLinkRequestDto,

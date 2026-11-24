@@ -47,7 +47,6 @@ function frontendBaseUrl(): string {
   return url.replace(/\/+$/, '');
 }
 
-
 @Injectable()
 export class AuthService {
   // AUD-34: los logs identifican a la persona por id y correo enmascarado, nunca por el correo completo.
@@ -113,7 +112,10 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const passwordValid = await bcrypt.compare(dto.password, user.passwordHash || '');
+    const passwordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash || '',
+    );
     if (!passwordValid) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
@@ -317,7 +319,10 @@ export class AuthService {
     });
   }
 
-  async updateProfile(userId: string, data: { name: string; phone?: string; dni?: string }) {
+  async updateProfile(
+    userId: string,
+    data: { name: string; phone?: string; dni?: string },
+  ) {
     // El cambio de rol NUNCA se procesa aquí (ver comentario original).
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -327,7 +332,9 @@ export class AuthService {
 
     const name = sanitizeName(data.name, current.email);
     if (!name) {
-      throw new BadRequestException('El nombre no puede estar vacío ni ser tu correo electrónico');
+      throw new BadRequestException(
+        'El nombre no puede estar vacío ni ser tu correo electrónico',
+      );
     }
 
     return this.prisma.user.update({
@@ -354,7 +361,13 @@ export class AuthService {
 
     // ── ADMIN: show platform-wide statistics ──────────────────────────────
     if (userRole === 'ADMIN') {
-      const [totalGyms, totalClasses, totalUsers, totalReservations, recentReservations] = await Promise.all([
+      const [
+        totalGyms,
+        totalClasses,
+        totalUsers,
+        totalReservations,
+        recentReservations,
+      ] = await Promise.all([
         this.prisma.gym.count({ where: { status: 'ACTIVE' } }),
         this.prisma.class.count({ where: { isActive: true } }),
         this.prisma.user.count(),
@@ -487,14 +500,15 @@ export class AuthService {
         reservations.forEach((r) => uniqueAthletes.add(r.userId));
       }
 
-      const recentBookings = classIds.length > 0
-        ? await this.prisma.reservation.findMany({
-            where: { classId: { in: classIds }, status: 'CONFIRMED' },
-            include: { user: true, class: { include: { gym: true } } },
-            orderBy: { bookedAt: 'desc' },
-            take: 5,
-          })
-        : [];
+      const recentBookings =
+        classIds.length > 0
+          ? await this.prisma.reservation.findMany({
+              where: { classId: { in: classIds }, status: 'CONFIRMED' },
+              include: { user: true, class: { include: { gym: true } } },
+              orderBy: { bookedAt: 'desc' },
+              take: 5,
+            })
+          : [];
 
       const activities = recentBookings.map((res) => ({
         id: res.id,
@@ -567,7 +581,9 @@ export class AuthService {
 
       let monthsActive = 0;
       if (dbUser?.createdAt) {
-        const diffTime = Math.abs(new Date().getTime() - new Date(dbUser.createdAt).getTime());
+        const diffTime = Math.abs(
+          new Date().getTime() - new Date(dbUser.createdAt).getTime(),
+        );
         monthsActive = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375));
       }
 
@@ -600,18 +616,31 @@ export class AuthService {
     // 1. Try by auth0Id (fastest path after first login)
     let user = await this.prisma.user.findUnique({
       where: { auth0Id },
-      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        avatarUrl: true,
+      },
     });
 
     if (user) {
       // Bloquear accesos sociales (Google) solo para el rol Administrador
-      if (auth0Id.startsWith('google-oauth2|') && user.role === UserRole.ADMIN) {
+      if (
+        auth0Id.startsWith('google-oauth2|') &&
+        user.role === UserRole.ADMIN
+      ) {
         throw new UnauthorizedException(
           'Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.',
         );
       }
       // Actualizar última sesión
-      await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
       return user;
     }
 
@@ -635,20 +664,32 @@ export class AuthService {
       }
 
       // Bloquear vinculación de cuentas sociales (Google) solo para el rol Administrador
-      if (auth0Id.startsWith('google-oauth2|') && existing.role === UserRole.ADMIN) {
+      if (
+        auth0Id.startsWith('google-oauth2|') &&
+        existing.role === UserRole.ADMIN
+      ) {
         throw new UnauthorizedException(
           'Por motivos de seguridad, las cuentas de Administrador no pueden iniciar sesión usando Google. Deben usar correo electrónico y contraseña local.',
         );
       }
 
-      this.logger.log(`Cuenta existente ${existing.id} (${maskEmail(existing.email)}) vinculada a Auth0`);
+      this.logger.log(
+        `Cuenta existente ${existing.id} (${maskEmail(existing.email)}) vinculada a Auth0`,
+      );
       user = await this.prisma.user.update({
         where: { id: existing.id },
         data: {
           auth0Id,
           avatarUrl: avatarUrl ?? existing.avatarUrl,
         },
-        select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isActive: true,
+          avatarUrl: true,
+        },
       });
       return user;
     }
@@ -671,11 +712,15 @@ export class AuthService {
     // AUD-03: nunca se asigna ADMIN al registrarse; lo otorga otro ADMIN desde la gestión de usuarios.
     // AUD-19: una invitación antigua con un rol no invitable (p. ej. ADMIN) no otorga privilegios.
     if (invitation && emailVerified && isInvitableRole(invitation.role)) {
-      this.logger.log(`Invitación aplicada a ${maskEmail(email)}: rol ${invitation.role}`);
+      this.logger.log(
+        `Invitación aplicada a ${maskEmail(email)}: rol ${invitation.role}`,
+      );
       assignedRole = invitation.role;
       gymIdToLink = invitation.gymId;
     } else {
-      this.logger.log(`Alta de atleta (USER) para ${maskEmail(email)} sin invitación aplicable (correo verificado: ${emailVerified})`);
+      this.logger.log(
+        `Alta de atleta (USER) para ${maskEmail(email)} sin invitación aplicable (correo verificado: ${emailVerified})`,
+      );
     }
 
     const safeName = sanitizeName(name, email);
@@ -690,7 +735,14 @@ export class AuthService {
         role: assignedRole,
         emailVerified,
       },
-      select: { id: true, name: true, email: true, role: true, isActive: true, avatarUrl: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        avatarUrl: true,
+      },
     });
 
     // If invitation was accepted, handle updates
@@ -717,7 +769,9 @@ export class AuthService {
             canCreateClasses: true,
           },
         });
-        this.logger.log(`Entrenador ${newUser.id} vinculado al gimnasio ${gymIdToLink}`);
+        this.logger.log(
+          `Entrenador ${newUser.id} vinculado al gimnasio ${gymIdToLink}`,
+        );
       }
     }
 
@@ -775,26 +829,39 @@ export class AuthService {
 
   // ── Invitation Flow ──────────────────────────────────────────────────────
 
-  async inviteUser(invitedBy: { id: string; role: UserRole }, email: string, role: UserRole, gymId?: string) {
+  async inviteUser(
+    invitedBy: { id: string; role: UserRole },
+    email: string,
+    role: UserRole,
+    gymId?: string,
+  ) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // AUD-19: solo se invita como GYM_OWNER o TRAINER (el DTO ya lo exige; esto cubre llamadas internas).
     if (!isInvitableRole(role)) {
-      throw new BadRequestException('Solo se puede invitar como GYM_OWNER o TRAINER.');
+      throw new BadRequestException(
+        'Solo se puede invitar como GYM_OWNER o TRAINER.',
+      );
     }
 
     // 1. Solo ADMIN invita dueños de negocio
     if (role === UserRole.GYM_OWNER && invitedBy.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Solo los administradores de Hercix pueden invitar a dueños de gimnasios.');
+      throw new ForbiddenException(
+        'Solo los administradores de Hercix pueden invitar a dueños de gimnasios.',
+      );
     }
 
     // 2. Gimnasio: solo aplica a entrenadores y debe ser del invitador (o cualquiera si es ADMIN)
     if (role === UserRole.GYM_OWNER && gymId) {
-      throw new BadRequestException('La invitación de dueño no lleva gimnasio.');
+      throw new BadRequestException(
+        'La invitación de dueño no lleva gimnasio.',
+      );
     }
     if (role === UserRole.TRAINER) {
       if (!gymId && invitedBy.role !== UserRole.ADMIN) {
-        throw new BadRequestException('Indica el gimnasio al que se vincula el entrenador.');
+        throw new BadRequestException(
+          'Indica el gimnasio al que se vincula el entrenador.',
+        );
       }
       if (gymId) {
         const gym = await this.prisma.gym.findUnique({
@@ -805,7 +872,9 @@ export class AuthService {
           throw new NotFoundException('Gimnasio no encontrado.');
         }
         if (invitedBy.role !== UserRole.ADMIN && gym.ownerId !== invitedBy.id) {
-          throw new ForbiddenException('Solo puedes invitar entrenadores a tus propios gimnasios.');
+          throw new ForbiddenException(
+            'Solo puedes invitar entrenadores a tus propios gimnasios.',
+          );
         }
       }
     }
@@ -815,7 +884,9 @@ export class AuthService {
       where: { email: normalizedEmail },
     });
     if (userExists) {
-      throw new ConflictException('Este correo electrónico ya está registrado como usuario activo.');
+      throw new ConflictException(
+        'Este correo electrónico ya está registrado como usuario activo.',
+      );
     }
 
     // 4. Invitación previa (el correo es único en la tabla): no se pisa la vigente de otro invitador
@@ -823,9 +894,16 @@ export class AuthService {
       where: { email: normalizedEmail },
     });
     if (previous) {
-      const stillPending = previous.status === 'PENDING' && previous.expiresAt > new Date();
-      if (stillPending && previous.invitedById !== invitedBy.id && invitedBy.role !== UserRole.ADMIN) {
-        throw new ConflictException('Este correo ya tiene una invitación vigente de otra cuenta.');
+      const stillPending =
+        previous.status === 'PENDING' && previous.expiresAt > new Date();
+      if (
+        stillPending &&
+        previous.invitedById !== invitedBy.id &&
+        invitedBy.role !== UserRole.ADMIN
+      ) {
+        throw new ConflictException(
+          'Este correo ya tiene una invitación vigente de otra cuenta.',
+        );
       }
       await this.prisma.invitation.delete({ where: { id: previous.id } });
     }
@@ -838,7 +916,7 @@ export class AuthService {
       data: {
         email: normalizedEmail,
         role,
-        gymId: role === UserRole.TRAINER ? gymId ?? null : null,
+        gymId: role === UserRole.TRAINER ? (gymId ?? null) : null,
         token,
         invitedById: invitedBy.id,
         expiresAt,

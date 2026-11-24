@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface JwtPayload {
-  sub: string;     // user UUID
+  sub: string; // user UUID
   email: string;
   role: string;
 }

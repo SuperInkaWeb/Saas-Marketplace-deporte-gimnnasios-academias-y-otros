@@ -1,7 +1,21 @@
-import { Controller, Get, Post, Body, Delete, Param, UseGuards, Request, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Delete,
+  Param,
+  UseGuards,
+  Request,
+  Patch,
+} from '@nestjs/common';
 import { HealthService } from './health.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
-import { UpdateGoalDto, UpsertMetDto, CreateRecommendationDto } from './dto/health.dto';
+import {
+  UpdateGoalDto,
+  UpsertMetDto,
+  CreateRecommendationDto,
+} from './dto/health.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -30,7 +44,9 @@ export class HealthController {
   }
 
   @Get('metrics/:userId')
-  @ApiOperation({ summary: 'Obtener todas las métricas de un usuario específico' })
+  @ApiOperation({
+    summary: 'Obtener todas las métricas de un usuario específico',
+  })
   async findUserMetrics(@Request() req, @Param('userId') userId: string) {
     await this.healthService.assertCanViewAthlete(req.user, userId);
     return this.healthService.findAll(userId);
@@ -45,7 +61,9 @@ export class HealthController {
   }
 
   @Get('goals/:userId')
-  @ApiOperation({ summary: 'Obtener las metas de salud de un usuario específico' })
+  @ApiOperation({
+    summary: 'Obtener las metas de salud de un usuario específico',
+  })
   async findUserGoal(@Request() req, @Param('userId') userId: string) {
     await this.healthService.assertCanViewAthlete(req.user, userId);
     return this.healthService.findGoal(userId);
@@ -53,10 +71,7 @@ export class HealthController {
 
   @Post('goals')
   @ApiOperation({ summary: 'Crear o actualizar metas de salud' })
-  async updateGoal(
-    @Request() req,
-    @Body() dto: UpdateGoalDto,
-  ) {
+  async updateGoal(@Request() req, @Body() dto: UpdateGoalDto) {
     return this.healthService.createOrUpdateGoal(req.user.id, dto);
   }
 
@@ -89,15 +104,27 @@ export class HealthController {
   // ── Coach Recommendations ─────────────────────────────────────────────────
 
   @Post('recommendations')
-  @ApiOperation({ summary: 'Registrar recomendación/observación de coach para un atleta' })
-  async addRecommendation(@Request() req, @Body() dto: CreateRecommendationDto) {
+  @ApiOperation({
+    summary: 'Registrar recomendación/observación de coach para un atleta',
+  })
+  async addRecommendation(
+    @Request() req,
+    @Body() dto: CreateRecommendationDto,
+  ) {
     await this.healthService.assertCanCoachAthlete(req.user, dto.athleteId);
-    return this.healthService.createRecommendation(req.user.id, dto.athleteId, dto.observation);
+    return this.healthService.createRecommendation(
+      req.user.id,
+      dto.athleteId,
+      dto.observation,
+    );
   }
 
   @Get('recommendations/:athleteId')
   @ApiOperation({ summary: 'Obtener recomendaciones de coach de un atleta' })
-  async getRecommendations(@Request() req, @Param('athleteId') athleteId: string) {
+  async getRecommendations(
+    @Request() req,
+    @Param('athleteId') athleteId: string,
+  ) {
     await this.healthService.assertCanViewAthlete(req.user, athleteId);
     return this.healthService.findRecommendations(athleteId);
   }
@@ -105,7 +132,9 @@ export class HealthController {
   // ── Coach & Owner Stats ───────────────────────────────────────────────────
 
   @Get('coach/athletes')
-  @ApiOperation({ summary: 'Obtener listado y rendimiento de atletas del coach' })
+  @ApiOperation({
+    summary: 'Obtener listado y rendimiento de atletas del coach',
+  })
   async getCoachAthletes(@Request() req) {
     return this.healthService.getCoachAthletes(req.user.id);
   }

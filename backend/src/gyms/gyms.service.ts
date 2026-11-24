@@ -8,7 +8,10 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { GYM_INACTIVE_MESSAGE } from '../common/gym-access/gym-status';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
-import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
+import {
+  GymAccessService,
+  AuthUser,
+} from '../common/gym-access/gym-access.service';
 import { GymStatus, GymLocationSource, UserRole } from '@prisma/client';
 import { withPublicName } from '../common/utils/normalize-name';
 
@@ -24,7 +27,7 @@ const TRAINER_LABEL = 'Entrenador';
 function stableHash(str: string): number {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
-    hash = (((hash << 5) + hash) + str.charCodeAt(i)) >>> 0;
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
   }
   return hash;
 }
@@ -33,9 +36,9 @@ function stableHash(str: string): number {
 export class GymsService {
   private readonly logger = new Logger(GymsService.name);
   constructor(
-  private prisma: PrismaService,
-  private gymAccess: GymAccessService,
-) {}
+    private prisma: PrismaService,
+    private gymAccess: GymAccessService,
+  ) {}
 
   private async geocodeAddress(
     address: string,
@@ -43,7 +46,11 @@ export class GymsService {
     district?: string,
     province?: string,
     seedName?: string,
-  ): Promise<{ latitude: number; longitude: number; source: GymLocationSource } | null> {
+  ): Promise<{
+    latitude: number;
+    longitude: number;
+    source: GymLocationSource;
+  } | null> {
     try {
       const queryParts = [address, district, province, city].filter(Boolean);
       const query = queryParts.join(', ');
@@ -68,13 +75,14 @@ export class GymsService {
 
     // Nominatim no encontr\u00f3 nada: solo aproximamos si reconocemos el distrito/ciudad.
     // Si no lo reconocemos, es m\u00e1s honesto no asignar ubicaci\u00f3n que inventar una zona.
-    const fallback = this.getDistrictCoordsFallback(district || city || '', seedName || address);
+    const fallback = this.getDistrictCoordsFallback(
+      district || city || '',
+      seedName || address,
+    );
     if (!fallback) return null;
 
     return { ...fallback, source: GymLocationSource.APPROXIMATE };
   }
-
-  
 
   /**
    * Aproximaci\u00f3n de \u00faltima instancia cuando Nominatim no encuentra la direcci\u00f3n exacta.
@@ -87,33 +95,58 @@ export class GymsService {
     name: string,
     seedName?: string,
   ): { latitude: number; longitude: number } | null {
-    const normalized = name.toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalized = name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
     let base: { latitude: number; longitude: number } | null = null;
-    if (normalized.includes('olivos')) base = { latitude: -11.9614, longitude: -77.0708 };
-    else if (normalized.includes('isidro')) base = { latitude: -12.085, longitude: -77.03 };
-    else if (normalized.includes('miraflores')) base = { latitude: -12.1225, longitude: -77.0292 };
-    else if (normalized.includes('chorrillos')) base = { latitude: -12.1811, longitude: -77.0142 };
-    else if (normalized.includes('callao')) base = { latitude: -12.0566, longitude: -77.1181 };
-    else if (normalized.includes('surco')) base = { latitude: -12.1383, longitude: -76.9917 };
-    else if (normalized.includes('molina')) base = { latitude: -12.0883, longitude: -76.9383 };
-    else if (normalized.includes('borja')) base = { latitude: -12.0889, longitude: -77.0017 };
-    else if (normalized.includes('miguel')) base = { latitude: -12.0764, longitude: -77.0944 };
-    else if (normalized.includes('ate')) base = { latitude: -12.0267, longitude: -76.9167 };
-    else if (normalized.includes('barranco')) base = { latitude: -12.1492, longitude: -77.0222 };
-    else if (normalized.includes('lince')) base = { latitude: -12.0833, longitude: -77.0333 };
-    else if (normalized.includes('maria')) base = { latitude: -12.075, longitude: -77.05 };
-    else if (normalized.includes('magdalena')) base = { latitude: -12.0911, longitude: -77.0708 };
-    else if (normalized.includes('surquillo')) base = { latitude: -12.1167, longitude: -77.0167 };
-    else if (normalized.includes('libre')) base = { latitude: -12.0789, longitude: -77.0628 };
-    else if (normalized.includes('brena')) base = { latitude: -12.0583, longitude: -77.0433 };
-    else if (normalized.includes('lima')) base = { latitude: -12.0464, longitude: -77.0428 };
-    else if (normalized.includes('lurigancho')) base = { latitude: -11.9833, longitude: -77.0167 };
-    else if (normalized.includes('comas')) base = { latitude: -11.9333, longitude: -77.05 };
-    else if (normalized.includes('carabayllo')) base = { latitude: -11.85, longitude: -77.0333 };
-    else if (normalized.includes('independencia')) base = { latitude: -11.9833, longitude: -77.05 };
-    else if (normalized.includes('rimac')) base = { latitude: -12.0292, longitude: -77.0278 };
+    if (normalized.includes('olivos'))
+      base = { latitude: -11.9614, longitude: -77.0708 };
+    else if (normalized.includes('isidro'))
+      base = { latitude: -12.085, longitude: -77.03 };
+    else if (normalized.includes('miraflores'))
+      base = { latitude: -12.1225, longitude: -77.0292 };
+    else if (normalized.includes('chorrillos'))
+      base = { latitude: -12.1811, longitude: -77.0142 };
+    else if (normalized.includes('callao'))
+      base = { latitude: -12.0566, longitude: -77.1181 };
+    else if (normalized.includes('surco'))
+      base = { latitude: -12.1383, longitude: -76.9917 };
+    else if (normalized.includes('molina'))
+      base = { latitude: -12.0883, longitude: -76.9383 };
+    else if (normalized.includes('borja'))
+      base = { latitude: -12.0889, longitude: -77.0017 };
+    else if (normalized.includes('miguel'))
+      base = { latitude: -12.0764, longitude: -77.0944 };
+    else if (normalized.includes('ate'))
+      base = { latitude: -12.0267, longitude: -76.9167 };
+    else if (normalized.includes('barranco'))
+      base = { latitude: -12.1492, longitude: -77.0222 };
+    else if (normalized.includes('lince'))
+      base = { latitude: -12.0833, longitude: -77.0333 };
+    else if (normalized.includes('maria'))
+      base = { latitude: -12.075, longitude: -77.05 };
+    else if (normalized.includes('magdalena'))
+      base = { latitude: -12.0911, longitude: -77.0708 };
+    else if (normalized.includes('surquillo'))
+      base = { latitude: -12.1167, longitude: -77.0167 };
+    else if (normalized.includes('libre'))
+      base = { latitude: -12.0789, longitude: -77.0628 };
+    else if (normalized.includes('brena'))
+      base = { latitude: -12.0583, longitude: -77.0433 };
+    else if (normalized.includes('lima'))
+      base = { latitude: -12.0464, longitude: -77.0428 };
+    else if (normalized.includes('lurigancho'))
+      base = { latitude: -11.9833, longitude: -77.0167 };
+    else if (normalized.includes('comas'))
+      base = { latitude: -11.9333, longitude: -77.05 };
+    else if (normalized.includes('carabayllo'))
+      base = { latitude: -11.85, longitude: -77.0333 };
+    else if (normalized.includes('independencia'))
+      base = { latitude: -11.9833, longitude: -77.05 };
+    else if (normalized.includes('rimac'))
+      base = { latitude: -12.0292, longitude: -77.0278 };
 
     if (!base) return null;
 
@@ -136,7 +169,10 @@ export class GymsService {
     let longitude: number | null = null;
     let locationSource: GymLocationSource | null = null;
 
-    if (createGymDto.latitude !== undefined && createGymDto.longitude !== undefined) {
+    if (
+      createGymDto.latitude !== undefined &&
+      createGymDto.longitude !== undefined
+    ) {
       // El dueño fijó el pin manualmente en el mapa: es la fuente más confiable.
       latitude = createGymDto.latitude;
       longitude = createGymDto.longitude;
@@ -218,45 +254,50 @@ export class GymsService {
   }
 
   async findAllAdmin() {
-  return this.prisma.gym.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
-    },
-  });
-}
-
-// Para el panel del dueño: sus gimnasios sin importar el estado
-async findMine(ownerId: string) {
-  return this.prisma.gym.findMany({
-    where: { ownerId },
-    orderBy: { createdAt: 'desc' },
-  });
-}
-
-async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null) {
-  const gym = await this.findOne(id);
-
-  if (gym.status === GymStatus.ACTIVE) return gym;
-
-  const isAdmin = user?.role === UserRole.ADMIN;
-  const isOwner = !!user && gym.ownerId === user.id;
-
-  if (!isAdmin && !isOwner) {
-    throw new NotFoundException(`Gimnasio con ID ${id} no encontrado`);
+    return this.prisma.gym.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+      },
+    });
   }
 
-  return gym; // el dueño/admin lo ve, con status !== ACTIVE
-}
+  // Para el panel del dueño: sus gimnasios sin importar el estado
+  async findMine(ownerId: string) {
+    return this.prisma.gym.findMany({
+      where: { ownerId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOneForViewer(
+    id: string,
+    user?: { id: string; role: UserRole } | null,
+  ) {
+    const gym = await this.findOne(id);
+
+    if (gym.status === GymStatus.ACTIVE) return gym;
+
+    const isAdmin = user?.role === UserRole.ADMIN;
+    const isOwner = !!user && gym.ownerId === user.id;
+
+    if (!isAdmin && !isOwner) {
+      throw new NotFoundException(`Gimnasio con ID ${id} no encontrado`);
+    }
+
+    return gym; // el dueño/admin lo ve, con status !== ACTIVE
+  }
 
   async findNearby(lat: number, lng: number, radiusKm: number) {
     const gyms = await this.findAll();
-    
+
     // Haversine formula
     const R = 6371; // Radius of the earth in km
     const dLat = (lat2, lat1) => ((lat2 - lat1) * Math.PI) / 180;
     const dLon = (lon2, lon1) => ((lon2 - lon1) * Math.PI) / 180;
-    
+
     return gyms.filter((gym) => {
       if (!gym.latitude || !gym.longitude) return false;
       const dlat = dLat(gym.latitude, lat);
@@ -269,7 +310,7 @@ async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null)
           Math.sin(dlon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distance = R * c; // Distance in km
-      
+
       return distance <= radiusKm;
     });
   }
@@ -315,42 +356,53 @@ async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null)
   }
 
   async update(
-  id: string,
-  currentUserId: string,
-  updateGymDto: UpdateGymDto,
-  isAdmin: boolean,
-) {
-  const gym = await this.findOne(id);
+    id: string,
+    currentUserId: string,
+    updateGymDto: UpdateGymDto,
+    isAdmin: boolean,
+  ) {
+    const gym = await this.findOne(id);
 
-  if (!isAdmin && gym.ownerId !== currentUserId) {
-    throw new ForbiddenException(
-      'No tienes permiso para actualizar este gimnasio',
-    );
-  }
+    if (!isAdmin && gym.ownerId !== currentUserId) {
+      throw new ForbiddenException(
+        'No tienes permiso para actualizar este gimnasio',
+      );
+    }
 
-  // 3b: justo después del chequeo de propiedad
-  if (!isAdmin && gym.status !== GymStatus.ACTIVE) {
-    throw new ForbiddenException('Este gimnasio está inactivo. Contacta al administrador.');
-  }
+    // 3b: justo después del chequeo de propiedad
+    if (!isAdmin && gym.status !== GymStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Este gimnasio está inactivo. Contacta al administrador.',
+      );
+    }
 
-  // 3a: reemplaza la línea "const updatedData: any = { ...updateGymDto };"
-  const { status: _ignored, ...safeDto } = updateGymDto as any;
-  const updatedData: any = { ...safeDto };
+    // 3a: reemplaza la línea "const updatedData: any = { ...updateGymDto };"
+    const { status: _ignored, ...safeDto } = updateGymDto as any;
+    const updatedData: any = { ...safeDto };
 
-    if (updateGymDto.latitude !== undefined && updateGymDto.longitude !== undefined) {
+    if (
+      updateGymDto.latitude !== undefined &&
+      updateGymDto.longitude !== undefined
+    ) {
       // El dueño fijó/ajustó el pin manualmente: es la fuente más confiable.
       updatedData.latitude = updateGymDto.latitude;
       updatedData.longitude = updateGymDto.longitude;
       updatedData.locationSource = GymLocationSource.MANUAL;
     } else {
       const hasAddressChanged =
-        (updateGymDto.address !== undefined && updateGymDto.address !== gym.address) ||
-        (updateGymDto.district !== undefined && updateGymDto.district !== gym.district) ||
+        (updateGymDto.address !== undefined &&
+          updateGymDto.address !== gym.address) ||
+        (updateGymDto.district !== undefined &&
+          updateGymDto.district !== gym.district) ||
         (updateGymDto.city !== undefined && updateGymDto.city !== gym.city) ||
-        (updateGymDto.province !== undefined && updateGymDto.province !== gym.province);
+        (updateGymDto.province !== undefined &&
+          updateGymDto.province !== gym.province);
 
       if (hasAddressChanged) {
-        const nextAddress = updateGymDto.address !== undefined ? updateGymDto.address : gym.address;
+        const nextAddress =
+          updateGymDto.address !== undefined
+            ? updateGymDto.address
+            : gym.address;
 
         if (!nextAddress) {
           // La dirección se borró: no dejar coordenadas viejas asociadas a una dirección que ya no existe.
@@ -360,9 +412,15 @@ async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null)
         } else {
           const coords = await this.geocodeAddress(
             nextAddress,
-            updateGymDto.city !== undefined ? updateGymDto.city : gym.city || undefined,
-            updateGymDto.district !== undefined ? updateGymDto.district : gym.district || undefined,
-            updateGymDto.province !== undefined ? updateGymDto.province : gym.province || undefined,
+            updateGymDto.city !== undefined
+              ? updateGymDto.city
+              : gym.city || undefined,
+            updateGymDto.district !== undefined
+              ? updateGymDto.district
+              : gym.district || undefined,
+            updateGymDto.province !== undefined
+              ? updateGymDto.province
+              : gym.province || undefined,
             `${updateGymDto.name || gym.name}::${nextAddress}`,
           );
           // Dirección nueva pero no ubicable (ni exacta ni por distrito conocido): no dejar
@@ -387,46 +445,46 @@ async findOneForViewer(id: string, user?: { id: string; role: UserRole } | null)
   }
 
   async updateStatus(id: string, status: GymStatus) {
-  const gym = await this.prisma.gym.findUnique({
-    where: { id },
-    select: { id: true, name: true, status: true },
-  });
-  if (!gym) throw new NotFoundException('Gimnasio no encontrado');
-  if (gym.status === status) return gym; // idempotente
+    const gym = await this.prisma.gym.findUnique({
+      where: { id },
+      select: { id: true, name: true, status: true },
+    });
+    if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+    if (gym.status === status) return gym; // idempotente
 
-  return this.prisma.gym.update({
-    where: { id },
-    data: { status },
-    select: { id: true, name: true, status: true, updatedAt: true },
-  });
-}
-
-// Reutilizable en cualquier operación que deba bloquearse
-async assertGymActive(gymId: string) {
-  const gym = await this.prisma.gym.findUnique({
-    where: { id: gymId },
-    select: { status: true },
-  });
-  if (!gym) throw new NotFoundException('Gimnasio no encontrado');
-  if (gym.status !== GymStatus.ACTIVE) {
-    throw new ConflictException(GYM_INACTIVE_MESSAGE);
+    return this.prisma.gym.update({
+      where: { id },
+      data: { status },
+      select: { id: true, name: true, status: true, updatedAt: true },
+    });
   }
-}
 
-async remove(id: string) {
-  await this.findOne(id);
-  const [orders, invoices] = await Promise.all([
-    this.prisma.order.count({ where: { gymId: id } }),
-    this.prisma.invoice.count({ where: { gymId: id } }),
-  ]);
-  if (orders > 0 || invoices > 0) {
-    throw new ConflictException(
-      'Este gimnasio tiene pedidos o facturas asociados. Desactívalo en lugar de eliminarlo.',
-    );
+  // Reutilizable en cualquier operación que deba bloquearse
+  async assertGymActive(gymId: string) {
+    const gym = await this.prisma.gym.findUnique({
+      where: { id: gymId },
+      select: { status: true },
+    });
+    if (!gym) throw new NotFoundException('Gimnasio no encontrado');
+    if (gym.status !== GymStatus.ACTIVE) {
+      throw new ConflictException(GYM_INACTIVE_MESSAGE);
+    }
   }
-  await this.prisma.gym.delete({ where: { id } }); // cascada: clases, reservas, planes, etc.
-  return { success: true };
-}
+
+  async remove(id: string) {
+    await this.findOne(id);
+    const [orders, invoices] = await Promise.all([
+      this.prisma.order.count({ where: { gymId: id } }),
+      this.prisma.invoice.count({ where: { gymId: id } }),
+    ]);
+    if (orders > 0 || invoices > 0) {
+      throw new ConflictException(
+        'Este gimnasio tiene pedidos o facturas asociados. Desactívalo en lugar de eliminarlo.',
+      );
+    }
+    await this.prisma.gym.delete({ where: { id } }); // cascada: clases, reservas, planes, etc.
+    return { success: true };
+  }
   async findMembers(gymId: string, currentUserId: string, isAdmin: boolean) {
     const gym = await this.findOne(gymId);
     if (!isAdmin && gym.ownerId !== currentUserId) {
@@ -442,32 +500,32 @@ async remove(id: string) {
             userMemberships: {
               some: {
                 plan: { gymId },
-                status: 'ACTIVE'
-              }
-            }
+                status: 'ACTIVE',
+              },
+            },
           },
           {
             reservations: {
               some: {
                 class: { gymId },
-                status: { in: ['CONFIRMED', 'ATTENDED'] }
-              }
-            }
-          }
-        ]
+                status: { in: ['CONFIRMED', 'ATTENDED'] },
+              },
+            },
+          },
+        ],
       },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
-        avatarUrl: true
-      }
+        avatarUrl: true,
+      },
     });
   }
 
   async validateOwnership(gymId: string, user: AuthUser) {
-  await this.gymAccess.assertCanManageGym(user, gymId);
-  return true;
-}
+    await this.gymAccess.assertCanManageGym(user, gymId);
+    return true;
+  }
 }

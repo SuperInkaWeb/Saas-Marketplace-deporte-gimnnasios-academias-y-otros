@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
-import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
+import {
+  AuthUser,
+  isGlobalAdmin,
+} from '../common/gym-access/gym-access.service';
 
 const ORGANIZER_INCLUDE = {
   organizer: {
@@ -73,7 +76,11 @@ export class EventsService {
   }
 
   /** ADMIN global gestiona cualquier evento; los demás, solo los suyos. */
-  private async getManageableEvent(id: string, actor: AuthUser, deniedMessage: string) {
+  private async getManageableEvent(
+    id: string,
+    actor: AuthUser,
+    deniedMessage: string,
+  ) {
     const event = await this.findOne(id);
     if (!isGlobalAdmin(actor) && event.organizerId !== actor.id) {
       throw new ForbiddenException(deniedMessage);
@@ -82,7 +89,11 @@ export class EventsService {
   }
 
   async update(id: string, actor: AuthUser, updateDto: UpdateEventDto) {
-    await this.getManageableEvent(id, actor, 'No tienes permiso para actualizar este evento');
+    await this.getManageableEvent(
+      id,
+      actor,
+      'No tienes permiso para actualizar este evento',
+    );
 
     const updateData: any = { ...updateDto };
     if (updateDto.date) updateData.date = new Date(updateDto.date);
@@ -94,7 +105,11 @@ export class EventsService {
   }
 
   async remove(id: string, actor: AuthUser) {
-    await this.getManageableEvent(id, actor, 'No tienes permiso para eliminar este evento');
+    await this.getManageableEvent(
+      id,
+      actor,
+      'No tienes permiso para eliminar este evento',
+    );
 
     return this.prisma.event.update({
       where: { id },

@@ -1,4 +1,14 @@
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean, IsEnum, IsDateString, MaxLength, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsEnum,
+  IsDateString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
 import { EventType } from '@prisma/client';
 

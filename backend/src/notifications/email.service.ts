@@ -22,7 +22,9 @@ export class EmailService {
     const apiKey = process.env.RESEND_API_KEY;
     this.resend = apiKey ? new Resend(apiKey) : null;
     if (!apiKey) {
-      this.logger.warn('RESEND_API_KEY no configurada: los correos se simulan y no se envían');
+      this.logger.warn(
+        'RESEND_API_KEY no configurada: los correos se simulan y no se envían',
+      );
     }
     const email = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     const name = process.env.RESEND_FROM_NAME || 'Hercix Health';
@@ -86,7 +88,11 @@ export class EmailService {
         ${[
           ['🏋️', 'Reserva clases', 'Yoga, CrossFit, fútbol y más en tu zona'],
           ['🛒', 'Marketplace', 'Equipo deportivo y entrenadores freelance'],
-          ['🤖', 'IA personalizada', 'Recomendaciones según tu nivel y ubicación'],
+          [
+            '🤖',
+            'IA personalizada',
+            'Recomendaciones según tu nivel y ubicación',
+          ],
           ['📊', 'Tu progreso', 'Conecta tu Fitbit o Apple Watch'],
         ]
           .map(
@@ -111,11 +117,20 @@ export class EmailService {
         </a>
       </div>
     `;
-    return this.send(to, '¡Bienvenido a Hercix Health! 🚀', content, '¡Tu cuenta está lista!');
+    return this.send(
+      to,
+      '¡Bienvenido a Hercix Health! 🚀',
+      content,
+      '¡Tu cuenta está lista!',
+    );
   }
 
   // ─── Invitation Email ──────────────────────────────────────────────────────
-  async sendInvitation(to: string, role: string, invitationLink: string): Promise<boolean> {
+  async sendInvitation(
+    to: string,
+    role: string,
+    invitationLink: string,
+  ): Promise<boolean> {
     const content = `
       <h2 style="margin:0 0 8px;color:#fff;font-size:24px;">¡Has sido invitado a Hercix Health! ⚡</h2>
       <p style="margin:0 0 24px;color:#a0aec0;font-size:15px;line-height:1.6;">
@@ -130,18 +145,35 @@ export class EmailService {
         Este enlace es de un solo uso y vencerá automáticamente en un periodo de 7 días.
       </p>
     `;
-    return this.send(to, 'Invitación especial a Hercix Health ⚡', content, 'Has sido invitado a Hercix Health');
+    return this.send(
+      to,
+      'Invitación especial a Hercix Health ⚡',
+      content,
+      'Has sido invitado a Hercix Health',
+    );
   }
 
   // ─── 2. Confirmación de Reserva ─────────────────────────────────────────────
   async sendBookingConfirmation(
     to: string,
-    data: { userName: string; className: string; gymName: string; date: Date; price: number },
+    data: {
+      userName: string;
+      className: string;
+      gymName: string;
+      date: Date;
+      price: number;
+    },
   ): Promise<boolean> {
     const dateStr = data.date.toLocaleDateString('es-CO', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     });
-    const timeStr = data.date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = data.date.toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const content = `
       <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">¡Reserva confirmada! ✅</h2>
@@ -169,13 +201,23 @@ export class EmailService {
         💡 <strong style="color:#a855f7;">Tip:</strong> Llega 10 minutos antes para tener tu lugar asegurado.
       </p>
     `;
-    return this.send(to, `Reserva confirmada: ${data.className} 🏋️`, content, 'Tu clase está reservada');
+    return this.send(
+      to,
+      `Reserva confirmada: ${data.className} 🏋️`,
+      content,
+      'Tu clase está reservada',
+    );
   }
 
   // ─── 3. Confirmación de Pago ────────────────────────────────────────────────
   async sendPaymentConfirmation(
     to: string,
-    data: { userName: string; amount: number; description: string; invoiceId?: string },
+    data: {
+      userName: string;
+      amount: number;
+      description: string;
+      invoiceId?: string;
+    },
   ): Promise<boolean> {
     const content = `
       <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">Pago recibido 💳</h2>
@@ -197,16 +239,28 @@ export class EmailService {
         </tr>
       </table>
     `;
-    return this.send(to, 'Confirmación de pago Hercix 💳', content, 'Tu pago fue exitoso');
+    return this.send(
+      to,
+      'Confirmación de pago Hercix 💳',
+      content,
+      'Tu pago fue exitoso',
+    );
   }
 
   // ─── 4. Membresía Activada ──────────────────────────────────────────────────
   async sendMembershipActivated(
     to: string,
-    data: { userName: string; planName: string; gymName: string; expiresAt: Date },
+    data: {
+      userName: string;
+      planName: string;
+      gymName: string;
+      expiresAt: Date;
+    },
   ): Promise<boolean> {
     const expiryStr = data.expiresAt.toLocaleDateString('es-CO', {
-      day: 'numeric', month: 'long', year: 'numeric',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     });
     const content = `
       <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">¡Membresía activada! 🏆</h2>
@@ -224,13 +278,25 @@ export class EmailService {
         ¡A entrenar! Reserva tus clases directamente desde la plataforma. 💪
       </p>
     `;
-    return this.send(to, `¡Membresía ${data.planName} activada! 🏆`, content, 'Tu membresía está activa');
+    return this.send(
+      to,
+      `¡Membresía ${data.planName} activada! 🏆`,
+      content,
+      'Tu membresía está activa',
+    );
   }
 
   // ─── 5. Campaña de Marketing ────────────────────────────────────────────────
   async sendMarketingCampaign(
     to: string,
-    data: { name: string; subject: string; headline: string; body: string; ctaText: string; ctaUrl: string },
+    data: {
+      name: string;
+      subject: string;
+      headline: string;
+      body: string;
+      ctaText: string;
+      ctaUrl: string;
+    },
   ): Promise<boolean> {
     // AUD-22: el dueño escribe texto plano; se escapa para que no pueda inyectar HTML (enlaces, formularios).
     const headline = escapeHtml(data.headline);
@@ -249,7 +315,12 @@ export class EmailService {
 
   // ─── Internal send ──────────────────────────────────────────────────────────
   // Devuelve true solo si Resend aceptó el correo (AUD-30: quien llama puede contar fallos).
-  private async send(to: string, subject: string, content: string, previewText: string): Promise<boolean> {
+  private async send(
+    to: string,
+    subject: string,
+    content: string,
+    previewText: string,
+  ): Promise<boolean> {
     if (!this.resend) {
       this.logger.warn(`[Email simulado] Asunto: ${subject}`);
       return false;

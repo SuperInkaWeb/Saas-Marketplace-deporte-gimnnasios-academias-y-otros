@@ -6,6 +6,6 @@ import { GymsModule } from '../gyms/gyms.module';
 @Module({
   imports: [GymsModule],
   controllers: [InvoicesController],
-  providers: [InvoicesService]
+  providers: [InvoicesService],
 })
 export class InvoicesModule {}

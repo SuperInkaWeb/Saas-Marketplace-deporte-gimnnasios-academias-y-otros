@@ -50,7 +50,8 @@ export const BOOKING_STATUS = {
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 } as const;
-export type BookingStatus = (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS];
+export type BookingStatus =
+  (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS];
 
 /** AUD-28: estados a los que el profesional (o un ADMIN) puede mover una reserva. */
 export const SETTABLE_BOOKING_STATUSES = [

@@ -1,7 +1,21 @@
-import { Controller, Get, Post, Body, Param, Delete, Patch, UseGuards, Req, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Patch,
+  UseGuards,
+  Req,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserAdminDto, UpdateUserAdminDto } from './dto/user.dto';
-import { CreateRoleRequestDto, ReviewRoleRequestDto } from './dto/role-request.dto';
+import {
+  CreateRoleRequestDto,
+  ReviewRoleRequestDto,
+} from './dto/role-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AnyAuthGuard } from '../auth/guards/any-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,7 +43,9 @@ export class UsersController {
   @Get(':id/profile')
   @UseGuards(AnyAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Ver perfil detallado y personalizado de un usuario (Solo Admin)' })
+  @ApiOperation({
+    summary: 'Ver perfil detallado y personalizado de un usuario (Solo Admin)',
+  })
   findOneProfile(@Param('id') id: string) {
     return this.usersService.findOneProfile(id);
   }
@@ -57,8 +73,12 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar un usuario del sistema (Solo Admin)' })
- update(@Param('id') id: string, @Body() dto: UpdateUserAdminDto, @CurrentUser() current: any) {
-  return this.usersService.update(id, dto, current.id);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserAdminDto,
+    @CurrentUser() current: any,
+  ) {
+    return this.usersService.update(id, dto, current.id);
   }
 
   // ── Role Requests: Any logged user ────────────────────────────────────
@@ -70,7 +90,11 @@ export class UsersController {
     @CurrentUser() user: { id: string },
     @Body() dto: CreateRoleRequestDto,
   ) {
-    return this.usersService.createRoleRequest(user.id, dto.requestedRole, dto.reason);
+    return this.usersService.createRoleRequest(
+      user.id,
+      dto.requestedRole,
+      dto.reason,
+    );
   }
 
   @Get('role-requests/mine')

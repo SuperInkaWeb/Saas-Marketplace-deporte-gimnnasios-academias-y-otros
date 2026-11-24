@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -26,7 +30,11 @@ interface AccessOptions {
 export class GymAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async assertCanManageGym(user: AuthUser, gymId: string, opts: AccessOptions = {}) {
+  async assertCanManageGym(
+    user: AuthUser,
+    gymId: string,
+    opts: AccessOptions = {},
+  ) {
     const gym = await this.prisma.gym.findUnique({
       where: { id: gymId },
       include: {
@@ -45,7 +53,8 @@ export class GymAccessService {
     if (isGlobalAdmin(user)) return { gym, scope: 'GLOBAL' as GymAccessScope };
 
     // Dueño → solo sus gimnasios
-    if (gym.ownerId === user.id) return { gym, scope: 'OWNER' as GymAccessScope };
+    if (gym.ownerId === user.id)
+      return { gym, scope: 'OWNER' as GymAccessScope };
 
     // Entrenador → según vínculo y permiso en ESTE gimnasio
     const mode = opts.trainerAccess ?? 'none';

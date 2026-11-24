@@ -1,4 +1,12 @@
-import { IsString, IsOptional, MaxLength, IsNumber, Min, IsInt, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MaxLength,
+  IsNumber,
+  Min,
+  IsInt,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateMembershipPlanDto {
   @IsString()

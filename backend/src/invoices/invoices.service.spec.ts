@@ -10,7 +10,12 @@ describe('InvoicesService.getInvoiceById (HER-SEC-003)', () => {
   const invoice = {
     id: 'inv-1',
     userId: 'owner-of-invoice',
-    gym: { name: 'Gym X', phone: '111', address: 'Calle 1', ownerId: 'gym-owner-1' },
+    gym: {
+      name: 'Gym X',
+      phone: '111',
+      address: 'Calle 1',
+      ownerId: 'gym-owner-1',
+    },
   };
 
   beforeEach(() => {

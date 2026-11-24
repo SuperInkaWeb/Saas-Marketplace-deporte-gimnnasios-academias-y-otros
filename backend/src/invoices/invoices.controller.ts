@@ -36,10 +36,6 @@ export class InvoicesController {
 
   @Get(':id')
   async getInvoiceDetails(@Param('id') id: string, @Request() req) {
-    return this.invoicesService.getInvoiceById(
-      id,
-      req.user.id,
-      req.user.role,
-    );
+    return this.invoicesService.getInvoiceById(id, req.user.id, req.user.role);
   }
 }

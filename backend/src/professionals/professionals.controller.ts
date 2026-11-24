@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ProfessionalsService } from './professionals.service';
 import {
   CreateProfessionalDto,
@@ -61,16 +71,24 @@ export class ProfessionalsController {
   updateBookingStatus(
     @Param('bookingId') bookingId: string,
     @Request() req,
-    @Body() dto: UpdateBookingStatusDto
+    @Body() dto: UpdateBookingStatusDto,
   ) {
     const isAdmin = req.user.role === UserRole.ADMIN;
-    return this.professionalsService.updateBookingStatus(bookingId, req.user.id, dto.status, isAdmin);
+    return this.professionalsService.updateBookingStatus(
+      bookingId,
+      req.user.id,
+      dto.status,
+      isAdmin,
+    );
   }
 
   @Patch('bookings/:bookingId/cancel')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'El cliente cancela su propia reserva (solo pendiente y no pagada)' })
+  @ApiOperation({
+    summary:
+      'El cliente cancela su propia reserva (solo pendiente y no pagada)',
+  })
   cancelOwnBooking(@Param('bookingId') bookingId: string, @Request() req) {
     return this.professionalsService.cancelOwnBooking(bookingId, req.user.id);
   }
@@ -79,9 +97,18 @@ export class ProfessionalsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a professional service' })
-  update(@Param('id') id: string, @Request() req, @Body() updateDto: UpdateProfessionalDto) {
+  update(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateDto: UpdateProfessionalDto,
+  ) {
     const isAdmin = req.user.role === UserRole.ADMIN;
-    return this.professionalsService.update(id, req.user.id, updateDto, isAdmin);
+    return this.professionalsService.update(
+      id,
+      req.user.id,
+      updateDto,
+      isAdmin,
+    );
   }
 
   @Delete(':id')
@@ -98,7 +125,11 @@ export class ProfessionalsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Book a professional service' })
-  bookService(@Param('id') id: string, @Request() req, @Body() dto: RequestBookingDto) {
+  bookService(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: RequestBookingDto,
+  ) {
     return this.professionalsService.bookService(req.user.id, id, dto.notes);
   }
 }

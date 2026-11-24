@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 
@@ -32,12 +36,18 @@ export class InvoicesService {
     });
   }
 
-  async getInvoiceById(id: string, requesterId: string, requesterRole: UserRole) {
+  async getInvoiceById(
+    id: string,
+    requesterId: string,
+    requesterRole: UserRole,
+  ) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
         user: { select: { name: true, email: true } },
-        gym: { select: { name: true, phone: true, address: true, ownerId: true } },
+        gym: {
+          select: { name: true, phone: true, address: true, ownerId: true },
+        },
       },
     });
 
@@ -56,7 +66,9 @@ export class InvoicesService {
     const { gym, ...invoiceData } = invoice;
     return {
       ...invoiceData,
-      gym: gym ? { name: gym.name, phone: gym.phone, address: gym.address } : null,
+      gym: gym
+        ? { name: gym.name, phone: gym.phone, address: gym.address }
+        : null,
     };
   }
 }

@@ -10,11 +10,15 @@ import { Transform } from 'class-transformer';
 import { normalizeName } from '../../common/utils/normalize-name';
 
 export class CompleteProfileDto {
-  @Transform(({ value }) => (typeof value === 'string' ? normalizeName(value) : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? normalizeName(value) : value,
+  )
   @IsString()
   @IsNotEmpty({ message: 'El nombre es obligatorio' })
   @MaxLength(100)
-  @Matches(/^[^@]+$/, { message: 'El nombre no puede ser un correo electrónico' })
+  @Matches(/^[^@]+$/, {
+    message: 'El nombre no puede ser un correo electrónico',
+  })
   name!: string;
 
   @IsOptional()

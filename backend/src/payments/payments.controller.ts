@@ -30,20 +30,35 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/membership-checkout')
-  async membershipCheckout(@Body() dto: MembershipCheckoutDto, @Req() req: any) {
-    return this.paymentsService.createMembershipCheckout(req.user.id, req.user.email, dto.planId);
+  async membershipCheckout(
+    @Body() dto: MembershipCheckoutDto,
+    @Req() req: any,
+  ) {
+    return this.paymentsService.createMembershipCheckout(
+      req.user.id,
+      req.user.email,
+      dto.planId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/order-checkout')
   async orderCheckout(@Body() dto: OrderCheckoutDto, @Req() req: any) {
-    return this.paymentsService.createOrderCheckout(req.user.id, req.user.email, dto.items);
+    return this.paymentsService.createOrderCheckout(
+      req.user.id,
+      req.user.email,
+      dto.items,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/class-checkout')
   async classCheckout(@Body() dto: ClassCheckoutDto, @Req() req: any) {
-    return this.paymentsService.createClassCheckout(req.user.id, req.user.email, dto.classId);
+    return this.paymentsService.createClassCheckout(
+      req.user.id,
+      req.user.email,
+      dto.classId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -61,7 +76,10 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/confirm')
   async confirm(@Body() dto: ConfirmPaymentDto, @Req() req: any) {
-    return this.paymentsService.processMercadoPagoPayment(dto.paymentId, req.user.id);
+    return this.paymentsService.processMercadoPagoPayment(
+      dto.paymentId,
+      req.user.id,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

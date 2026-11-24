@@ -23,4 +23,3 @@ export class RegisterDto {
   @IsOptional()
   phone?: string;
 }
-

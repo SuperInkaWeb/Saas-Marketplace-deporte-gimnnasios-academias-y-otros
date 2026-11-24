@@ -37,7 +37,7 @@ export class UsersService {
         isActive: true,
         lastLoginAt: true,
         createdAt: true,
-      }
+      },
     });
     return users;
   }
@@ -46,10 +46,18 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true, name: true, email: true, role: true,
-        phone: true, dni: true, avatarUrl: true,
-        isActive: true, emailVerified: true,
-        lastLoginAt: true, createdAt: true, weight: true,
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        dni: true,
+        avatarUrl: true,
+        isActive: true,
+        emailVerified: true,
+        lastLoginAt: true,
+        createdAt: true,
+        weight: true,
       },
     });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
@@ -61,29 +69,55 @@ export class UsersService {
       const gyms = await this.prisma.gym.findMany({
         where: { ownerId: userId },
         select: {
-          id: true, name: true, city: true, district: true, status: true, createdAt: true,
+          id: true,
+          name: true,
+          city: true,
+          district: true,
+          status: true,
+          createdAt: true,
           _count: { select: { classes: true, orders: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
       });
-      const totalGyms = await this.prisma.gym.count({ where: { ownerId: userId } });
-      const totalOrders = await this.prisma.order.count({ where: { gym: { ownerId: userId } } });
+      const totalGyms = await this.prisma.gym.count({
+        where: { ownerId: userId },
+      });
+      const totalOrders = await this.prisma.order.count({
+        where: { gym: { ownerId: userId } },
+      });
       roleData = { gyms, stats: { totalGyms, totalOrders } };
     }
 
     if (user.role === 'TRAINER') {
       const profile = await this.prisma.trainerProfile.findUnique({
         where: { userId },
-        select: { bio: true, specialties: true, certifications: true, experienceYears: true, hourlyRate: true, rating: true },
+        select: {
+          bio: true,
+          specialties: true,
+          certifications: true,
+          experienceYears: true,
+          hourlyRate: true,
+          rating: true,
+        },
       });
       const services = await this.prisma.professionalService.findMany({
         where: { providerId: userId },
-        select: { id: true, title: true, serviceType: true, price: true, isActive: true },
+        select: {
+          id: true,
+          title: true,
+          serviceType: true,
+          price: true,
+          isActive: true,
+        },
         take: 10,
       });
-      const totalServices = await this.prisma.professionalService.count({ where: { providerId: userId } });
-      const bookings = await this.prisma.professionalBooking.count({ where: { service: { providerId: userId } } });
+      const totalServices = await this.prisma.professionalService.count({
+        where: { providerId: userId },
+      });
+      const bookings = await this.prisma.professionalBooking.count({
+        where: { service: { providerId: userId } },
+      });
       roleData = { profile, services, stats: { totalServices, bookings } };
     }
 
@@ -91,8 +125,15 @@ export class UsersService {
       const reservations = await this.prisma.reservation.findMany({
         where: { userId },
         select: {
-          id: true, status: true, bookedAt: true,
-          class: { select: { title: true, gym: { select: { name: true, district: true } } } },
+          id: true,
+          status: true,
+          bookedAt: true,
+          class: {
+            select: {
+              title: true,
+              gym: { select: { name: true, district: true } },
+            },
+          },
         },
         orderBy: { bookedAt: 'desc' },
         take: 5,
@@ -100,14 +141,22 @@ export class UsersService {
       const memberships = await this.prisma.userMembership.findMany({
         where: { userId },
         select: {
-          status: true, startedAt: true, expiresAt: true,
+          status: true,
+          startedAt: true,
+          expiresAt: true,
           plan: { select: { name: true, gym: { select: { name: true } } } },
         },
         take: 3,
       });
       const orders = await this.prisma.order.count({ where: { userId } });
-      const totalReservations = await this.prisma.reservation.count({ where: { userId } });
-      roleData = { reservations, memberships, stats: { orders, totalReservations } };
+      const totalReservations = await this.prisma.reservation.count({
+        where: { userId },
+      });
+      roleData = {
+        reservations,
+        memberships,
+        stats: { orders, totalReservations },
+      };
     }
 
     if (user.role === 'ADMIN') {
@@ -122,9 +171,13 @@ export class UsersService {
   async create(createDto: CreateUserAdminDto) {
     // ── Límite: máximo 4 administradores en la plataforma ──
     if (createDto.role === UserRole.ADMIN) {
-      const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+      const adminCount = await this.prisma.user.count({
+        where: { role: UserRole.ADMIN },
+      });
       if (adminCount >= 4) {
-        throw new ConflictException('El límite de administradores (4) ha sido alcanzado. No se pueden crear más cuentas de tipo Administrador.');
+        throw new ConflictException(
+          'El límite de administradores (4) ha sido alcanzado. No se pueden crear más cuentas de tipo Administrador.',
+        );
       }
     }
 
@@ -133,7 +186,9 @@ export class UsersService {
     });
 
     if (existingUser) {
-      throw new ConflictException('El correo ya está registrado en el sistema.');
+      throw new ConflictException(
+        'El correo ya está registrado en el sistema.',
+      );
     }
 
     const passwordHash = await bcrypt.hash(createDto.password, 10);
@@ -153,7 +208,7 @@ export class UsersService {
         email: true,
         role: true,
         createdAt: true,
-      }
+      },
     });
 
     return newUser;
@@ -166,47 +221,60 @@ export class UsersService {
     }
 
     if (user.role === 'ADMIN') {
-      throw new ConflictException('No se puede eliminar a otro administrador desde este panel.');
+      throw new ConflictException(
+        'No se puede eliminar a otro administrador desde este panel.',
+      );
     }
 
     await this.prisma.user.delete({ where: { id } });
     return { success: true, message: 'Usuario eliminado correctamente' };
   }
 
-async update(
-  id: string,
-  updateDto: { name: string; email: string; phone?: string; dni?: string; role: UserRole; isActive: boolean },
-  currentUserId?: string,
-) {
-  const user = await this.prisma.user.findUnique({ where: { id } });
+  async update(
+    id: string,
+    updateDto: {
+      name: string;
+      email: string;
+      phone?: string;
+      dni?: string;
+      role: UserRole;
+      isActive: boolean;
+    },
+    currentUserId?: string,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
 
-  if (!user) {
-    throw new NotFoundException('Usuario no encontrado');
-  }
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
 
-  const isSelf = !!currentUserId && id === currentUserId;
+    const isSelf = !!currentUserId && id === currentUserId;
 
-  // AUD-18: un administrador no modifica a otro administrador (ni rol, ni estado,
-  // ni correo). Igual que ya ocurría con "eliminar".
-  if (user.role === UserRole.ADMIN && !isSelf) {
-    throw new ForbiddenException(
-      'No puedes modificar a otro administrador. Los cambios de administradores los gestiona el responsable de la plataforma.',
-    );
-  }
+    // AUD-18: un administrador no modifica a otro administrador (ni rol, ni estado,
+    // ni correo). Igual que ya ocurría con "eliminar".
+    if (user.role === UserRole.ADMIN && !isSelf) {
+      throw new ForbiddenException(
+        'No puedes modificar a otro administrador. Los cambios de administradores los gestiona el responsable de la plataforma.',
+      );
+    }
 
-  // AUD-18: tampoco puede quitarse a sí mismo el rol (evita quedarse sin administradores).
-  if (isSelf && updateDto.role !== user.role) {
-    throw new BadRequestException('No puedes cambiar tu propio rol');
-  }
+    // AUD-18: tampoco puede quitarse a sí mismo el rol (evita quedarse sin administradores).
+    if (isSelf && updateDto.role !== user.role) {
+      throw new BadRequestException('No puedes cambiar tu propio rol');
+    }
 
-  if (updateDto.isActive === false && isSelf) {
-    throw new BadRequestException('No puedes desactivar tu propia cuenta');
-  }
+    if (updateDto.isActive === false && isSelf) {
+      throw new BadRequestException('No puedes desactivar tu propia cuenta');
+    }
 
-  if (updateDto.role === UserRole.ADMIN && user.role !== UserRole.ADMIN) {
-      const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+    if (updateDto.role === UserRole.ADMIN && user.role !== UserRole.ADMIN) {
+      const adminCount = await this.prisma.user.count({
+        where: { role: UserRole.ADMIN },
+      });
       if (adminCount >= 4) {
-        throw new ConflictException('El límite de administradores (4) ha sido alcanzado.');
+        throw new ConflictException(
+          'El límite de administradores (4) ha sido alcanzado.',
+        );
       }
     }
 
@@ -215,13 +283,15 @@ async update(
         where: { email: updateDto.email.toLowerCase() },
       });
       if (emailExists) {
-        throw new ConflictException('El correo ya está registrado por otro usuario.');
+        throw new ConflictException(
+          'El correo ya está registrado por otro usuario.',
+        );
       }
     }
 
     if (updateDto.role === UserRole.TRAINER && user.role !== UserRole.TRAINER) {
       const existingProfile = await this.prisma.trainerProfile.findUnique({
-        where: { userId: id }
+        where: { userId: id },
       });
       if (!existingProfile) {
         await this.prisma.trainerProfile.create({
@@ -229,7 +299,7 @@ async update(
             userId: id,
             bio: 'Perfil de entrenador Hercix',
             experienceYears: 0,
-          }
+          },
         });
       }
     }
@@ -330,9 +400,15 @@ async update(
 
   // ── Solicitudes de Rol ─────────────────────────────────────────────────
 
-  async createRoleRequest(userId: string, requestedRole: UserRole, reason?: string) {
+  async createRoleRequest(
+    userId: string,
+    requestedRole: UserRole,
+    reason?: string,
+  ) {
     if (requestedRole === UserRole.ADMIN) {
-      throw new BadRequestException('No se puede solicitar el rol de Administrador.');
+      throw new BadRequestException(
+        'No se puede solicitar el rol de Administrador.',
+      );
     }
     if (requestedRole === UserRole.USER) {
       throw new BadRequestException('Ya tienes el rol de Atleta por defecto.');
@@ -356,14 +432,16 @@ async update(
       select: { id: true },
     });
     if (pending) {
-      throw new ConflictException('Ya tienes una solicitud de rol pendiente de revisión.');
+      throw new ConflictException(
+        'Ya tienes una solicitud de rol pendiente de revisión.',
+      );
     }
 
     return this.prisma.roleRequest.create({
-      data: { 
-        userId, 
-        requestedRole, 
-        reason: reason || 'Solicitado desde el dashboard', 
+      data: {
+        userId,
+        requestedRole,
+        reason: reason || 'Solicitado desde el dashboard',
         status: 'PENDING',
       },
     });
@@ -374,25 +452,36 @@ async update(
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, name: true, email: true, role: true, avatarUrl: true }
-        }
-      }
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatarUrl: true,
+          },
+        },
+      },
     });
   }
 
   async approveRoleRequest(requestId: string, adminNote?: string) {
     const request = await this.prisma.roleRequest.findUnique({
       where: { id: requestId },
-      include: { user: true }
+      include: { user: true },
     });
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
-    if (request.status !== 'PENDING') throw new BadRequestException('Esta solicitud ya fue procesada.');
+    if (request.status !== 'PENDING')
+      throw new BadRequestException('Esta solicitud ya fue procesada.');
 
     // Si es ADMIN, verificar el límite de 4
     if (request.requestedRole === UserRole.ADMIN) {
-      const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+      const adminCount = await this.prisma.user.count({
+        where: { role: UserRole.ADMIN },
+      });
       if (adminCount >= 4) {
-        throw new ConflictException('El límite de 4 administradores ha sido alcanzado.');
+        throw new ConflictException(
+          'El límite de 4 administradores ha sido alcanzado.',
+        );
       }
     }
 
@@ -408,7 +497,7 @@ async update(
 
       if (request.requestedRole === UserRole.TRAINER) {
         const existingProfile = await tx.trainerProfile.findUnique({
-          where: { userId: request.userId }
+          where: { userId: request.userId },
         });
         if (!existingProfile) {
           await tx.trainerProfile.create({
@@ -416,19 +505,25 @@ async update(
               userId: request.userId,
               bio: 'Perfil de entrenador Hercix',
               experienceYears: 0,
-            }
+            },
           });
         }
       }
     });
 
-    return { success: true, message: `Solicitud aprobada. Rol ${request.requestedRole} asignado.` };
+    return {
+      success: true,
+      message: `Solicitud aprobada. Rol ${request.requestedRole} asignado.`,
+    };
   }
 
   async rejectRoleRequest(requestId: string, adminNote?: string) {
-    const request = await this.prisma.roleRequest.findUnique({ where: { id: requestId } });
+    const request = await this.prisma.roleRequest.findUnique({
+      where: { id: requestId },
+    });
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
-    if (request.status !== 'PENDING') throw new BadRequestException('Esta solicitud ya fue procesada.');
+    if (request.status !== 'PENDING')
+      throw new BadRequestException('Esta solicitud ya fue procesada.');
 
     await this.prisma.roleRequest.update({
       where: { id: requestId },
