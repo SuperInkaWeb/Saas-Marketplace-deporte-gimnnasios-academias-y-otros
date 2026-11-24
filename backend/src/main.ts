@@ -46,4 +46,7 @@ async function bootstrap() {
     else paymentsLogger.warn(problem);
   }
 }
-bootstrap();
+bootstrap().catch((err: unknown) => {
+  console.error('No se pudo iniciar el servidor', err);
+  process.exit(1);
+});

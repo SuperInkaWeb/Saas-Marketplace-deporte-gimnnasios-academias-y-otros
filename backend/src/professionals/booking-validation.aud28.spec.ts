@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await --
+/*
    El Prisma falso trabaja con objetos sin tipar a propósito: sirve para el código anterior y el corregido. */
 import {
   BadRequestException,

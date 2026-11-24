@@ -394,7 +394,7 @@ export class PaymentsService {
         );
       }
 
-      const planId = (mpPayment.metadata as any)?.plan_id;
+      const planId = mpPayment.metadata?.plan_id;
       if (!planId) return { status: 'MISMATCH' };
       try {
         await this.memberships.activateFromPayment(

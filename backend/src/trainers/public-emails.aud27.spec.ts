@@ -63,7 +63,7 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
           findUnique: jest.fn().mockResolvedValue({ ownerId: 'owner-1' }),
         },
       };
-      service = new TrainersService(prisma as unknown as PrismaService);
+      service = new TrainersService(prisma);
     });
 
     it('GET /trainers no devuelve el email de ningún entrenador', async () => {

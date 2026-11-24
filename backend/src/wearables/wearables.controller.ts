@@ -7,8 +7,6 @@ import {
   Query,
   UseGuards,
   Request,
-  Redirect,
-  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -50,7 +48,7 @@ export class WearablesController {
    * Step 1: Get the Google Health authorization URL
    */
   @Get('fitbit/auth-url')
-  async getFitbitAuthUrl(
+  getFitbitAuthUrl(
     @Request() req,
     @Query('redirect_uri') redirectUri?: string,
   ) {

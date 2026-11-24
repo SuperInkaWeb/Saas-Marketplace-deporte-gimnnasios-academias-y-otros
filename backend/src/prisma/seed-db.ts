@@ -5,7 +5,7 @@ import * as path from 'path';
 
 const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
-} as any);
+});
 
 async function main() {
   // database/seed.sql crea cuentas de ejemplo con contraseñas conocidas: solo para desarrollo local.

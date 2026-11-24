@@ -78,7 +78,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
           if (res.statusCode === 200) {
             try {
               resolve(JSON.parse(body));
-            } catch (e) {
+            } catch {
               reject(new Error('Invalid JSON from userinfo'));
             }
           } else {

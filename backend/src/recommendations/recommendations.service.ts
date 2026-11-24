@@ -21,66 +21,50 @@ export class RecommendationsService {
     userProfile: any;
   }> {
     // Gather user data in parallel
-    const [
-      reservations,
-      orders,
-      userMemberships,
-      user,
-      allClasses,
-      allGyms,
-      allEvents,
-    ] = await Promise.all([
-      this.prisma.reservation.findMany({
-        where: { userId },
-        include: { class: { include: { gym: true } } },
-        orderBy: { bookedAt: 'desc' },
-        take: 20,
-      }),
-      this.prisma.order.findMany({
-        where: { userId },
-        include: { orderItems: { include: { product: true } } },
-        take: 10,
-      }),
-      this.prisma.userMembership.findMany({
-        where: { userId, status: 'ACTIVE' },
-        include: { plan: { include: { gym: true } } },
-      }),
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, name: true, createdAt: true },
-      }),
-      this.prisma.class.findMany({
-        where: { isActive: true, scheduledAt: { gte: new Date() } },
-        include: {
-          gym: {
-            select: {
-              id: true,
-              name: true,
-              city: true,
-              latitude: true,
-              longitude: true,
+    const [reservations, userMemberships, allClasses, allGyms, allEvents] =
+      await Promise.all([
+        this.prisma.reservation.findMany({
+          where: { userId },
+          include: { class: { include: { gym: true } } },
+          orderBy: { bookedAt: 'desc' },
+          take: 20,
+        }),
+        this.prisma.userMembership.findMany({
+          where: { userId, status: 'ACTIVE' },
+          include: { plan: { include: { gym: true } } },
+        }),
+        this.prisma.class.findMany({
+          where: { isActive: true, scheduledAt: { gte: new Date() } },
+          include: {
+            gym: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                latitude: true,
+                longitude: true,
+              },
             },
+            trainer: { include: { user: { select: { name: true } } } },
+            _count: { select: { reservations: true } },
           },
-          trainer: { include: { user: { select: { name: true } } } },
-          _count: { select: { reservations: true } },
-        },
-        orderBy: { scheduledAt: 'asc' },
-        take: 50,
-      }),
-      this.prisma.gym.findMany({
-        where: { status: 'ACTIVE' },
-        include: {
-          _count: { select: { classes: true, gymTrainers: true } },
-        },
-        take: 20,
-      }),
-      this.prisma.event.findMany({
-        where: { isActive: true, date: { gte: new Date() } },
-        include: { organizer: { select: { name: true } } },
-        orderBy: { date: 'asc' },
-        take: 10,
-      }),
-    ]);
+          orderBy: { scheduledAt: 'asc' },
+          take: 50,
+        }),
+        this.prisma.gym.findMany({
+          where: { status: 'ACTIVE' },
+          include: {
+            _count: { select: { classes: true, gymTrainers: true } },
+          },
+          take: 20,
+        }),
+        this.prisma.event.findMany({
+          where: { isActive: true, date: { gte: new Date() } },
+          include: { organizer: { select: { name: true } } },
+          orderBy: { date: 'asc' },
+          take: 10,
+        }),
+      ]);
 
     // ── Build User Profile ─────────────────────────────────────────────────
     const bookedClassIds = new Set(reservations.map((r) => r.classId));

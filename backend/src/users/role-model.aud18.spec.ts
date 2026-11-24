@@ -10,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
 import { RegisterDto } from '../auth/dto/register.dto';
-import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../notifications/email.service';
 import { computeEligibleRoles } from '../common/roles/role-eligibility';
 
@@ -153,9 +152,9 @@ describe('AUD-18: modelo de roles', () => {
 
   beforeEach(() => {
     db = fakeDb();
-    users = new UsersService(db as unknown as PrismaService);
+    users = new UsersService(db);
     auth = new AuthService(
-      db as unknown as PrismaService,
+      db,
       {} as JwtService,
       {} as ConfigService,
       {
