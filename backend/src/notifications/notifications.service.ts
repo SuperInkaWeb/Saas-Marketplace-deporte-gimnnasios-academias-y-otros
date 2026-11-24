@@ -5,7 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: string, data: { title: string; description: string; type?: string }) {
+  async create(
+    userId: string,
+    data: { title: string; description: string; type?: string },
+  ) {
     return this.prisma.notification.create({
       data: {
         userId,

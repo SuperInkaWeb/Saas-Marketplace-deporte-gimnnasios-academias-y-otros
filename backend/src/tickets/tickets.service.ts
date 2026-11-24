@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto, ReplyTicketDto } from './dto/ticket.dto';
 import { TicketStatus } from '@prisma/client';
@@ -44,7 +48,9 @@ export class TicketsService {
 
   /** Admin responde un ticket */
   async reply(ticketId: string, dto: ReplyTicketDto) {
-    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+    });
     if (!ticket) throw new NotFoundException('Ticket no encontrado');
 
     return this.prisma.supportTicket.update({
@@ -59,7 +65,9 @@ export class TicketsService {
 
   /** Admin cambia el estado del ticket */
   async updateStatus(ticketId: string, status: TicketStatus) {
-    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+    });
     if (!ticket) throw new NotFoundException('Ticket no encontrado');
 
     return this.prisma.supportTicket.update({

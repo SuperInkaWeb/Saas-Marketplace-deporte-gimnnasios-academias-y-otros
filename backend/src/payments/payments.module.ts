@@ -7,7 +7,12 @@ import { ClassesModule } from '../classes/classes.module';
 import { ProfessionalsModule } from '../professionals/professionals.module';
 
 @Module({
-  imports: [PrismaModule, MembershipsModule, ClassesModule, ProfessionalsModule],
+  imports: [
+    PrismaModule,
+    MembershipsModule,
+    ClassesModule,
+    ProfessionalsModule,
+  ],
   controllers: [PaymentsController],
   providers: [PaymentsService],
   exports: [PaymentsService],

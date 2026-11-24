@@ -8,6 +8,6 @@ import { GymsModule } from '../gyms/gyms.module';
 @Module({
   imports: [PrismaModule, NotificationsModule, GymsModule],
   controllers: [MarketingController],
-  providers: [MarketingService]
+  providers: [MarketingService],
 })
 export class MarketingModule {}

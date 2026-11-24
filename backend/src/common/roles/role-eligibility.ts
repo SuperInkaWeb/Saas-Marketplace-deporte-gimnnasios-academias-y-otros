@@ -25,7 +25,10 @@ export type GrantableRole = (typeof GRANTABLE_ROLES)[number];
 export const isGrantableRole = (role: unknown): role is GrantableRole =>
   (GRANTABLE_ROLES as readonly unknown[]).includes(role);
 
-type Db = Pick<Prisma.TransactionClient, 'gym' | 'trainerProfile' | 'roleRequest'>;
+type Db = Pick<
+  Prisma.TransactionClient,
+  'gym' | 'trainerProfile' | 'roleRequest'
+>;
 
 /** Última decisión (APPROVED/REVOKED) por rol, o undefined si nunca hubo una. */
 export async function latestRoleDecisions(
@@ -56,7 +59,10 @@ export async function computeEligibleRoles(
 ): Promise<UserRole[]> {
   const [gymCount, trainerProfile, latest] = await Promise.all([
     db.gym.count({ where: { ownerId: user.id } }),
-    db.trainerProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
+    db.trainerProfile.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    }),
     latestRoleDecisions(db, user.id),
   ]);
 

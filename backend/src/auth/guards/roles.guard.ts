@@ -35,9 +35,12 @@ export class RolesGuard implements CanActivate {
 
     const hasRole = requiredRoles.some((role) => user?.role === role);
     if (!hasRole) {
-      if (user?.role === UserRole.GYM_OWNER && requiredRoles.includes(UserRole.USER)) {
+      if (
+        user?.role === UserRole.GYM_OWNER &&
+        requiredRoles.includes(UserRole.USER)
+      ) {
         throw new ForbiddenException(
-          'Acceso Restringido: Como dueño del local, tu cuenta tiene un rol B2B para gestionar sedes, clases y finanzas. Esta sección de entrenamiento interactivo, wearables y registro de marcas personales está optimizada y reservada exclusivamente para el perfil de tus Atletas.'
+          'Acceso Restringido: Como dueño del local, tu cuenta tiene un rol B2B para gestionar sedes, clases y finanzas. Esta sección de entrenamiento interactivo, wearables y registro de marcas personales está optimizada y reservada exclusivamente para el perfil de tus Atletas.',
         );
       }
       throw new ForbiddenException(

@@ -10,7 +10,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { HealthService } from '../health/health.service';
-import { GymAccessService, AuthUser } from '../common/gym-access/gym-access.service';
+import {
+  GymAccessService,
+  AuthUser,
+} from '../common/gym-access/gym-access.service';
 import { AuditService } from '../common/audit/audit.service';
 import { assertGymStatusActive } from '../common/gym-access/gym-status';
 
@@ -26,9 +29,13 @@ export class ClassesService {
 
   async create(gymId: string, actor: AuthUser, dto: CreateClassDto) {
     // ADMIN global → cualquier gimnasio; dueño → el suyo; entrenador → si está vinculado y tiene canCreateClasses
-    const { gym, scope } = await this.gymAccess.assertCanManageGym(actor, gymId, {
-      trainerAccess: 'canCreateClasses',
-    });
+    const { gym, scope } = await this.gymAccess.assertCanManageGym(
+      actor,
+      gymId,
+      {
+        trainerAccess: 'canCreateClasses',
+      },
+    );
 
     // Vínculo del usuario actual con el staff de ESTE gimnasio (si lo tiene)
     const own = gym.gymTrainers.find((gt) => gt.trainer.userId === actor.id);
@@ -38,7 +45,9 @@ export class ClassesService {
     if (scope === 'TRAINER') {
       // Un entrenador solo crea clases a su nombre
       if (finalTrainerId && finalTrainerId !== own?.trainerId) {
-        throw new ForbiddenException('Un entrenador solo puede crear clases asignadas a sí mismo');
+        throw new ForbiddenException(
+          'Un entrenador solo puede crear clases asignadas a sí mismo',
+        );
       }
       finalTrainerId = own?.trainerId ?? null;
     } else if (!finalTrainerId && scope === 'OWNER' && own) {
@@ -47,8 +56,13 @@ export class ClassesService {
     }
     // ADMIN global: no se auto-asigna; la clase queda sin entrenador salvo que lo indique
 
-    if (finalTrainerId && !gym.gymTrainers.some((gt) => gt.trainerId === finalTrainerId)) {
-      throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+    if (
+      finalTrainerId &&
+      !gym.gymTrainers.some((gt) => gt.trainerId === finalTrainerId)
+    ) {
+      throw new ForbiddenException(
+        'El entrenador seleccionado no pertenece al staff de este gimnasio',
+      );
     }
 
     const created = await this.prisma.class.create({
@@ -82,11 +96,26 @@ export class ClassesService {
   ) {
     // AUD-07: la lista de asistentes (nombre, DNI) solo la ve el staff, y nunca el email.
     // El resto solo recibe su propia reserva, para saber si ya reservó.
-    const activeStatuses = { in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED] };
+    const activeStatuses = {
+      in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED],
+    };
     const reservationsInclude = viewer?.canSeeAttendees
       ? {
           where: { status: activeStatuses },
-          select: { id: true, userId: true, status: true, user: { select: { id: true, name: true, role: true, dni: true, avatarUrl: true } } },
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+                dni: true,
+                avatarUrl: true,
+              },
+            },
+          },
         }
       : {
           where: { status: activeStatuses, userId: viewer?.id ?? '' },
@@ -96,18 +125,31 @@ export class ClassesService {
     // If userId passed, return only classes where this user has a reservation
     if (userId) {
       const reservations = await this.prisma.reservation.findMany({
-        where: { userId, status: { in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED] } },
+        where: {
+          userId,
+          status: {
+            in: [ReservationStatus.CONFIRMED, ReservationStatus.ATTENDED],
+          },
+        },
         select: { classId: true },
       });
-      const classIds = reservations.map(r => r.classId);
+      const classIds = reservations.map((r) => r.classId);
       if (classIds.length === 0) return [];
       return this.prisma.class.findMany({
         where: { id: { in: classIds }, isActive: true },
         include: {
-          gym: { select: { name: true, city: true, ownerId: true, status: true } },
-          trainer: { include: { user: { select: { name: true, avatarUrl: true } } } },
+          gym: {
+            select: { name: true, city: true, ownerId: true, status: true },
+          },
+          trainer: {
+            include: { user: { select: { name: true, avatarUrl: true } } },
+          },
           reservations: reservationsInclude,
-          _count: { select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } } },
+          _count: {
+            select: {
+              reservations: { where: { status: ReservationStatus.CONFIRMED } },
+            },
+          },
         },
         orderBy: { scheduledAt: 'asc' },
       });
@@ -117,12 +159,16 @@ export class ClassesService {
       where: {
         ...(gymId ? { gymId } : {}),
         // AUD-17: gymFilter oculta las clases de gimnasios inactivos a quien no es staff.
-        ...(ownerId || gymFilter ? { gym: { ...(ownerId ? { ownerId } : {}), ...gymFilter } } : {}),
+        ...(ownerId || gymFilter
+          ? { gym: { ...(ownerId ? { ownerId } : {}), ...gymFilter } }
+          : {}),
         ...(trainerUserId ? { trainer: { userId: trainerUserId } } : {}),
         ...(includeInactive ? {} : { isActive: true }),
       },
       include: {
-        gym: { select: { name: true, city: true, ownerId: true, status: true } },
+        gym: {
+          select: { name: true, city: true, ownerId: true, status: true },
+        },
         trainer: {
           include: {
             user: { select: { name: true, avatarUrl: true } },
@@ -130,13 +176,14 @@ export class ClassesService {
         },
         reservations: reservationsInclude,
         _count: {
-          select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
+          select: {
+            reservations: { where: { status: ReservationStatus.CONFIRMED } },
+          },
         },
       },
       orderBy: { scheduledAt: 'asc' },
     });
   }
-
 
   async findOne(id: string) {
     const classItem = await this.prisma.class.findUnique({
@@ -149,7 +196,11 @@ export class ClassesService {
           },
         },
         // AUD-07: endpoint público, solo el conteo de reservas (sin datos de atletas)
-        _count: { select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } } },
+        _count: {
+          select: {
+            reservations: { where: { status: ReservationStatus.CONFIRMED } },
+          },
+        },
       },
     });
 
@@ -165,7 +216,9 @@ export class ClassesService {
 
     if (!classItem) throw new NotFoundException('Clase no encontrada');
     assertGymStatusActive(classItem.gym);
-    if (Number(classItem.price) > 0) {throw new BadRequestException('Esta clase requiere pago');}
+    if (Number(classItem.price) > 0) {
+      throw new BadRequestException('Esta clase requiere pago');
+    }
 
     // El flujo ahora usará Pay-per-class, por lo que no exigimos membresía activa aquí.
 
@@ -183,33 +236,44 @@ export class ClassesService {
     return reservation;
   }
 
-    async reservePaidSeat(tx: Prisma.TransactionClient, userId: string, classId: string) {
+  async reservePaidSeat(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    classId: string,
+  ) {
     await tx.$queryRaw`SELECT id FROM classes WHERE id = ${classId} FOR UPDATE`;
 
     const cls = await tx.class.findUnique({
       where: { id: classId },
       include: {
         _count: {
-          select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
+          select: {
+            reservations: { where: { status: ReservationStatus.CONFIRMED } },
+          },
         },
       },
     });
-    if (!cls || !cls.isActive) throw new BadRequestException('Clase no disponible');
+    if (!cls || !cls.isActive)
+      throw new BadRequestException('Clase no disponible');
 
     const existing = await tx.reservation.findUnique({
       where: { classId_userId: { classId, userId } },
     });
     if (existing?.status === ReservationStatus.CONFIRMED) return null;
     if (cls.scheduledAt <= new Date()) {
-     throw new ConflictException('La clase ya comenzó o ya pasó');
-   }
+      throw new ConflictException('La clase ya comenzó o ya pasó');
+    }
     if (cls._count.reservations >= cls.capacity) {
       throw new ConflictException('La clase se llenó');
     }
 
     return tx.reservation.upsert({
       where: { classId_userId: { classId, userId } },
-      update: { status: ReservationStatus.CONFIRMED, bookedAt: new Date(), cancelledAt: null },
+      update: {
+        status: ReservationStatus.CONFIRMED,
+        bookedAt: new Date(),
+        cancelledAt: null,
+      },
       create: { classId, userId, status: ReservationStatus.CONFIRMED },
       include: {
         user: { select: { name: true } },
@@ -244,7 +308,9 @@ export class ClassesService {
 
     if (!reservation) throw new NotFoundException('Reserva no encontrada');
     if (reservation.status !== ReservationStatus.CONFIRMED) {
-      throw new BadRequestException('Solo se puede cancelar una reserva confirmada');
+      throw new BadRequestException(
+        'Solo se puede cancelar una reserva confirmada',
+      );
     }
 
     return this.prisma.reservation.update({
@@ -265,22 +331,32 @@ export class ClassesService {
       where: { id: reservationId },
       include: { class: true },
     });
-    if (!reservation) throw new NotFoundException('Ticket / Reserva no encontrada');
+    if (!reservation)
+      throw new NotFoundException('Ticket / Reserva no encontrada');
 
-    const { scope } = await this.gymAccess.assertCanManageGym(actor, reservation.class.gymId, {
-      trainerAccess: 'linked',
-    });
+    const { scope } = await this.gymAccess.assertCanManageGym(
+      actor,
+      reservation.class.gymId,
+      {
+        trainerAccess: 'linked',
+      },
+    );
     return { reservation, scope };
   }
 
   async markAttendance(reservationId: string, actor: AuthUser) {
-    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
+    const { reservation, scope } = await this.getReservationForStaff(
+      reservationId,
+      actor,
+    );
 
     // AUD-21: una reserva cancelada no tiene asistencia, y marcarla dos veces sumaba
     // las calorías de la clase otra vez.
     if (reservation.status === ReservationStatus.ATTENDED) return reservation;
     if (reservation.status === ReservationStatus.CANCELLED) {
-      throw new BadRequestException('No se puede marcar asistencia en una reserva cancelada');
+      throw new BadRequestException(
+        'No se puede marcar asistencia en una reserva cancelada',
+      );
     }
 
     // Trigger automatic calorie calculation
@@ -288,7 +364,7 @@ export class ClassesService {
       await this.healthService.calculateCaloriesFromClass(
         reservation.userId,
         reservation.class.title,
-        reservation.class.durationMin
+        reservation.class.durationMin,
       );
     } catch (err) {
       console.error('Error calculating calories:', err);
@@ -310,7 +386,10 @@ export class ClassesService {
   }
 
   async unmarkAttendance(reservationId: string, actor: AuthUser) {
-    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
+    const { reservation, scope } = await this.getReservationForStaff(
+      reservationId,
+      actor,
+    );
 
     // AUD-21: solo se deshace una asistencia; volver a CONFIRMED una reserva cancelada
     // ocupaba un cupo sin pasar por el control de capacidad.
@@ -334,7 +413,10 @@ export class ClassesService {
   }
 
   async removeReservation(reservationId: string, actor: AuthUser) {
-    const { reservation, scope } = await this.getReservationForStaff(reservationId, actor);
+    const { reservation, scope } = await this.getReservationForStaff(
+      reservationId,
+      actor,
+    );
 
     const deleted = await this.prisma.reservation.delete({
       where: { id: reservationId },
@@ -362,25 +444,41 @@ export class ClassesService {
     });
     if (!cls) throw new NotFoundException('Clase no encontrada');
 
-    const { gym, scope } = await this.gymAccess.assertCanManageGym(actor, cls.gymId, {
-      trainerAccess: 'canCreateClasses',
-    });
+    const { gym, scope } = await this.gymAccess.assertCanManageGym(
+      actor,
+      cls.gymId,
+      {
+        trainerAccess: 'canCreateClasses',
+      },
+    );
 
     // Un entrenador solo edita SUS clases y no puede reasignarlas a otro entrenador
     if (scope === 'TRAINER') {
       if (cls.trainer?.userId !== actor.id) {
-        throw new ForbiddenException('Solo puedes editar las clases que tienes asignadas');
+        throw new ForbiddenException(
+          'Solo puedes editar las clases que tienes asignadas',
+        );
       }
-      if (dto.trainerId !== undefined && dto.trainerId !== (cls.trainerId ?? '')) {
-        throw new ForbiddenException('Un entrenador no puede reasignar la clase a otro entrenador');
+      if (
+        dto.trainerId !== undefined &&
+        dto.trainerId !== (cls.trainerId ?? '')
+      ) {
+        throw new ForbiddenException(
+          'Un entrenador no puede reasignar la clase a otro entrenador',
+        );
       }
     }
 
     let finalTrainerId: string | null | undefined = dto.trainerId;
     if (dto.trainerId === '') {
       finalTrainerId = null;
-    } else if (dto.trainerId && !gym.gymTrainers.some((gt) => gt.trainerId === dto.trainerId)) {
-      throw new ForbiddenException('El entrenador seleccionado no pertenece al staff de este gimnasio');
+    } else if (
+      dto.trainerId &&
+      !gym.gymTrainers.some((gt) => gt.trainerId === dto.trainerId)
+    ) {
+      throw new ForbiddenException(
+        'El entrenador seleccionado no pertenece al staff de este gimnasio',
+      );
     }
 
     const updated = await this.prisma.class.update({

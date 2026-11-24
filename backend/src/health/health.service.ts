@@ -1,9 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
 import { UpdateGoalDto, UpsertMetDto } from './dto/health.dto';
 import { HealthMetricType, UserRole } from '@prisma/client';
-import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
+import {
+  AuthUser,
+  isGlobalAdmin,
+} from '../common/gym-access/gym-access.service';
 
 @Injectable()
 export class HealthService {
@@ -18,7 +25,9 @@ export class HealthService {
       where: {
         userId: athleteId,
         status: 'ACTIVE',
-        plan: { gym: { gymTrainers: { some: { trainer: { userId: coachUserId } } } } },
+        plan: {
+          gym: { gymTrainers: { some: { trainer: { userId: coachUserId } } } },
+        },
       },
       select: { id: true },
     });
@@ -29,18 +38,29 @@ export class HealthService {
   async assertCanViewAthlete(viewer: AuthUser, athleteId: string) {
     if (viewer.id === athleteId || isGlobalAdmin(viewer)) return;
     if (await this.isLinkedCoach(viewer.id, athleteId)) return;
-    throw new ForbiddenException('No tienes acceso a los datos de salud de este usuario');
+    throw new ForbiddenException(
+      'No tienes acceso a los datos de salud de este usuario',
+    );
   }
 
   // Recomendaciones: solo su coach vinculado o ADMIN.
   async assertCanCoachAthlete(viewer: AuthUser, athleteId: string) {
     if (isGlobalAdmin(viewer)) {
-      const athlete = await this.prisma.user.findUnique({ where: { id: athleteId }, select: { id: true } });
+      const athlete = await this.prisma.user.findUnique({
+        where: { id: athleteId },
+        select: { id: true },
+      });
       if (!athlete) throw new NotFoundException('Atleta no encontrado');
       return;
     }
-    if (viewer.id !== athleteId && (await this.isLinkedCoach(viewer.id, athleteId))) return;
-    throw new ForbiddenException('Solo el coach del atleta puede registrar recomendaciones');
+    if (
+      viewer.id !== athleteId &&
+      (await this.isLinkedCoach(viewer.id, athleteId))
+    )
+      return;
+    throw new ForbiddenException(
+      'Solo el coach del atleta puede registrar recomendaciones',
+    );
   }
 
   // ── Health Metrics Logging ────────────────────────────────────────────────
@@ -152,7 +172,11 @@ export class HealthService {
 
   // ── Coach Recommendations ─────────────────────────────────────────────────
 
-  async createRecommendation(coachId: string, athleteId: string, observation: string) {
+  async createRecommendation(
+    coachId: string,
+    athleteId: string,
+    observation: string,
+  ) {
     return this.prisma.coachRecommendation.create({
       data: {
         coachId,
@@ -240,24 +264,46 @@ export class HealthService {
       const metrics = ath.healthMetrics || [];
 
       const todayMetrics = metrics.filter((m: any) => {
-        const d = m.date instanceof Date ? m.date.toISOString() : String(m.date);
+        const d =
+          m.date instanceof Date ? m.date.toISOString() : String(m.date);
         return d.startsWith(todayStr);
       });
 
-      const todaySteps = todayMetrics.find((m: any) => m.type === HealthMetricType.STEPS)?.value || 0;
-      const todayCalories = todayMetrics.find((m: any) => m.type === HealthMetricType.CALORIES_BURNED)?.value || 0;
-      const todayWater = todayMetrics.find((m: any) => m.type === HealthMetricType.WATER)?.value || 0;
+      const todaySteps =
+        todayMetrics.find((m: any) => m.type === HealthMetricType.STEPS)
+          ?.value || 0;
+      const todayCalories =
+        todayMetrics.find(
+          (m: any) => m.type === HealthMetricType.CALORIES_BURNED,
+        )?.value || 0;
+      const todayWater =
+        todayMetrics.find((m: any) => m.type === HealthMetricType.WATER)
+          ?.value || 0;
       const trainedToday = todayMetrics.length > 0;
 
-      const allCalories = metrics.filter((m: any) => m.type === HealthMetricType.CALORIES_BURNED);
-      const allSteps = metrics.filter((m: any) => m.type === HealthMetricType.STEPS);
+      const allCalories = metrics.filter(
+        (m: any) => m.type === HealthMetricType.CALORIES_BURNED,
+      );
+      const allSteps = metrics.filter(
+        (m: any) => m.type === HealthMetricType.STEPS,
+      );
 
-      const totalCaloriesBurned = allCalories.reduce((sum: number, c: any) => sum + c.value, 0);
-      const averageSteps = allSteps.length > 0
-        ? Math.round(allSteps.reduce((sum: number, s: any) => sum + s.value, 0) / allSteps.length)
-        : 0;
+      const totalCaloriesBurned = allCalories.reduce(
+        (sum: number, c: any) => sum + c.value,
+        0,
+      );
+      const averageSteps =
+        allSteps.length > 0
+          ? Math.round(
+              allSteps.reduce((sum: number, s: any) => sum + s.value, 0) /
+                allSteps.length,
+            )
+          : 0;
 
-      const lastWeight = metrics.find((m: any) => m.type === HealthMetricType.WEIGHT)?.value || ath.weight || 70;
+      const lastWeight =
+        metrics.find((m: any) => m.type === HealthMetricType.WEIGHT)?.value ||
+        ath.weight ||
+        70;
 
       return {
         id: ath.id,
@@ -268,7 +314,9 @@ export class HealthService {
         avatarUrl: ath.avatarUrl,
         totalCaloriesBurned,
         averageSteps,
-        lastObservation: ath.coachRecommendations?.[0]?.observation || 'Sin observaciones registradas',
+        lastObservation:
+          ath.coachRecommendations?.[0]?.observation ||
+          'Sin observaciones registradas',
         // Nuevos campos de actividad de hoy
         trainedToday,
         todaySteps,
@@ -287,23 +335,26 @@ export class HealthService {
       where: { ownerId },
       select: { id: true },
     });
-    const gymIds = gyms.map(g => g.id);
+    const gymIds = gyms.map((g) => g.id);
 
     // 2. Obtener total de reservaciones completadas en sus gimnasios
     const classes = await this.prisma.class.findMany({
       where: { gymId: { in: gymIds } },
       select: { id: true, title: true, durationMin: true },
     });
-    const classIds = classes.map(c => c.id);
+    const classIds = classes.map((c) => c.id);
 
     const reservations = await this.prisma.reservation.findMany({
       where: { classId: { in: classIds }, status: 'CONFIRMED' },
-      select: { userId: true, class: { select: { title: true, durationMin: true } } },
+      select: {
+        userId: true,
+        class: { select: { title: true, durationMin: true } },
+      },
     });
 
     // 3. Calcular calorías quemadas totales en sus clases
     let totalGymCalories = 0;
-    const athleteIds = Array.from(new Set(reservations.map(r => r.userId)));
+    const athleteIds = Array.from(new Set(reservations.map((r) => r.userId)));
 
     // Obtener pesos de atletas
     const athletes = await this.prisma.user.findMany({
@@ -314,12 +365,14 @@ export class HealthService {
     const metConfigs = await this.findMETs();
 
     for (const res of reservations) {
-      const athlete = athletes.find(a => a.id === res.userId);
+      const athlete = athletes.find((a) => a.id === res.userId);
       const weight = athlete?.weight || 70;
       const classTitle = res.class.title;
       const durationMin = res.class.durationMin;
 
-      const matchedMET = metConfigs.find(m => classTitle.toLowerCase().includes(m.name.toLowerCase()));
+      const matchedMET = metConfigs.find((m) =>
+        classTitle.toLowerCase().includes(m.name.toLowerCase()),
+      );
       const met = matchedMET ? matchedMET.metValue : 6.0;
 
       totalGymCalories += met * weight * (durationMin / 60);
@@ -329,20 +382,32 @@ export class HealthService {
       gymCount: gymIds.length,
       activeAthletes: athleteIds.length,
       totalCaloriesBurnedInClasses: Math.round(totalGymCalories),
-      averageClassDuration: classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.durationMin, 0) / classes.length) : 0,
+      averageClassDuration:
+        classes.length > 0
+          ? Math.round(
+              classes.reduce((sum, c) => sum + c.durationMin, 0) /
+                classes.length,
+            )
+          : 0,
     };
   }
 
   // ── Auto MET Calculation ──────────────────────────────────────────────────
 
-  async calculateCaloriesFromClass(userId: string, classTitle: string, durationMin: number) {
+  async calculateCaloriesFromClass(
+    userId: string,
+    classTitle: string,
+    durationMin: number,
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
     const weight = user.weight || 70;
 
     // Buscar MET en base de datos
     const metConfigs = await this.findMETs();
-    const matchedMET = metConfigs.find(m => classTitle.toLowerCase().includes(m.name.toLowerCase()));
+    const matchedMET = metConfigs.find((m) =>
+      classTitle.toLowerCase().includes(m.name.toLowerCase()),
+    );
     const met = matchedMET ? matchedMET.metValue : 6.0; // Default 6.0 si no coincide nada
 
     const calories = met * weight * (durationMin / 60);
@@ -350,21 +415,33 @@ export class HealthService {
     date.setUTCHours(0, 0, 0, 0);
 
     const existing = await this.prisma.healthMetric.findUnique({
-      where: { userId_date_type: { userId, date, type: HealthMetricType.CALORIES_BURNED } }
+      where: {
+        userId_date_type: {
+          userId,
+          date,
+          type: HealthMetricType.CALORIES_BURNED,
+        },
+      },
     });
 
     const newValue = (existing?.value || 0) + calories;
 
     return this.prisma.healthMetric.upsert({
-      where: { userId_date_type: { userId, date, type: HealthMetricType.CALORIES_BURNED } },
+      where: {
+        userId_date_type: {
+          userId,
+          date,
+          type: HealthMetricType.CALORIES_BURNED,
+        },
+      },
       update: { value: newValue },
-      create: { 
-        userId, 
-        type: HealthMetricType.CALORIES_BURNED, 
-        value: newValue, 
-        unit: 'kcal', 
-        date 
-      }
+      create: {
+        userId,
+        type: HealthMetricType.CALORIES_BURNED,
+        value: newValue,
+        unit: 'kcal',
+        date,
+      },
     });
   }
 }

@@ -12,7 +12,10 @@ import {
   UpdateProductDto,
 } from './dto/marketplace.dto';
 import { OrderStatus } from '@prisma/client';
-import { assertGymStatusActive, visibleGymWhere } from '../common/gym-access/gym-status';
+import {
+  assertGymStatusActive,
+  visibleGymWhere,
+} from '../common/gym-access/gym-status';
 
 @Injectable()
 export class MarketplaceService {
@@ -33,7 +36,10 @@ export class MarketplaceService {
     });
   }
 
-  async findAllProducts(gymId?: string, viewer?: { id: string; role?: string } | null) {
+  async findAllProducts(
+    gymId?: string,
+    viewer?: { id: string; role?: string } | null,
+  ) {
     // AUD-17: productos de gimnasios inactivos solo para su dueño y el ADMIN.
     const gymFilter = visibleGymWhere(viewer);
     return this.prisma.product.findMany({
@@ -56,7 +62,9 @@ export class MarketplaceService {
 
     if (!product) throw new NotFoundException('Producto no encontrado');
     if (product.gym.ownerId !== ownerId) {
-      throw new ForbiddenException('No tienes permisos para eliminar este producto');
+      throw new ForbiddenException(
+        'No tienes permisos para eliminar este producto',
+      );
     }
 
     // AUD-16: si el producto ya figura en pedidos, se desactiva (sale de la tienda)
@@ -83,7 +91,9 @@ export class MarketplaceService {
     });
     if (!product) throw new NotFoundException('Producto no encontrado');
     if (product.gym.ownerId !== ownerId) {
-      throw new ForbiddenException('No tienes permisos para editar este producto');
+      throw new ForbiddenException(
+        'No tienes permisos para editar este producto',
+      );
     }
 
     // AUD-16: solo los campos del DTO (sin gymId); precio y stock ya vienen validados (>= 0).
@@ -100,14 +110,16 @@ export class MarketplaceService {
       let totalAmount = 0;
       const orderItems: any[] = [];
 
-
       for (const item of dto.items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
           include: { gym: { select: { status: true } } },
         });
 
-        if (!product) throw new NotFoundException(`Producto ${item.productId} no encontrado`);
+        if (!product)
+          throw new NotFoundException(
+            `Producto ${item.productId} no encontrado`,
+          );
         assertGymStatusActive(product.gym);
         // AUD-16: el pedido queda en el gimnasio dueño de los productos, no en el que diga el body.
         if (product.gymId !== dto.gymId) {

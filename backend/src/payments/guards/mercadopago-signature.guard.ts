@@ -28,7 +28,9 @@ export class MercadoPagoSignatureGuard implements CanActivate {
         this.logger.error('MP_WEBHOOK_SECRET no está configurada');
         throw new UnauthorizedException();
       }
-      this.logger.warn('MP_WEBHOOK_SECRET no configurada: firma sin validar (solo local)');
+      this.logger.warn(
+        'MP_WEBHOOK_SECRET no configurada: firma sin validar (solo local)',
+      );
       return true;
     }
 
@@ -51,7 +53,9 @@ export class MercadoPagoSignatureGuard implements CanActivate {
     const manifest =
       (dataId ? `id:${dataId};` : '') + `request-id:${requestId};ts:${ts};`;
 
-    const expected = createHmac('sha256', secret).update(manifest).digest('hex');
+    const expected = createHmac('sha256', secret)
+      .update(manifest)
+      .digest('hex');
     const a = Buffer.from(expected);
     const b = Buffer.from(v1);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {

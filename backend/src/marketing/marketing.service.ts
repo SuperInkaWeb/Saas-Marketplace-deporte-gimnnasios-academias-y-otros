@@ -1,4 +1,9 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignType, CampaignStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -6,19 +11,23 @@ import { EmailService } from '../notifications/email.service';
 import { CreateCampaignDto } from './dto/campaign.dto';
 
 // AUD-22: tope de campañas por gimnasio en 24 horas, para que el envío no sirva como canal de spam.
-const MAX_CAMPAIGNS_PER_DAY = Number(process.env.MARKETING_MAX_CAMPAIGNS_PER_DAY) || 10;
+const MAX_CAMPAIGNS_PER_DAY =
+  Number(process.env.MARKETING_MAX_CAMPAIGNS_PER_DAY) || 10;
 
 @Injectable()
 export class MarketingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) {}
 
   async createCampaign(gymId: string, data: CreateCampaignDto) {
     const sentLastDay = await this.prisma.marketingCampaign.count({
-      where: { gymId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      where: {
+        gymId,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
     });
     if (sentLastDay >= MAX_CAMPAIGNS_PER_DAY) {
       throw new HttpException(
@@ -28,29 +37,36 @@ export class MarketingService {
     }
 
     let sentCount = 0;
-    
+
     // Obtener los destinatarios reales
     let recipients: string[] = [];
     let usersToNotify: any[] = [];
-    
+
     // Miembros del gimnasio: membresía activa o reserva confirmada/asistida.
     const isGymMember = {
       OR: [
         {
-          userMemberships: { some: { plan: { gymId }, status: 'ACTIVE' as const } }
+          userMemberships: {
+            some: { plan: { gymId }, status: 'ACTIVE' as const },
+          },
         },
         {
-          reservations: { some: { class: { gymId }, status: { in: ['CONFIRMED' as const, 'ATTENDED' as const] } } }
-        }
-      ]
+          reservations: {
+            some: {
+              class: { gymId },
+              status: { in: ['CONFIRMED' as const, 'ATTENDED' as const] },
+            },
+          },
+        },
+      ],
     };
 
     if (data.sendToAll) {
       const members = await this.prisma.user.findMany({
         where: isGymMember,
-        select: { id: true, email: true }
+        select: { id: true, email: true },
       });
-      recipients = members.map(m => m.email);
+      recipients = members.map((m) => m.email);
       usersToNotify = members;
     } else if (data.toEmail) {
       // AUD-22: solo se envía a miembros del gimnasio, nunca a un correo cualquiera.
@@ -59,10 +75,12 @@ export class MarketingService {
           email: { equals: String(data.toEmail).trim(), mode: 'insensitive' },
           ...isGymMember,
         },
-        select: { id: true, email: true }
+        select: { id: true, email: true },
       });
       if (!member) {
-        throw new BadRequestException('El destinatario debe ser miembro de este gimnasio');
+        throw new BadRequestException(
+          'El destinatario debe ser miembro de este gimnasio',
+        );
       }
       recipients = [member.email];
       usersToNotify = [member];
@@ -71,18 +89,22 @@ export class MarketingService {
     if (recipients.length > 0 && (!data.type || data.type === 'EMAIL')) {
       try {
         // Enviar con Resend real (Production Ready)
-        const sendPromises = recipients.map(recipient => 
-          this.emailService.sendMarketingCampaign(recipient, {
-            name: recipient,
-            subject: data.subject,
-            headline: data.subject || '¡Tenemos novedades para ti!',
-            body: data.content,
-            ctaText: 'Ir a la Plataforma',
-            ctaUrl: process.env.FRONTEND_URL || 'https://hercix.com'
-          }).then((sent) => { if (sent) sentCount++; }) // AUD-30: solo cuenta lo que Resend aceptó
-            .catch(err => console.error("Error en campaña individual", err))
+        const sendPromises = recipients.map((recipient) =>
+          this.emailService
+            .sendMarketingCampaign(recipient, {
+              name: recipient,
+              subject: data.subject,
+              headline: data.subject || '¡Tenemos novedades para ti!',
+              body: data.content,
+              ctaText: 'Ir a la Plataforma',
+              ctaUrl: process.env.FRONTEND_URL || 'https://hercix.com',
+            })
+            .then((sent) => {
+              if (sent) sentCount++;
+            }) // AUD-30: solo cuenta lo que Resend aceptó
+            .catch((err) => console.error('Error en campaña individual', err)),
         );
-        
+
         await Promise.all(sendPromises);
 
         // Notificación Real en la Plataforma
@@ -90,7 +112,7 @@ export class MarketingService {
           await this.notificationsService.create(user.id, {
             title: data.title || data.subject,
             description: `Nueva comunicación: ${data.subject}`,
-            type: 'CAMPAIGN'
+            type: 'CAMPAIGN',
           });
         }
       } catch (error) {
@@ -107,7 +129,9 @@ export class MarketingService {
         type: data.type || CampaignType.EMAIL,
         // AUD-30: si había destinatarios y no salió ningún correo, la campaña no se marca como enviada.
         status:
-          recipients.length > 0 && (!data.type || data.type === 'EMAIL') && sentCount === 0
+          recipients.length > 0 &&
+          (!data.type || data.type === 'EMAIL') &&
+          sentCount === 0
             ? CampaignStatus.FAILED
             : CampaignStatus.SENT,
         sentCount: sentCount,

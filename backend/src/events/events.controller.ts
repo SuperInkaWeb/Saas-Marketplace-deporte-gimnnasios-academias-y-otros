@@ -16,7 +16,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 
 @ApiTags('Events (Tournaments & Masterclasses)')
 @Controller('events')
@@ -33,7 +38,9 @@ export class EventsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get active events that have not started yet (public)' })
+  @ApiOperation({
+    summary: 'Get active events that have not started yet (public)',
+  })
   findAll() {
     return this.eventsService.findAll();
   }
@@ -44,7 +51,9 @@ export class EventsController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiQuery({ name: 'includePast', required: false })
-  @ApiOperation({ summary: 'Events the user can manage (ADMIN: all; others: own)' })
+  @ApiOperation({
+    summary: 'Events the user can manage (ADMIN: all; others: own)',
+  })
   findManageable(@Request() req, @Query('includePast') includePast?: string) {
     return this.eventsService.findManageable(req.user, includePast === 'true');
   }
@@ -60,7 +69,11 @@ export class EventsController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an event (ADMIN: any; others: own)' })
-  update(@Param('id') id: string, @Request() req, @Body() updateDto: UpdateEventDto) {
+  update(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateDto: UpdateEventDto,
+  ) {
     return this.eventsService.update(id, req.user, updateDto);
   }
 

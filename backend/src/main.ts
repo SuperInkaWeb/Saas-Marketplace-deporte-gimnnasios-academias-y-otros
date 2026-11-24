@@ -33,7 +33,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`🚀 Server running on http://localhost:${port}/api`);
-  if (swagger) console.log(`📄 Documentation available at http://localhost:${port}/api/docs`);
+  if (swagger)
+    console.log(
+      `📄 Documentation available at http://localhost:${port}/api/docs`,
+    );
 
   // AUD-10: avisar en los logs si falta configuración de Mercado Pago (no detiene la API)
   const paymentsLogger = new Logger('PaymentsConfig');
@@ -44,5 +47,3 @@ async function bootstrap() {
   }
 }
 bootstrap();
-
-

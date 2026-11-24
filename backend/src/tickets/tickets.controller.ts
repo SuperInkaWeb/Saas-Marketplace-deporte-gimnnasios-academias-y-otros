@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto, ReplyTicketDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,7 +18,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, TicketStatus } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ParseEnumPipe, ParseUUIDPipe } from '@nestjs/common';
-
 
 @ApiTags('tickets')
 @Controller('tickets')
@@ -26,16 +35,16 @@ export class TicketsController {
 
   /** Solo el Admin ve todos los tickets */
   @Get()
-@UseGuards(RolesGuard)
-@Roles(UserRole.ADMIN)
-@ApiOperation({ summary: 'Admin: listar todos los tickets' })
-findAll(
-  @Query('status', new ParseEnumPipe(TicketStatus, { optional: true }))
-  status?: TicketStatus,
-) {
-  return this.ticketsService.findAll(status);
-}
-  
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: listar todos los tickets' })
+  findAll(
+    @Query('status', new ParseEnumPipe(TicketStatus, { optional: true }))
+    status?: TicketStatus,
+  ) {
+    return this.ticketsService.findAll(status);
+  }
+
   /** Admin: estadísticas de tickets */
   @Get('stats')
   @UseGuards(RolesGuard)

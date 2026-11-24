@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { GymsService } from './gyms.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { GymAccessService } from '../common/gym-access/gym-access.service'
+import { GymAccessService } from '../common/gym-access/gym-access.service';
 
 describe('GymsService.findMembers (HER-SEC-008)', () => {
   let service: GymsService;

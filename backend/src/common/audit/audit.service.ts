@@ -4,10 +4,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, GymAccessScope } from '../gym-access/gym-access.service';
 
 export interface AuditEntry {
-  action: string;               // CLASS_CREATE, CLASS_UPDATE, CLASS_SET_ACTIVE, CLASS_DELETE, RESERVATION_*
-  entity: string;               // 'Class', 'Reservation', 'Gym'...
+  action: string; // CLASS_CREATE, CLASS_UPDATE, CLASS_SET_ACTIVE, CLASS_DELETE, RESERVATION_*
+  entity: string; // 'Class', 'Reservation', 'Gym'...
   entityId?: string;
-  gymId: string;                // gimnasio OBJETIVO de la acción
+  gymId: string; // gimnasio OBJETIVO de la acción
   metadata?: Prisma.InputJsonValue;
 }
 
@@ -22,7 +22,11 @@ export class AuditService {
    * Si la escritura falla (por ejemplo, la tabla audit_logs aún no existe),
    * se deja en el log del servidor y NO se interrumpe la acción principal.
    */
-  async logGlobalAction(scope: GymAccessScope, actor: AuthUser, entry: AuditEntry) {
+  async logGlobalAction(
+    scope: GymAccessScope,
+    actor: AuthUser,
+    entry: AuditEntry,
+  ) {
     if (scope !== 'GLOBAL') return;
 
     try {

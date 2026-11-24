@@ -1,14 +1,19 @@
-  import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-  import { PaymentStatus, Prisma } from '@prisma/client';
-  import { PrismaService } from '../prisma/prisma.service'; 
-  import {
-    BOOKING_STATUS,
-    BookingStatus,
-    CreateProfessionalDto,
-    UpdateProfessionalDto,
-  } from './dto/professional.dto';
-  import { NotificationsService } from '../notifications/notifications.service';
-  import { ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PaymentStatus, Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  BOOKING_STATUS,
+  BookingStatus,
+  CreateProfessionalDto,
+  UpdateProfessionalDto,
+} from './dto/professional.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ConflictException } from '@nestjs/common';
 import { withPublicName } from '../common/utils/normalize-name';
 
 // AUD-08: nunca devolver la fila User completa (passwordHash, dni, auth0Id) en las reservas.
@@ -47,13 +52,12 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   CANCELLED: 'cancelada',
 };
 
-
-  @Injectable()
-  export class ProfessionalsService {
-    constructor(
-      private prisma: PrismaService,
-      private notificationsService: NotificationsService
-    ) {}
+@Injectable()
+export class ProfessionalsService {
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(providerId: string, createDto: CreateProfessionalDto) {
     return this.prisma.professionalService.create({
@@ -95,13 +99,18 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       provider: withPublicName(service.provider, PROVIDER_LABEL)!,
     };
   }
-  
-  
 
-  async update(id: string, currentUserId: string, updateDto: UpdateProfessionalDto, isAdmin: boolean) {
+  async update(
+    id: string,
+    currentUserId: string,
+    updateDto: UpdateProfessionalDto,
+    isAdmin: boolean,
+  ) {
     const service = await this.findOne(id);
     if (!isAdmin && service.providerId !== currentUserId) {
-      throw new ForbiddenException('No tienes permiso para actualizar este servicio');
+      throw new ForbiddenException(
+        'No tienes permiso para actualizar este servicio',
+      );
     }
     return this.prisma.professionalService.update({
       where: { id },
@@ -112,7 +121,9 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   async remove(id: string, currentUserId: string, isAdmin: boolean) {
     const service = await this.findOne(id);
     if (!isAdmin && service.providerId !== currentUserId) {
-        throw new ForbiddenException('No tienes permiso para eliminar este servicio');
+      throw new ForbiddenException(
+        'No tienes permiso para eliminar este servicio',
+      );
     }
     return this.prisma.professionalService.update({
       where: { id },
@@ -120,14 +131,17 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
     });
   }
 
-    async createPaidBooking(
+  async createPaidBooking(
     tx: Prisma.TransactionClient,
     userId: string,
     serviceId: string,
     notes?: string | null,
   ) {
-    const service = await tx.professionalService.findUnique({ where: { id: serviceId } });
-    if (!service || !service.isActive) throw new BadRequestException('Servicio no disponible');
+    const service = await tx.professionalService.findUnique({
+      where: { id: serviceId },
+    });
+    if (!service || !service.isActive)
+      throw new BadRequestException('Servicio no disponible');
 
     return tx.professionalBooking.create({
       data: { userId, serviceId, notes: notes ?? undefined, status: 'PENDING' },
@@ -169,7 +183,9 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       throw new BadRequestException('No puedes reservar tu propio servicio');
     }
     if (Number(service.price) > 0) {
-      throw new BadRequestException('Este servicio requiere pago con Mercado Pago');
+      throw new BadRequestException(
+        'Este servicio requiere pago con Mercado Pago',
+      );
     }
     const booking = await this.prisma.professionalBooking.create({
       data: {
@@ -180,7 +196,7 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       },
       include: {
         service: {
-          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } },
         },
         user: { select: BOOKING_SELF_SELECT },
       },
@@ -216,8 +232,8 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       where: { userId },
       include: {
         service: {
-          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
-        }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } },
+        },
       },
       orderBy: { bookedAt: 'desc' },
     });
@@ -242,7 +258,9 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       throw new NotFoundException('Reserva no encontrada');
     }
     if (booking.status !== BOOKING_STATUS.PENDING) {
-      throw new BadRequestException('Solo puedes cancelar una reserva pendiente');
+      throw new BadRequestException(
+        'Solo puedes cancelar una reserva pendiente',
+      );
     }
     if ((await this.paidServiceIds(userId)).has(booking.serviceId)) {
       throw new BadRequestException(
@@ -274,7 +292,11 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
   /** Servicios que el usuario pagó alguna vez (criterio conservador: si pagó, no cancela él). */
   private async paidServiceIds(userId: string): Promise<Set<string>> {
     const payments = await this.prisma.payment.findMany({
-      where: { userId, status: PaymentStatus.COMPLETED, serviceId: { not: null } },
+      where: {
+        userId,
+        status: PaymentStatus.COMPLETED,
+        serviceId: { not: null },
+      },
       select: { serviceId: true },
     });
     return new Set(payments.map((p) => p.serviceId as string));
@@ -284,28 +306,35 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
     return this.prisma.professionalBooking.findMany({
       where: {
         service: {
-          providerId: providerId
-        }
+          providerId: providerId,
+        },
       },
       include: {
         user: {
-          select: { id: true, name: true, email: true, phone: true }
+          select: { id: true, name: true, email: true, phone: true },
         },
-        service: true
+        service: true,
       },
       orderBy: { bookedAt: 'desc' },
     });
   }
 
-  async updateBookingStatus(bookingId: string, providerId: string, status: BookingStatus, isAdmin: boolean) {
+  async updateBookingStatus(
+    bookingId: string,
+    providerId: string,
+    status: BookingStatus,
+    isAdmin: boolean,
+  ) {
     const booking = await this.prisma.professionalBooking.findUnique({
       where: { id: bookingId },
-      include: { service: true }
+      include: { service: true },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
 
     if (!isAdmin && booking.service.providerId !== providerId) {
-      throw new ForbiddenException('No tienes permiso para actualizar esta reserva');
+      throw new ForbiddenException(
+        'No tienes permiso para actualizar esta reserva',
+      );
     }
 
     // AUD-28: solo transiciones válidas (COMPLETED y CANCELLED son finales).
@@ -330,10 +359,10 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
       where: { id: bookingId },
       include: {
         service: {
-          include: { provider: { select: PROVIDER_PUBLIC_SELECT } }
+          include: { provider: { select: PROVIDER_PUBLIC_SELECT } },
         },
-        user: { select: BOOKING_CLIENT_SELECT }
-      }
+        user: { select: BOOKING_CLIENT_SELECT },
+      },
     });
 
     // Notify the client about the status change
@@ -345,7 +374,10 @@ const BOOKING_STATUS_TEXT: Record<BookingStatus, string> = {
         type: 'RESERVATION',
       });
     } catch (err) {
-      console.error('Error creating status update notification for client:', err);
+      console.error(
+        'Error creating status update notification for client:',
+        err,
+      );
     }
 
     return updated;

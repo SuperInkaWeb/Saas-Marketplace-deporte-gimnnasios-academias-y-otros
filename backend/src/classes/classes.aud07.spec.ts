@@ -25,21 +25,31 @@ const RESERVATIONS = [
 // Simula Prisma: filtra por where.userId y proyecta solo los campos pedidos.
 const pick = (row: Record<string, any>, select: Record<string, any>) =>
   Object.fromEntries(
-    Object.entries(select).map(([k, v]) => [k, v === true ? row[k] : pick(row[k], v.select)]),
+    Object.entries(select).map(([k, v]) => [
+      k,
+      v === true ? row[k] : pick(row[k], v.select),
+    ]),
   );
 const reservationsFor = (arg: any) => {
   if (!arg) return undefined;
-  const rows = RESERVATIONS.filter((r) => !arg.where?.userId || r.userId === arg.where.userId);
+  const rows = RESERVATIONS.filter(
+    (r) => !arg.where?.userId || r.userId === arg.where.userId,
+  );
   if (arg.select) return rows.map((r) => pick(r, arg.select));
   // include: { user: { select } } → escalares de la reserva + el usuario proyectado
-  return rows.map(({ user, ...r }) => ({ ...r, user: pick(user, arg.include.user.select) }));
+  return rows.map(({ user, ...r }) => ({
+    ...r,
+    user: pick(user, arg.include.user.select),
+  }));
 };
 const classFrom = (args: any) => ({
   id: 'class-1',
   title: 'Funcional',
   capacity: 10,
   reservations: reservationsFor(args.include.reservations),
-  _count: args.include._count ? { reservations: RESERVATIONS.length } : undefined,
+  _count: args.include._count
+    ? { reservations: RESERVATIONS.length }
+    : undefined,
 });
 
 const build = () => {
@@ -63,7 +73,8 @@ const build = () => {
   return { prisma, service, controller };
 };
 
-const users = (classes: any[]) => classes.flatMap((c) => (c.reservations ?? []).map((r: any) => r.user));
+const users = (classes: any[]) =>
+  classes.flatMap((c) => (c.reservations ?? []).map((r: any) => r.user));
 
 describe('AUD-07: datos de atletas en clases', () => {
   it('GET /classes/:id (público) no devuelve reservas con datos de atletas, solo el conteo', async () => {
@@ -78,9 +89,16 @@ describe('AUD-07: datos de atletas en clases', () => {
 
   it('GET /classes como atleta: solo ve su propia reserva y sin datos personales', async () => {
     const { controller } = build();
-    const result: any[] = await controller.findAll('gym-1', undefined, undefined, { id: 'a1', role: 'USER' });
+    const result: any[] = await controller.findAll(
+      'gym-1',
+      undefined,
+      undefined,
+      { id: 'a1', role: 'USER' },
+    );
 
-    expect(result[0].reservations).toEqual([{ id: 'r1', userId: 'a1', status: 'CONFIRMED' }]);
+    expect(result[0].reservations).toEqual([
+      { id: 'r1', userId: 'a1', status: 'CONFIRMED' },
+    ]);
     expect(result[0]._count.reservations).toBe(2);
     expect(JSON.stringify(result)).not.toContain('12345678');
     expect(JSON.stringify(result)).not.toContain('@example.com');
@@ -88,16 +106,28 @@ describe('AUD-07: datos de atletas en clases', () => {
 
   it('GET /classes?myReservations=true: el atleta no ve a los demás asistentes', async () => {
     const { controller } = build();
-    const result: any[] = await controller.findAll(undefined, 'true', undefined, { id: 'a2', role: 'USER' });
+    const result: any[] = await controller.findAll(
+      undefined,
+      'true',
+      undefined,
+      { id: 'a2', role: 'USER' },
+    );
 
-    expect(result[0].reservations).toEqual([{ id: 'r2', userId: 'a2', status: 'CONFIRMED' }]);
+    expect(result[0].reservations).toEqual([
+      { id: 'r2', userId: 'a2', status: 'CONFIRMED' },
+    ]);
   });
 
   it.each(['GYM_OWNER', 'TRAINER', 'ADMIN'])(
     'GET /classes como %s: ve la lista de asistentes con nombre y DNI, sin email',
     async (role) => {
       const { controller, prisma } = build();
-      const result: any[] = await controller.findAll(undefined, undefined, undefined, { id: 'staff', role });
+      const result: any[] = await controller.findAll(
+        undefined,
+        undefined,
+        undefined,
+        { id: 'staff', role },
+      );
 
       const attendees = users(result);
       expect(attendees.map((u) => u.name)).toEqual(['Atleta a1', 'Atleta a2']);
@@ -110,7 +140,8 @@ describe('AUD-07: datos de atletas en clases', () => {
       // El staff sigue limitado a sus clases (dueño → sus gimnasios, entrenador → sus clases)
       const where = prisma.class.findMany.mock.calls[0][0].where;
       if (role === 'GYM_OWNER') expect(where.gym).toEqual({ ownerId: 'staff' });
-      if (role === 'TRAINER') expect(where.trainer).toEqual({ userId: 'staff' });
+      if (role === 'TRAINER')
+        expect(where.trainer).toEqual({ userId: 'staff' });
     },
   );
 });

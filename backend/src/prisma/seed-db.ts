@@ -7,9 +7,6 @@ const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
 } as any);
 
-
-
-
 async function main() {
   // database/seed.sql crea cuentas de ejemplo con contraseñas conocidas: solo para desarrollo local.
   if (process.env.NODE_ENV === 'production') {
@@ -18,19 +15,19 @@ async function main() {
   }
 
   console.log('🌱 Starting seeding process...');
-  
+
   const seedSqlPath = path.join(__dirname, '../../../../database/seed.sql');
   const sql = fs.readFileSync(seedSqlPath, 'utf8');
 
   // Split by semicolon but be careful with functions/triggers if any (none in this seed)
   // Actually, we can just execute the whole string since it's standard SQL
-  // But Prisma's $executeRaw handles one statement at a time best, 
+  // But Prisma's $executeRaw handles one statement at a time best,
   // or we can try to run it as a transaction of raw queries.
-  
+
   const statements = sql
     .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith('--'));
 
   console.log(`🚀 Executing ${statements.length} SQL statements...`);
 
@@ -38,7 +35,9 @@ async function main() {
     try {
       await prisma.$executeRawUnsafe(statement);
     } catch (error) {
-      console.error(`❌ Error executing statement: ${statement.substring(0, 50)}...`);
+      console.error(
+        `❌ Error executing statement: ${statement.substring(0, 50)}...`,
+      );
       console.error(error.message);
     }
   }

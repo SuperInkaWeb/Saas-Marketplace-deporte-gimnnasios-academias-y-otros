@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,7 +15,10 @@ export class GoogleHealthService {
   // ── Step 1: Generate the Google OAuth2 Authorization URL ──────────────────
   getAuthorizationUrl(redirectUri: string): string {
     const clientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
-    if (!clientId) throw new BadRequestException('GOOGLE_HEALTH_CLIENT_ID no configurado en .env');
+    if (!clientId)
+      throw new BadRequestException(
+        'GOOGLE_HEALTH_CLIENT_ID no configurado en .env',
+      );
 
     const scopes = [
       'https://www.googleapis.com/auth/fitness.activity.read',
@@ -40,7 +48,9 @@ export class GoogleHealthService {
     const clientSecret = process.env.GOOGLE_HEALTH_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      throw new BadRequestException('Credenciales de Google no configuradas en .env');
+      throw new BadRequestException(
+        'Credenciales de Google no configuradas en .env',
+      );
     }
 
     const body = new URLSearchParams({
@@ -62,7 +72,9 @@ export class GoogleHealthService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       this.logger.error('Google token exchange failed', errorData);
-      throw new BadRequestException(`Error de autenticación con Google: ${JSON.stringify(errorData)}`);
+      throw new BadRequestException(
+        `Error de autenticación con Google: ${JSON.stringify(errorData)}`,
+      );
     }
 
     const data: any = await response.json();
@@ -120,7 +132,9 @@ export class GoogleHealthService {
     });
 
     if (!response.ok) {
-      throw new BadRequestException('Token de Google inválido. Reconecta tu cuenta.');
+      throw new BadRequestException(
+        'Token de Google inválido. Reconecta tu cuenta.',
+      );
     }
 
     const data: any = await response.json();
@@ -142,9 +156,13 @@ export class GoogleHealthService {
       where: { userId_provider: { userId, provider: 'FITBIT' } },
     });
 
-    if (!connection) throw new NotFoundException('No conectado a Google Health.');
+    if (!connection)
+      throw new NotFoundException('No conectado a Google Health.');
 
-    if (connection.tokenExpiry && connection.tokenExpiry < new Date(Date.now() + 5 * 60 * 1000)) {
+    if (
+      connection.tokenExpiry &&
+      connection.tokenExpiry < new Date(Date.now() + 5 * 60 * 1000)
+    ) {
       return this.refreshAccessToken(userId);
     }
     return connection.accessToken;
@@ -152,11 +170,15 @@ export class GoogleHealthService {
 
   async syncGoogleHealthData(userId: string) {
     const accessToken = await this.getValidAccessToken(userId);
-    
+
     // Set time range for TODAY
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
     const startTimeMillis = startOfDay.getTime();
     const endTimeMillis = now.getTime();
 
@@ -164,44 +186,49 @@ export class GoogleHealthService {
       aggregateBy: [
         { dataTypeName: 'com.google.step_count.delta' },
         { dataTypeName: 'com.google.calories.expended' },
-        { dataTypeName: 'com.google.heart_rate.bpm' }
+        { dataTypeName: 'com.google.heart_rate.bpm' },
       ],
       bucketByTime: { durationMillis: 86400000 },
       startTimeMillis,
-      endTimeMillis
+      endTimeMillis,
     };
 
-    const response = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+    const response = await fetch(
+      'https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body)
-    });
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       this.logger.error(`Failed to fetch from Google Fit: ${errorText}`);
-      throw new BadRequestException('Error al extraer datos de Google Fit de la cuenta');
+      throw new BadRequestException(
+        'Error al extraer datos de Google Fit de la cuenta',
+      );
     }
 
     const data: any = await response.json();
-    
+
     let steps = 0;
     let calories = 0;
     let heartRateAvg = 0;
 
     // Google Fit returns an array of "buckets"
     if (data.bucket && data.bucket.length > 0) {
-      const bucket = data.bucket[0]; 
-      
+      const bucket = data.bucket[0];
+
       for (const dataset of bucket.dataset) {
         if (dataset.point && dataset.point.length > 0) {
           // Google places the aggregated result in the first point
           const point = dataset.point[0];
           const value = point.value[0];
-          
+
           if (dataset.dataSourceId.includes('step_count')) {
             steps = value.intVal || 0;
           } else if (dataset.dataSourceId.includes('calories')) {
@@ -213,8 +240,16 @@ export class GoogleHealthService {
       }
     }
 
-    this.logger.log(`Google Health synced real data for ${userId}: ${steps} steps`);
-    return { steps, calories, heartRateAvg, deviceType: 'GOOGLE_HEALTH', date: new Date().toISOString() };
+    this.logger.log(
+      `Google Health synced real data for ${userId}: ${steps} steps`,
+    );
+    return {
+      steps,
+      calories,
+      heartRateAvg,
+      deviceType: 'GOOGLE_HEALTH',
+      date: new Date().toISOString(),
+    };
   }
 
   async getConnectionStatus(userId: string) {

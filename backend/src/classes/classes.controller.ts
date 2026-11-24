@@ -46,7 +46,9 @@ export class ClassesController {
   @Get()
   @UseGuards(AnyAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar clases. Si myReservations=true, solo las del usuario.' })
+  @ApiOperation({
+    summary: 'Listar clases. Si myReservations=true, solo las del usuario.',
+  })
   @ApiQuery({ name: 'gymId', required: false })
   @ApiQuery({ name: 'myReservations', required: false })
   @ApiQuery({ name: 'includeInactive', required: false })
@@ -74,7 +76,6 @@ export class ClassesController {
       isStaff ? undefined : visibleGymWhere(user),
     );
   }
-
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener detalles de una clase' })
@@ -114,7 +115,10 @@ export class ClassesController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desmarcar asistencia' })
-  unmarkAttendance(@Param('id') reservationId: string, @CurrentUser() user: any) {
+  unmarkAttendance(
+    @Param('id') reservationId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.classesService.unmarkAttendance(reservationId, user);
   }
 
@@ -123,7 +127,10 @@ export class ClassesController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una reserva de la lista' })
-  removeReservation(@Param('id') reservationId: string, @CurrentUser() user: any) {
+  removeReservation(
+    @Param('id') reservationId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.classesService.removeReservation(reservationId, user);
   }
 
@@ -132,7 +139,11 @@ export class ClassesController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar una clase' })
-  update(@Param('id') id: string, @CurrentUser() user: any, @Body() updateClassDto: UpdateClassDto) {
+  update(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() updateClassDto: UpdateClassDto,
+  ) {
     return this.classesService.update(id, user, updateClassDto);
   }
 

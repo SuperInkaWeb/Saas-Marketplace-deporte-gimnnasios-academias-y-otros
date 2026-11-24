@@ -7,7 +7,10 @@ import {
 import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTrainerProfileDto } from './dto/trainer.dto';
-import { AuthUser, isGlobalAdmin } from '../common/gym-access/gym-access.service';
+import {
+  AuthUser,
+  isGlobalAdmin,
+} from '../common/gym-access/gym-access.service';
 import { withPublicName } from '../common/utils/normalize-name';
 import { assertGymStatusActive } from '../common/gym-access/gym-status';
 
@@ -20,10 +23,14 @@ export const LINK_REQUEST_STATUS = {
 
 const LINK_REQUEST_INCLUDE = {
   gym: { select: { id: true, name: true } },
-  trainer: { select: { userId: true, user: { select: { name: true, email: true } } } },
+  trainer: {
+    select: { userId: true, user: { select: { name: true, email: true } } },
+  },
 } satisfies Prisma.GymTrainerRequestInclude;
 
-type LinkRequestRow = Prisma.GymTrainerRequestGetPayload<{ include: typeof LINK_REQUEST_INCLUDE }>;
+type LinkRequestRow = Prisma.GymTrainerRequestGetPayload<{
+  include: typeof LINK_REQUEST_INCLUDE;
+}>;
 
 /** Misma forma que devolvía el archivo JSON, para no cambiar el frontend. */
 function toLinkRequestView(r: LinkRequestRow) {
@@ -176,7 +183,11 @@ export class TrainersService {
     return !!gym && gym.ownerId === viewer.id;
   }
 
-  async unassignTrainer(gymId: string, currentOwnerId: string, trainerId: string) {
+  async unassignTrainer(
+    gymId: string,
+    currentOwnerId: string,
+    trainerId: string,
+  ) {
     const gym = await this.prisma.gym.findUnique({
       where: { id: gymId },
     });
@@ -203,7 +214,9 @@ export class TrainersService {
       select: { id: true },
     });
     if (!trainerProfile) {
-      throw new NotFoundException('El usuario no tiene un perfil de entrenador activo');
+      throw new NotFoundException(
+        'El usuario no tiene un perfil de entrenador activo',
+      );
     }
 
     // 2. Verificar gimnasio (debe existir y estar activo)
@@ -231,7 +244,9 @@ export class TrainersService {
       select: { id: true, status: true },
     });
     if (previous?.status === LINK_REQUEST_STATUS.PENDING) {
-      throw new BadRequestException('Ya tienes una postulación pendiente para esta sede');
+      throw new BadRequestException(
+        'Ya tienes una postulación pendiente para esta sede',
+      );
     }
 
     try {
@@ -253,8 +268,13 @@ export class TrainersService {
       return toLinkRequestView(saved);
     } catch (err) {
       // Dos postulaciones simultáneas: la restricción única deja pasar solo una
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new BadRequestException('Ya tienes una postulación pendiente para esta sede');
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Ya tienes una postulación pendiente para esta sede',
+        );
       }
       throw err;
     }
@@ -262,7 +282,10 @@ export class TrainersService {
 
   async getPendingRequestsForOwner(ownerUserId: string) {
     const requests = await this.prisma.gymTrainerRequest.findMany({
-      where: { status: LINK_REQUEST_STATUS.PENDING, gym: { ownerId: ownerUserId } },
+      where: {
+        status: LINK_REQUEST_STATUS.PENDING,
+        gym: { ownerId: ownerUserId },
+      },
       include: LINK_REQUEST_INCLUDE,
       orderBy: { createdAt: 'asc' },
     });
@@ -271,7 +294,10 @@ export class TrainersService {
 
   async getPendingRequestsForTrainer(trainerUserId: string) {
     const requests = await this.prisma.gymTrainerRequest.findMany({
-      where: { status: LINK_REQUEST_STATUS.PENDING, trainer: { userId: trainerUserId } },
+      where: {
+        status: LINK_REQUEST_STATUS.PENDING,
+        trainer: { userId: trainerUserId },
+      },
       include: LINK_REQUEST_INCLUDE,
       orderBy: { createdAt: 'asc' },
     });
@@ -292,11 +318,18 @@ export class TrainersService {
     }
 
     // Verificar propiedad del gimnasio (el ADMIN puede gestionar cualquiera)
-    if (responder.role !== UserRole.ADMIN && request.gym.ownerId !== responder.id) {
-      throw new ForbiddenException('No tienes permiso para gestionar solicitudes de este gimnasio');
+    if (
+      responder.role !== UserRole.ADMIN &&
+      request.gym.ownerId !== responder.id
+    ) {
+      throw new ForbiddenException(
+        'No tienes permiso para gestionar solicitudes de este gimnasio',
+      );
     }
 
-    const status = approve ? LINK_REQUEST_STATUS.APPROVED : LINK_REQUEST_STATUS.REJECTED;
+    const status = approve
+      ? LINK_REQUEST_STATUS.APPROVED
+      : LINK_REQUEST_STATUS.REJECTED;
     await this.prisma.$transaction(async (tx) => {
       // Solo se responde si sigue PENDING (evita doble respuesta simultánea)
       const updated = await tx.gymTrainerRequest.updateMany({
@@ -309,13 +342,27 @@ export class TrainersService {
       if (approve) {
         // Si se aprueba, crear la vinculación real
         await tx.gymTrainer.upsert({
-          where: { gymId_trainerId: { gymId: request.gymId, trainerId: request.trainerId } },
+          where: {
+            gymId_trainerId: {
+              gymId: request.gymId,
+              trainerId: request.trainerId,
+            },
+          },
           update: { canCreateClasses: true },
-          create: { gymId: request.gymId, trainerId: request.trainerId, canCreateClasses: true },
+          create: {
+            gymId: request.gymId,
+            trainerId: request.trainerId,
+            canCreateClasses: true,
+          },
         });
       }
     });
 
-    return { success: true, message: approve ? 'Solicitud aprobada y entrenador vinculado' : 'Solicitud rechazada' };
+    return {
+      success: true,
+      message: approve
+        ? 'Solicitud aprobada y entrenador vinculado'
+        : 'Solicitud rechazada',
+    };
   }
 }

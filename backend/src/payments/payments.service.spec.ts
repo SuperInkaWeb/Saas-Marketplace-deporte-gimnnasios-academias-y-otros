@@ -48,33 +48,49 @@ describe('PaymentsService.createClassCheckout', () => {
 
   it('rechaza una clase inexistente', async () => {
     prisma.class.findUnique.mockResolvedValue(null);
-    await expect(service.createClassCheckout('u1', 'a@b.c', 'c1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.createClassCheckout('u1', 'a@b.c', 'c1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('rechaza una clase que ya pasó', async () => {
-    prisma.class.findUnique.mockResolvedValue(futureClass({ scheduledAt: new Date(Date.now() - 86_400_000) }));
-    await expect(service.createClassCheckout('u1', 'a@b.c', 'c1')).rejects.toBeInstanceOf(BadRequestException);
+    prisma.class.findUnique.mockResolvedValue(
+      futureClass({ scheduledAt: new Date(Date.now() - 86_400_000) }),
+    );
+    await expect(
+      service.createClassCheckout('u1', 'a@b.c', 'c1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('rechaza una clase llena', async () => {
-    prisma.class.findUnique.mockResolvedValue(futureClass({ _count: { reservations: 20 } }));
-    await expect(service.createClassCheckout('u1', 'a@b.c', 'c1')).rejects.toBeInstanceOf(BadRequestException);
+    prisma.class.findUnique.mockResolvedValue(
+      futureClass({ _count: { reservations: 20 } }),
+    );
+    await expect(
+      service.createClassCheckout('u1', 'a@b.c', 'c1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('rechaza si el usuario ya tiene reserva confirmada', async () => {
     prisma.class.findUnique.mockResolvedValue(futureClass());
     prisma.reservation.findUnique.mockResolvedValue({ status: 'CONFIRMED' });
-    await expect(service.createClassCheckout('u1', 'a@b.c', 'c1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.createClassCheckout('u1', 'a@b.c', 'c1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('una clase gratuita se reserva directo, sin crear pago', async () => {
-    prisma.class.findUnique.mockResolvedValue(futureClass({ price: new Prisma.Decimal(0) }));
+    prisma.class.findUnique.mockResolvedValue(
+      futureClass({ price: new Prisma.Decimal(0) }),
+    );
     prisma.reservation.findUnique.mockResolvedValue(null);
     classes.book.mockResolvedValue({});
-    await expect(service.createClassCheckout('u1', 'a@b.c', 'c1')).resolves.toEqual({ free: true });
+    await expect(
+      service.createClassCheckout('u1', 'a@b.c', 'c1'),
+    ).resolves.toEqual({ free: true });
     expect(classes.book).toHaveBeenCalledWith('u1', 'c1');
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });

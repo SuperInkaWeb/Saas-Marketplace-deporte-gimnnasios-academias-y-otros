@@ -50,7 +50,10 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
                 canCreateClasses: true,
                 trainer: {
                   id: 'tp-1',
-                  user: project(fullUser('trainer-1'), args.include.trainer.include.user),
+                  user: project(
+                    fullUser('trainer-1'),
+                    args.include.trainer.include.user,
+                  ),
                 },
               },
             ]),
@@ -65,7 +68,11 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
 
     it('GET /trainers no devuelve el email de ningún entrenador', async () => {
       const [trainer] = await service.findAll();
-      expect(trainer.user).toEqual({ id: 'trainer-1', name: 'Nombre trainer-1', avatarUrl: null });
+      expect(trainer.user).toEqual({
+        id: 'trainer-1',
+        name: 'Nombre trainer-1',
+        avatarUrl: null,
+      });
       expect(trainer.user).not.toHaveProperty('email');
       expect(trainer.specialties).toEqual(['Crossfit']);
     });
@@ -77,35 +84,57 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
     });
 
     it('un atleta logueado no ve el email', async () => {
-      const [link] = await service.getGymTrainers('gym-1', { id: 'athlete-1', role: 'USER' });
+      const [link] = await service.getGymTrainers('gym-1', {
+        id: 'athlete-1',
+        role: 'USER',
+      });
       expect(link.trainer.user).not.toHaveProperty('email');
     });
 
     it('el dueño de OTRO gimnasio no ve el email', async () => {
-      const [link] = await service.getGymTrainers('gym-1', { id: 'owner-2', role: 'GYM_OWNER' });
+      const [link] = await service.getGymTrainers('gym-1', {
+        id: 'owner-2',
+        role: 'GYM_OWNER',
+      });
       expect(link.trainer.user).not.toHaveProperty('email');
     });
 
     it('un entrenador no ve el email de sus compañeros', async () => {
-      const [link] = await service.getGymTrainers('gym-1', { id: 'trainer-2', role: 'TRAINER' });
+      const [link] = await service.getGymTrainers('gym-1', {
+        id: 'trainer-2',
+        role: 'TRAINER',
+      });
       expect(link.trainer.user).not.toHaveProperty('email');
     });
 
     it('si el gimnasio no existe no se devuelve el email', async () => {
       prisma.gym.findUnique.mockResolvedValueOnce(null);
-      const [link] = await service.getGymTrainers('gym-x', { id: 'owner-1', role: 'GYM_OWNER' });
+      const [link] = await service.getGymTrainers('gym-x', {
+        id: 'owner-1',
+        role: 'GYM_OWNER',
+      });
       expect(link.trainer.user).not.toHaveProperty('email');
     });
 
     it('el dueño del gimnasio sí ve el email de su staff', async () => {
-      const [link] = await service.getGymTrainers('gym-1', { id: 'owner-1', role: 'GYM_OWNER' });
-      expect((link.trainer.user as { email?: string }).email).toBe('trainer-1@example.com');
+      const [link] = await service.getGymTrainers('gym-1', {
+        id: 'owner-1',
+        role: 'GYM_OWNER',
+      });
+      expect((link.trainer.user as { email?: string }).email).toBe(
+        'trainer-1@example.com',
+      );
       expect(link.trainer.user).not.toHaveProperty('passwordHash');
     });
 
     it('un ADMIN sí ve el email', async () => {
-      const [link] = await service.getGymTrainers('gym-1', { id: 'admin-1', role: 'ADMIN' });
-      expect((link.trainer.user as { email?: string }).email).toBe('trainer-1@example.com');
+      const [link] = await service.getGymTrainers('gym-1', {
+        id: 'admin-1',
+        role: 'ADMIN',
+      });
+      expect((link.trainer.user as { email?: string }).email).toBe(
+        'trainer-1@example.com',
+      );
       expect(prisma.gym.findUnique).not.toHaveBeenCalled();
     });
   });
@@ -130,7 +159,11 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
       {} as unknown as GymAccessService,
     );
     const [gym] = await service.findAll();
-    expect(gym.owner).toEqual({ id: 'owner-1', name: 'Nombre owner-1', avatarUrl: null });
+    expect(gym.owner).toEqual({
+      id: 'owner-1',
+      name: 'Nombre owner-1',
+      avatarUrl: null,
+    });
   });
 
   it('ProfessionalsService.findAll (GET /professionals) no devuelve el email del profesional', async () => {
@@ -152,6 +185,10 @@ describe('AUD-27: emails fuera de los listados públicos', () => {
       {} as unknown as NotificationsService,
     );
     const [svc] = await service.findAll();
-    expect(svc.provider).toEqual({ id: 'pro-1', name: 'Nombre pro-1', avatarUrl: null });
+    expect(svc.provider).toEqual({
+      id: 'pro-1',
+      name: 'Nombre pro-1',
+      avatarUrl: null,
+    });
   });
 });

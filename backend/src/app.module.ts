@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { THROTTLER_OPTIONS, HercixThrottlerGuard } from './common/security/throttle';
+import {
+  THROTTLER_OPTIONS,
+  HercixThrottlerGuard,
+} from './common/security/throttle';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonAccessModule } from './common/common-access.module';
 import { AuthModule } from './auth/auth.module';
-
 
 // Future modules:
 // import { UsersModule } from './users/users.module';
@@ -29,7 +31,6 @@ import { UsersModule } from './users/users.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { HealthModule } from './health/health.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -38,7 +39,7 @@ import { HealthModule } from './health/health.module';
     }),
     ThrottlerModule.forRoot(THROTTLER_OPTIONS),
     PrismaModule,
-    CommonAccessModule, 
+    CommonAccessModule,
     AuthModule,
     GymsModule,
     TrainersModule,
@@ -59,12 +60,8 @@ import { HealthModule } from './health/health.module';
     HealthModule,
   ],
 
-
-
-
   controllers: [AppController],
   // Límite de peticiones global (AUD-14)
   providers: [{ provide: APP_GUARD, useClass: HercixThrottlerGuard }],
 })
 export class AppModule {}
-

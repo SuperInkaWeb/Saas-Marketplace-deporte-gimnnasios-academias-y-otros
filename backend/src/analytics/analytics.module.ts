@@ -7,6 +7,6 @@ import { GymsModule } from '../gyms/gyms.module';
 @Module({
   imports: [PrismaModule, GymsModule],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService]
+  providers: [AnalyticsService],
 })
 export class AnalyticsModule {}

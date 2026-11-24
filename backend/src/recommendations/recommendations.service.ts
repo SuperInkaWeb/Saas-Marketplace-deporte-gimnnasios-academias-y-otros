@@ -21,51 +21,66 @@ export class RecommendationsService {
     userProfile: any;
   }> {
     // Gather user data in parallel
-    const [reservations, orders, userMemberships, user, allClasses, allGyms, allEvents] =
-      await Promise.all([
-        this.prisma.reservation.findMany({
-          where: { userId },
-          include: { class: { include: { gym: true } } },
-          orderBy: { bookedAt: 'desc' },
-          take: 20,
-        }),
-        this.prisma.order.findMany({
-          where: { userId },
-          include: { orderItems: { include: { product: true } } },
-          take: 10,
-        }),
-        this.prisma.userMembership.findMany({
-          where: { userId, status: 'ACTIVE' },
-          include: { plan: { include: { gym: true } } },
-        }),
-        this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, name: true, createdAt: true },
-        }),
-        this.prisma.class.findMany({
-          where: { isActive: true, scheduledAt: { gte: new Date() } },
-          include: {
-            gym: { select: { id: true, name: true, city: true, latitude: true, longitude: true } },
-            trainer: { include: { user: { select: { name: true } } } },
-            _count: { select: { reservations: true } },
+    const [
+      reservations,
+      orders,
+      userMemberships,
+      user,
+      allClasses,
+      allGyms,
+      allEvents,
+    ] = await Promise.all([
+      this.prisma.reservation.findMany({
+        where: { userId },
+        include: { class: { include: { gym: true } } },
+        orderBy: { bookedAt: 'desc' },
+        take: 20,
+      }),
+      this.prisma.order.findMany({
+        where: { userId },
+        include: { orderItems: { include: { product: true } } },
+        take: 10,
+      }),
+      this.prisma.userMembership.findMany({
+        where: { userId, status: 'ACTIVE' },
+        include: { plan: { include: { gym: true } } },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, createdAt: true },
+      }),
+      this.prisma.class.findMany({
+        where: { isActive: true, scheduledAt: { gte: new Date() } },
+        include: {
+          gym: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              latitude: true,
+              longitude: true,
+            },
           },
-          orderBy: { scheduledAt: 'asc' },
-          take: 50,
-        }),
-        this.prisma.gym.findMany({
-          where: { status: 'ACTIVE' },
-          include: {
-            _count: { select: { classes: true, gymTrainers: true } },
-          },
-          take: 20,
-        }),
-        this.prisma.event.findMany({
-          where: { isActive: true, date: { gte: new Date() } },
-          include: { organizer: { select: { name: true } } },
-          orderBy: { date: 'asc' },
-          take: 10,
-        }),
-      ]);
+          trainer: { include: { user: { select: { name: true } } } },
+          _count: { select: { reservations: true } },
+        },
+        orderBy: { scheduledAt: 'asc' },
+        take: 50,
+      }),
+      this.prisma.gym.findMany({
+        where: { status: 'ACTIVE' },
+        include: {
+          _count: { select: { classes: true, gymTrainers: true } },
+        },
+        take: 20,
+      }),
+      this.prisma.event.findMany({
+        where: { isActive: true, date: { gte: new Date() } },
+        include: { organizer: { select: { name: true } } },
+        orderBy: { date: 'asc' },
+        take: 10,
+      }),
+    ]);
 
     // ── Build User Profile ─────────────────────────────────────────────────
     const bookedClassIds = new Set(reservations.map((r) => r.classId));
@@ -78,7 +93,8 @@ export class RecommendationsService {
     for (const res of reservations) {
       const cls = res.class;
       gymVisits[cls.gymId] = (gymVisits[cls.gymId] || 0) + 1;
-      if (cls.gym?.city) cityVisits[cls.gym.city] = (cityVisits[cls.gym.city] || 0) + 1;
+      if (cls.gym?.city)
+        cityVisits[cls.gym.city] = (cityVisits[cls.gym.city] || 0) + 1;
       pricePaid.push(Number(cls.price));
       timeSlots.push(new Date(cls.scheduledAt).getHours());
       cls.title
@@ -95,8 +111,12 @@ export class RecommendationsService {
     const avgHour = timeSlots.length
       ? Math.round(timeSlots.reduce((a, b) => a + b, 0) / timeSlots.length)
       : 9;
-    const preferredCity = Object.entries(cityVisits).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const preferredGymId = Object.entries(gymVisits).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const preferredCity = Object.entries(cityVisits).sort(
+      (a, b) => b[1] - a[1],
+    )[0]?.[0];
+    const preferredGymId = Object.entries(gymVisits).sort(
+      (a, b) => b[1] - a[1],
+    )[0]?.[0];
     const topKeywords = Object.entries(titleWords)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -118,19 +138,31 @@ export class RecommendationsService {
     const insights: string[] = [];
 
     if (isNewUser) {
-      insights.push('🚀 ¡Bienvenido! Te mostramos las clases más populares para empezar.');
+      insights.push(
+        '🚀 ¡Bienvenido! Te mostramos las clases más populares para empezar.',
+      );
     } else {
-      const timeLabel = avgHour < 12 ? 'mañanas' : avgHour < 17 ? 'tardes' : 'noches';
-      insights.push(`⏰ Prefieres entrenar en las ${timeLabel} (alrededor de las ${avgHour}:00 hs).`);
+      const timeLabel =
+        avgHour < 12 ? 'mañanas' : avgHour < 17 ? 'tardes' : 'noches';
+      insights.push(
+        `⏰ Prefieres entrenar en las ${timeLabel} (alrededor de las ${avgHour}:00 hs).`,
+      );
       if (topKeywords.length > 0)
-        insights.push(`💪 Tus disciplinas favoritas: ${topKeywords.slice(0, 3).join(', ')}.`);
+        insights.push(
+          `💪 Tus disciplinas favoritas: ${topKeywords.slice(0, 3).join(', ')}.`,
+        );
       if (avgPrice > 0)
-        insights.push(`💰 Tu rango de precio habitual es ~$${Math.round(avgPrice)} por clase.`);
-      if (preferredCity) insights.push(`📍 Normalmente reservas en ${preferredCity}.`);
+        insights.push(
+          `💰 Tu rango de precio habitual es ~$${Math.round(avgPrice)} por clase.`,
+        );
+      if (preferredCity)
+        insights.push(`📍 Normalmente reservas en ${preferredCity}.`);
     }
 
     if (userMemberships.length > 0) {
-      insights.push(`✅ Tienes una membresía activa en ${userMemberships[0].plan.gym?.name}.`);
+      insights.push(
+        `✅ Tienes una membresía activa en ${userMemberships[0].plan.gym?.name}.`,
+      );
     }
 
     // ── Score Classes ──────────────────────────────────────────────────────
@@ -143,7 +175,10 @@ export class RecommendationsService {
       const reasons: string[] = [];
 
       // City match
-      if (preferredCity && cls.gym?.city?.toLowerCase() === preferredCity.toLowerCase()) {
+      if (
+        preferredCity &&
+        cls.gym?.city?.toLowerCase() === preferredCity.toLowerCase()
+      ) {
         score += 25;
         reasons.push(`en ${cls.gym.city}`);
       }
@@ -156,7 +191,9 @@ export class RecommendationsService {
 
       // Keyword match in title
       const clsWords = cls.title.toLowerCase().split(/\s+/);
-      const keywordMatches = topKeywords.filter((k) => clsWords.some((w) => w.includes(k)));
+      const keywordMatches = topKeywords.filter((k) =>
+        clsWords.some((w) => w.includes(k)),
+      );
       if (keywordMatches.length > 0) {
         score += keywordMatches.length * 15;
         reasons.push(`disciplina que te gusta`);
@@ -189,7 +226,10 @@ export class RecommendationsService {
           id: cls.id,
           title: cls.title,
           subtitle: `${cls.gym?.name} · $${price}`,
-          reason: reasons.length > 0 ? `Recomendado porque es ${reasons.join(', ')}` : 'Popular en tu zona',
+          reason:
+            reasons.length > 0
+              ? `Recomendado porque es ${reasons.join(', ')}`
+              : 'Popular en tu zona',
           score,
           data: cls,
         });
@@ -225,7 +265,9 @@ export class RecommendationsService {
     }
 
     // ── Sort and return top 8 ──────────────────────────────────────────────
-    const sorted = recommendations.sort((a, b) => b.score - a.score).slice(0, 8);
+    const sorted = recommendations
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
 
     return { recommendations: sorted, insights, userProfile };
   }

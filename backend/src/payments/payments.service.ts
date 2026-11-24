@@ -6,7 +6,11 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { MercadoPagoConfig, Preference, Payment as MpPayment } from 'mercadopago';
+import {
+  MercadoPagoConfig,
+  Preference,
+  Payment as MpPayment,
+} from 'mercadopago';
 import { PaymentStatus, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertGymStatusActive } from '../common/gym-access/gym-status';
@@ -52,7 +56,8 @@ export class PaymentsService {
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) throw new Error('FRONTEND_URL no está configurada');
     const isHttps =
-    frontendUrl.startsWith('https://') || process.env.MP_FORCE_AUTO_RETURN === 'true';
+      frontendUrl.startsWith('https://') ||
+      process.env.MP_FORCE_AUTO_RETURN === 'true';
 
     const preference = await new Preference(this.mp).create({
       body: {
@@ -75,19 +80,26 @@ export class PaymentsService {
         },
         ...(isHttps ? { auto_return: 'approved' as const } : {}),
         ...(process.env.BACKEND_URL?.startsWith('https://')
-          ? { notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook` }
+          ? {
+              notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook`,
+            }
           : {}),
       },
     });
     return preference.init_point!;
   }
 
-  async createMembershipCheckout(userId: string, email: string, planId: string) {
+  async createMembershipCheckout(
+    userId: string,
+    email: string,
+    planId: string,
+  ) {
     const plan = await this.prisma.membershipPlan.findUnique({
       where: { id: planId },
       include: { gym: { select: { status: true } } },
     });
-    if (!plan || !plan.isActive) throw new NotFoundException('Plan no disponible');
+    if (!plan || !plan.isActive)
+      throw new NotFoundException('Plan no disponible');
     assertGymStatusActive(plan.gym);
 
     const payment = await this.prisma.payment.create({
@@ -103,7 +115,11 @@ export class PaymentsService {
     const checkoutUrl = await this.createPreference({
       paymentId: payment.id,
       email,
-      item: { id: plan.id, title: `Suscripción a ${plan.name}`, unitPrice: Number(plan.price) },
+      item: {
+        id: plan.id,
+        title: `Suscripción a ${plan.name}`,
+        unitPrice: Number(plan.price),
+      },
       metadata: { plan_id: plan.id, user_id: userId },
     });
 
@@ -129,21 +145,28 @@ export class PaymentsService {
       where: { id: { in: [...qtyById.keys()] } },
       include: { gym: { select: { status: true } } },
     });
-    if (products.length !== qtyById.size) throw new NotFoundException('Producto no encontrado');
+    if (products.length !== qtyById.size)
+      throw new NotFoundException('Producto no encontrado');
 
     if (new Set(products.map((p) => p.gymId)).size > 1) {
-      throw new BadRequestException('Paga por separado los productos de cada vendedor');
+      throw new BadRequestException(
+        'Paga por separado los productos de cada vendedor',
+      );
     }
 
     assertGymStatusActive(products[0].gym);
 
     for (const p of products) {
       const qty = qtyById.get(p.id)!;
-      if (!p.isActive || p.price.lte(0)) throw new BadRequestException(`Producto no disponible: ${p.name}`);
+      if (!p.isActive || p.price.lte(0))
+        throw new BadRequestException(`Producto no disponible: ${p.name}`);
       if (p.stock < qty) throw new BadRequestException(`Sin stock: ${p.name}`);
     }
 
-    const total = products.reduce((s, p) => s + Number(p.price) * qtyById.get(p.id)!, 0);
+    const total = products.reduce(
+      (s, p) => s + Number(p.price) * qtyById.get(p.id)!,
+      0,
+    );
     const totalRounded = Math.round(total * 100) / 100;
 
     const { order, payment } = await this.prisma.$transaction(async (tx) => {
@@ -198,7 +221,9 @@ export class PaymentsService {
         },
         ...(isHttps ? { auto_return: 'approved' as const } : {}),
         ...(process.env.BACKEND_URL?.startsWith('https://')
-          ? { notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook` }
+          ? {
+              notification_url: `${process.env.BACKEND_URL}/api/payments/mercadopago/webhook`,
+            }
           : {}),
       },
     });
@@ -211,14 +236,17 @@ export class PaymentsService {
       where: { id: classId },
       include: {
         _count: {
-          select: { reservations: { where: { status: ReservationStatus.CONFIRMED } } },
+          select: {
+            reservations: { where: { status: ReservationStatus.CONFIRMED } },
+          },
         },
         gym: { select: { status: true } },
       },
     });
-    if (!cls || !cls.isActive) throw new NotFoundException('Clase no disponible');
+    if (!cls || !cls.isActive)
+      throw new NotFoundException('Clase no disponible');
     assertGymStatusActive(cls.gym);
-        if (cls.scheduledAt <= new Date()) {
+    if (cls.scheduledAt <= new Date()) {
       throw new BadRequestException('Esta clase ya comenzó o ya pasó');
     }
     if (cls._count.reservations >= cls.capacity) {
@@ -251,18 +279,28 @@ export class PaymentsService {
     const checkoutUrl = await this.createPreference({
       paymentId: payment.id,
       email,
-      item: { id: cls.id, title: `Clase: ${cls.title}`, unitPrice: Number(cls.price) },
+      item: {
+        id: cls.id,
+        title: `Clase: ${cls.title}`,
+        unitPrice: Number(cls.price),
+      },
       metadata: { class_id: cls.id, user_id: userId },
     });
 
     return { free: false as const, paymentId: payment.id, checkoutUrl };
   }
 
-  async createServiceCheckout(userId: string, email: string, serviceId: string, notes?: string) {
+  async createServiceCheckout(
+    userId: string,
+    email: string,
+    serviceId: string,
+    notes?: string,
+  ) {
     const service = await this.prisma.professionalService.findUnique({
       where: { id: serviceId },
     });
-    if (!service || !service.isActive) throw new NotFoundException('Servicio no disponible');
+    if (!service || !service.isActive)
+      throw new NotFoundException('Servicio no disponible');
     if (service.providerId === userId) {
       throw new BadRequestException('No puedes reservar tu propio servicio');
     }
@@ -287,20 +325,29 @@ export class PaymentsService {
     const checkoutUrl = await this.createPreference({
       paymentId: payment.id,
       email,
-      item: { id: service.id, title: service.title, unitPrice: Number(service.price) },
+      item: {
+        id: service.id,
+        title: service.title,
+        unitPrice: Number(service.price),
+      },
       metadata: { service_id: service.id, user_id: userId },
     });
 
     return { free: false as const, paymentId: payment.id, checkoutUrl };
   }
 
-  async processMercadoPagoPayment(mpPaymentId: string, expectedUserId?: string) {
+  async processMercadoPagoPayment(
+    mpPaymentId: string,
+    expectedUserId?: string,
+  ) {
     const mpPayment = await new MpPayment(this.mp).get({ id: mpPaymentId });
 
     const localId = mpPayment.external_reference;
     if (!localId) return { status: 'IGNORED' };
 
-    const local = await this.prisma.payment.findUnique({ where: { id: localId } });
+    const local = await this.prisma.payment.findUnique({
+      where: { id: localId },
+    });
     if (!local) {
       this.logger.warn(`Pago local ${localId} no encontrado`);
       return { status: 'IGNORED' };
@@ -313,17 +360,29 @@ export class PaymentsService {
     }
 
     if (mpPayment.status === 'approved') {
-      const sameAmount = Number(mpPayment.transaction_amount) === Number(local.amount);
+      const sameAmount =
+        Number(mpPayment.transaction_amount) === Number(local.amount);
       if (!sameAmount || mpPayment.currency_id !== 'PEN') {
-        this.logger.error(`Pago ${local.id} aprobado pero con datos que no coinciden`);
+        this.logger.error(
+          `Pago ${local.id} aprobado pero con datos que no coinciden`,
+        );
         return { status: 'MISMATCH' };
       }
 
       if (local.orderId) {
-        return this.completeOrderPayment(local.id, local.orderId, String(mpPayment.id));
+        return this.completeOrderPayment(
+          local.id,
+          local.orderId,
+          String(mpPayment.id),
+        );
       }
       if (local.classId) {
-        return this.completeClassPayment(local.id, local.userId, local.classId, String(mpPayment.id));
+        return this.completeClassPayment(
+          local.id,
+          local.userId,
+          local.classId,
+          String(mpPayment.id),
+        );
       }
       if (local.serviceId) {
         return this.completeServicePayment(
@@ -338,14 +397,18 @@ export class PaymentsService {
       const planId = (mpPayment.metadata as any)?.plan_id;
       if (!planId) return { status: 'MISMATCH' };
       try {
-      await this.memberships.activateFromPayment(local.id, planId, String(mpPayment.id));
-      return { status: PaymentStatus.COMPLETED, type: 'MEMBERSHIP' };
+        await this.memberships.activateFromPayment(
+          local.id,
+          planId,
+          String(mpPayment.id),
+        );
+        return { status: PaymentStatus.COMPLETED, type: 'MEMBERSHIP' };
       } catch (e) {
-      this.logger.error(
-      `Pago MP ${mpPaymentId} aprobado pero la membresía del plan ${planId} falló: ${(e as Error).message}`,
-  );
-  return { status: 'NEEDS_REVIEW' };
-}
+        this.logger.error(
+          `Pago MP ${mpPaymentId} aprobado pero la membresía del plan ${planId} falló: ${(e as Error).message}`,
+        );
+        return { status: 'NEEDS_REVIEW' };
+      }
     }
 
     if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
@@ -358,12 +421,20 @@ export class PaymentsService {
     return { status: PaymentStatus.PENDING, type: this.kindOf(local) };
   }
 
-  private async completeOrderPayment(paymentId: string, orderId: string, mpId: string) {
+  private async completeOrderPayment(
+    paymentId: string,
+    orderId: string,
+    mpId: string,
+  ) {
     try {
       await this.prisma.$transaction(async (tx) => {
         const claimed = await tx.payment.updateMany({
           where: { id: paymentId, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.COMPLETED, gatewayTxId: `MP:${mpId}`, paidAt: new Date() },
+          data: {
+            status: PaymentStatus.COMPLETED,
+            gatewayTxId: `MP:${mpId}`,
+            paidAt: new Date(),
+          },
         });
         if (claimed.count === 0) return;
 
@@ -380,7 +451,10 @@ export class PaymentsService {
           if (r.count === 0) throw new ConflictException('Stock insuficiente');
         }
 
-        await tx.order.update({ where: { id: orderId }, data: { status: 'PAID' } });
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: 'PAID' },
+        });
       });
       return { status: PaymentStatus.COMPLETED, type: 'ORDER' };
     } catch (e) {
@@ -401,7 +475,11 @@ export class PaymentsService {
       const reservation = await this.prisma.$transaction(async (tx) => {
         const claimed = await tx.payment.updateMany({
           where: { id: paymentId, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.COMPLETED, gatewayTxId: `MP:${mpId}`, paidAt: new Date() },
+          data: {
+            status: PaymentStatus.COMPLETED,
+            gatewayTxId: `MP:${mpId}`,
+            paidAt: new Date(),
+          },
         });
         if (claimed.count === 0) return null;
         return this.classes.reservePaidSeat(tx, userId, classId);
@@ -428,10 +506,19 @@ export class PaymentsService {
       const booking = await this.prisma.$transaction(async (tx) => {
         const claimed = await tx.payment.updateMany({
           where: { id: paymentId, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.COMPLETED, gatewayTxId: `MP:${mpId}`, paidAt: new Date() },
+          data: {
+            status: PaymentStatus.COMPLETED,
+            gatewayTxId: `MP:${mpId}`,
+            paidAt: new Date(),
+          },
         });
         if (claimed.count === 0) return null;
-        return this.professionals.createPaidBooking(tx, userId, serviceId, notes);
+        return this.professionals.createPaidBooking(
+          tx,
+          userId,
+          serviceId,
+          notes,
+        );
       });
 
       if (booking) await this.professionals.notifyBookingCreated(booking);
@@ -445,8 +532,15 @@ export class PaymentsService {
   }
 
   async getStatus(paymentId: string, userId: string) {
-    const p = await this.prisma.payment.findUnique({ where: { id: paymentId } });
+    const p = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
     if (!p || p.userId !== userId) throw new NotFoundException();
-    return { id: p.id, status: p.status, amount: p.amount, type: this.kindOf(p) };
+    return {
+      id: p.id,
+      status: p.status,
+      amount: p.amount,
+      type: this.kindOf(p),
+    };
   }
 }
