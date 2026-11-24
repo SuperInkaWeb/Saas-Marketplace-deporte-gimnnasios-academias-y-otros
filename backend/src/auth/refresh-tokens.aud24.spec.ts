@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access,
-   @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument,
-   @typescript-eslint/require-await --
+/* eslint-disable @typescript-eslint/require-await --
    La tabla refresh_tokens falsa en memoria trabaja con objetos sin tipar a propósito: sirve tanto para el
    código anterior (bcrypt) como para el corregido (jti + SHA-256). */
 import {
