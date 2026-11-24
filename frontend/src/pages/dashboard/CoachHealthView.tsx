@@ -51,7 +51,7 @@ const CoachHealthView: React.FC = () => {
         setSelectedAthlete(data[0]);
         fetchAthleteDetails(data[0].id);
       }
-    } catch (err) {
+    } catch {
       toast.error('Error al cargar atletas del gimnasio');
     } finally {
       setLoading(false);
@@ -69,7 +69,7 @@ const CoachHealthView: React.FC = () => {
       setAthleteMetrics(metricsRes.data);
       setAthleteGoal(goalRes.data);
       setAthleteRecs(recsRes.data);
-    } catch (err) {
+    } catch {
       setAthleteMetrics([]); setAthleteGoal(null); setAthleteRecs([]);
     } finally {
       setLoadingDetails(false);

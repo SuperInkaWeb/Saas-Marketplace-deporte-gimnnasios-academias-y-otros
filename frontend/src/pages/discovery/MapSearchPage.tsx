@@ -449,7 +449,9 @@ const MapSearchPage: React.FC = () => {
         setUserCoords([latitude, longitude]);
         if (map) map.flyTo([latitude, longitude], 14);
         try { const { data } = await api.get(`/gyms/nearby?lat=${latitude}&lng=${longitude}&radius=10`); setGyms(data); }
-        catch { } finally { setLoading(false); }
+        catch {
+          // Si falla la búsqueda cercana se mantiene la lista actual.
+        } finally { setLoading(false); }
       },
       () => { setLoading(false); setUsingLocation(false); }
     );

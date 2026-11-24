@@ -53,7 +53,9 @@ api.interceptors.response.use(
         try {
           const payload = JSON.parse(atob(accessTokenStr.split('.')[1]));
           userId = payload.sub;
-        } catch (e) {}
+        } catch {
+          // Token mal formado: se sigue sin userId y no se intenta refrescar.
+        }
       }
 
       if (refreshToken && userId) {

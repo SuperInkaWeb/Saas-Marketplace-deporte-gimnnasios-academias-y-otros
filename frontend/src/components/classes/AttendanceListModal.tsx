@@ -178,7 +178,7 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
       setLocalReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'CONFIRMED' } : r));
       toast.success('Asistencia revertida');
       onSuccess();
-    } catch (err: any) {
+    } catch {
       toast.error('Error al revertir asistencia');
     } finally {
       setLoadingId(null);
@@ -193,7 +193,7 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
       setLocalReservations(prev => prev.filter(r => r.id !== reservationId));
       toast.success('Reserva eliminada correctamente');
       onSuccess();
-    } catch (err: any) {
+    } catch {
       toast.error('Error al eliminar reserva');
     } finally {
       setLoadingId(null);
