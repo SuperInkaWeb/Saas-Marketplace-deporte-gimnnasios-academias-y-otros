@@ -66,7 +66,9 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       if (data && data.length > 0) {
         setActivePlan(data[0].plan);
       }
-    } catch (err) {}
+    } catch {
+      // Sin plan activo o error de red: la barra se muestra sin plan.
+    }
   };
 
   const fetchNotifications = async (isInitial = false) => {
@@ -247,7 +249,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     await switchUserRole(e.target.value);
                     toast.success(`Perfil cambiado a ${e.target.value.toLowerCase().replace('_', ' ')}`);
                     navigate('/');
-                  } catch (err) {
+                  } catch {
                     toast.error('No se pudo cambiar de rol');
                   }
                 }}

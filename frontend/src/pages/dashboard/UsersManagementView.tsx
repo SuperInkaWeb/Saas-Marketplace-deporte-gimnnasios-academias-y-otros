@@ -90,7 +90,7 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       setLoading(true);
       const { data } = await api.get('/users');
       setUsersList(data);
-    } catch (err) {
+    } catch {
       toast.error('Error al cargar la lista de usuarios');
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       setLoadingRequests(true);
       const { data } = await api.get('/users/role-requests');
       setRoleRequests(data);
-    } catch (err) {
+    } catch {
       // silently fail if endpoint not yet available
     } finally {
       setLoadingRequests(false);

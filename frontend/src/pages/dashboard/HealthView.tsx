@@ -174,7 +174,7 @@ const HealthView: React.FC = () => {
       }
 
       setMetrics(prev => {
-        let updated = prev.map(m => {
+        const updated = prev.map(m => {
           if (m.type === 'STEPS') {
             return { ...m, value: m.value + stepsInc };
           }
@@ -233,7 +233,7 @@ const HealthView: React.FC = () => {
         gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.12);
-      } catch (e) {
+      } catch {
         console.log('AudioContext silenciado por interacción inicial del navegador');
       }
     }, hydrationAlertFrequency * 1000);
@@ -638,7 +638,7 @@ const HealthView: React.FC = () => {
 
   const getMetricDisplayInfo = (m: Metric) => {
     switch (m.type) {
-      case 'STEPS':
+      case 'STEPS': {
         const stepsPercent = goal.targetSteps ? Math.round((m.value / goal.targetSteps) * 100) : 100;
         return {
           label: 'Pasos Diarios',
@@ -651,7 +651,8 @@ const HealthView: React.FC = () => {
             </span>
           )
         };
-      case 'CALORIES_BURNED':
+      }
+      case 'CALORIES_BURNED': {
         const calPercent = goal.targetCalories ? Math.round((m.value / goal.targetCalories) * 100) : 100;
         return {
           label: 'Calorías Quemadas',
@@ -664,7 +665,8 @@ const HealthView: React.FC = () => {
             </span>
           )
         };
-      case 'WATER':
+      }
+      case 'WATER': {
         const waterPercent = goal.targetWater ? Math.round((m.value / goal.targetWater) * 100) : 100;
         return {
           label: 'Hidratación Diaria',
@@ -677,6 +679,7 @@ const HealthView: React.FC = () => {
             </span>
           )
         };
+      }
       case 'WEIGHT':
         return {
           label: 'Peso Corporal',

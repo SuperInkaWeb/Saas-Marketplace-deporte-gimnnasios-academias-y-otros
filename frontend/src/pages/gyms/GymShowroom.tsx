@@ -660,7 +660,7 @@ const GymShowroom: React.FC = () => {
                       <div key={c.id} className="glass-card p-6 border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 group">
                         <div className="flex items-center gap-4">
                           <div className="bg-slate-800 p-4 rounded-2xl group-hover:bg-primary/20 transition-colors">
-                            <Calendar className={`w-6 h-6 ${true ? 'text-primary-light' : 'text-slate-500'}`} />
+                            <Calendar className={`w-6 h-6 text-primary-light`} />
                           </div>
                           <div>
                             <h4 className="text-white font-bold text-lg">{c.title}</h4>

@@ -129,7 +129,7 @@ const AdminHealthView: React.FC = () => {
     const targetWater = athleteGoal?.targetWater || 8;
 
     switch (m.type) {
-      case 'STEPS':
+      case 'STEPS': {
         const stepsPercent = Math.round((m.value / targetSteps) * 100);
         return {
           label: 'Pasos Diarios',
@@ -142,7 +142,8 @@ const AdminHealthView: React.FC = () => {
             </span>
           )
         };
-      case 'CALORIES_BURNED':
+      }
+      case 'CALORIES_BURNED': {
         const calPercent = Math.round((m.value / targetCalories) * 100);
         return {
           label: 'Calorías Quemadas',
@@ -155,7 +156,8 @@ const AdminHealthView: React.FC = () => {
             </span>
           )
         };
-      case 'WATER':
+      }
+      case 'WATER': {
         const waterPercent = Math.round((m.value / targetWater) * 100);
         return {
           label: 'Hidratación Diaria',
@@ -168,6 +170,7 @@ const AdminHealthView: React.FC = () => {
             </span>
           )
         };
+      }
       case 'WEIGHT':
         return {
           label: 'Peso Corporal',
@@ -213,7 +216,7 @@ const AdminHealthView: React.FC = () => {
       setNewMET({ name: '', metValue: '', intensity: 'MEDIA', defaultDuration: '60' });
       setShowAddForm(false);
       fetchMETs();
-    } catch (err) {
+    } catch {
       toast.error('Error al agregar configuración MET');
     }
   };
@@ -224,7 +227,7 @@ const AdminHealthView: React.FC = () => {
       await api.delete(`/health/admin/met/${id}`);
       toast.success('Actividad eliminada');
       fetchMETs();
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar actividad');
     }
   };

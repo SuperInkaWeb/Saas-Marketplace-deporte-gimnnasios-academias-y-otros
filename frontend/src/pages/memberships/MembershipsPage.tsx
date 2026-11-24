@@ -196,7 +196,7 @@ const handleOpenPayMe = async (planId: string) => {
       setMessage('Plan de membresía eliminado.');
       fetchPlans();
       setTimeout(() => setMessage(null), 3000);
-    } catch (err) {
+    } catch {
       alert('Error al eliminar el plan de membresía.');
     }
   };
