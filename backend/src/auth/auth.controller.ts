@@ -15,7 +15,6 @@ import { LoginDto } from './dto/login.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { LogoutDto, RefreshTokenDto } from './dto/refresh-token.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AnyAuthGuard } from './guards/any-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Roles } from './decorators/roles.decorator';

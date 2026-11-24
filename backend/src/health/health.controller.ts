@@ -7,7 +7,6 @@ import {
   Param,
   UseGuards,
   Request,
-  Patch,
 } from '@nestjs/common';
 import { HealthService } from './health.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';

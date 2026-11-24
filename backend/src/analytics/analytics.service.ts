@@ -105,7 +105,7 @@ export class AnalyticsService {
 
     // Chart shape
     const chartData = Array.from(mrrHistoryMap.entries()).map(
-      ([name, MRR], i) => ({
+      ([name, MRR]) => ({
         name,
         MRR,
         attendees: Math.floor(reservationsCount / 6),

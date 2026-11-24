@@ -20,6 +20,8 @@ jest.mock('jwks-rsa', () => ({ passportJwtSecret: jest.fn() }));
 // La configuración de seguridad de main.ts vive en app.setup.ts (AUD-14); en main no existe.
 let setup: any = null;
 try {
+  // require dentro de try: la prueba se escribió para correr también antes de que existiera app.setup.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   setup = require('./app.setup');
 } catch {
   setup = null;

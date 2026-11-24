@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AuthUser {
   id: string;
-  role: UserRole | string;
+  role: string;
 }
 
 export type GymAccessScope = 'GLOBAL' | 'OWNER' | 'TRAINER';

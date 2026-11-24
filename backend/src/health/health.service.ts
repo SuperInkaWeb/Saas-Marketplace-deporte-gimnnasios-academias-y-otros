@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
 import { UpdateGoalDto, UpsertMetDto } from './dto/health.dto';
-import { HealthMetricType, UserRole } from '@prisma/client';
+import { HealthMetricType } from '@prisma/client';
 import {
   AuthUser,
   isGlobalAdmin,

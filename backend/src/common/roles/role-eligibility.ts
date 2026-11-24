@@ -55,7 +55,7 @@ export async function latestRoleDecisions(
 
 export async function computeEligibleRoles(
   db: Db,
-  user: { id: string; role: UserRole | string },
+  user: { id: string; role: string },
 ): Promise<UserRole[]> {
   const [gymCount, trainerProfile, latest] = await Promise.all([
     db.gym.count({ where: { ownerId: user.id } }),

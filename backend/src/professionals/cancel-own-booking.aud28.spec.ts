@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await --
+/*
    Prisma falso en memoria, sin tipar a propósito. */
 import {
   BadRequestException,

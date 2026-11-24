@@ -11,7 +11,6 @@ import {
   SubscribeDto,
 } from './dto/membership.dto';
 import { MembershipStatus, PaymentStatus, InvoiceStatus } from '@prisma/client';
-import { randomUUID } from 'crypto';
 import {
   assertGymStatusActive,
   visibleGymWhere,
