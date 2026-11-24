@@ -18,6 +18,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, TicketStatus } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ParseEnumPipe, ParseUUIDPipe } from '@nestjs/common';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('tickets')
 @Controller('tickets')
@@ -29,7 +30,7 @@ export class TicketsController {
   /** Cualquier usuario autenticado puede crear un ticket */
   @Post()
   @ApiOperation({ summary: 'Crear ticket de soporte / queja' })
-  create(@CurrentUser() user: any, @Body() dto: CreateTicketDto) {
+  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateTicketDto) {
     return this.ticketsService.create(user.id, dto);
   }
 
@@ -57,7 +58,7 @@ export class TicketsController {
   /** Usuario ve sus propios tickets */
   @Get('mine')
   @ApiOperation({ summary: 'Ver mis tickets' })
-  findMine(@CurrentUser() user: any) {
+  findMine(@CurrentUser() user: AuthenticatedUser) {
     return this.ticketsService.findMine(user.id);
   }
 

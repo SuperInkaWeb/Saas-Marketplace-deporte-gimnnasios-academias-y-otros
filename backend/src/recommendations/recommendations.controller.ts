@@ -7,6 +7,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LIMITS } from '../common/security/throttle';
 import { ChatMessageDto } from './dto/chat-message.dto';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('AI Recommendations')
 @Controller('recommendations')
@@ -22,7 +23,7 @@ export class RecommendationsController {
   @ApiOperation({
     summary: 'Get personalized recommendations + AI message for current user',
   })
-  async getRecommendations(@CurrentUser() user: any) {
+  async getRecommendations(@CurrentUser() user: AuthenticatedUser) {
     const { recommendations, insights, userProfile } =
       await this.recommendationsService.getPersonalizedRecommendations(user.id);
 
@@ -47,7 +48,10 @@ export class RecommendationsController {
   @Throttle(LIMITS.aiChat)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Chat with the AI sports assistant (Gemini)' })
-  async chat(@CurrentUser() user: any, @Body() body: ChatMessageDto) {
+  async chat(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: ChatMessageDto,
+  ) {
     // Solo nombre y rol activo: no se envían correo, DNI ni datos de salud a Gemini.
     const { response, aiAnswered } = await this.geminiService.chatWithAssistant(
       body.message,

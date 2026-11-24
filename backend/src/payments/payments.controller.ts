@@ -21,6 +21,7 @@ import {
   ServiceCheckoutDto,
   ConfirmPaymentDto,
 } from './dto/payments.dto';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @Controller('payments')
 export class PaymentsController {
@@ -32,7 +33,7 @@ export class PaymentsController {
   @Post('mercadopago/membership-checkout')
   async membershipCheckout(
     @Body() dto: MembershipCheckoutDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.paymentsService.createMembershipCheckout(
       req.user.id,
@@ -43,7 +44,10 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/order-checkout')
-  async orderCheckout(@Body() dto: OrderCheckoutDto, @Req() req: any) {
+  async orderCheckout(
+    @Body() dto: OrderCheckoutDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.paymentsService.createOrderCheckout(
       req.user.id,
       req.user.email,
@@ -53,7 +57,10 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/class-checkout')
-  async classCheckout(@Body() dto: ClassCheckoutDto, @Req() req: any) {
+  async classCheckout(
+    @Body() dto: ClassCheckoutDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.paymentsService.createClassCheckout(
       req.user.id,
       req.user.email,
@@ -63,7 +70,10 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/service-checkout')
-  async serviceCheckout(@Body() dto: ServiceCheckoutDto, @Req() req: any) {
+  async serviceCheckout(
+    @Body() dto: ServiceCheckoutDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.paymentsService.createServiceCheckout(
       req.user.id,
       req.user.email,
@@ -75,7 +85,10 @@ export class PaymentsController {
   // El usuario vuelve de Mercado Pago y el frontend confirma con el payment_id de la URL
   @UseGuards(JwtAuthGuard)
   @Post('mercadopago/confirm')
-  async confirm(@Body() dto: ConfirmPaymentDto, @Req() req: any) {
+  async confirm(
+    @Body() dto: ConfirmPaymentDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.paymentsService.processMercadoPagoPayment(
       dto.paymentId,
       req.user.id,
@@ -84,7 +97,7 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('status/:id')
-  async status(@Param('id') id: string, @Req() req: any) {
+  async status(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.paymentsService.getStatus(id, req.user.id);
   }
 

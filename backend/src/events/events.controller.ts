@@ -22,6 +22,7 @@ import {
   ApiOperation,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @ApiTags('Events (Tournaments & Masterclasses)')
 @Controller('events')
@@ -33,7 +34,10 @@ export class EventsController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new event' })
-  create(@Request() req, @Body() createDto: CreateEventDto) {
+  create(
+    @Request() req: AuthenticatedRequest,
+    @Body() createDto: CreateEventDto,
+  ) {
     return this.eventsService.create(req.user.id, createDto);
   }
 
@@ -54,7 +58,10 @@ export class EventsController {
   @ApiOperation({
     summary: 'Events the user can manage (ADMIN: all; others: own)',
   })
-  findManageable(@Request() req, @Query('includePast') includePast?: string) {
+  findManageable(
+    @Request() req: AuthenticatedRequest,
+    @Query('includePast') includePast?: string,
+  ) {
     return this.eventsService.findManageable(req.user, includePast === 'true');
   }
 
@@ -71,7 +78,7 @@ export class EventsController {
   @ApiOperation({ summary: 'Update an event (ADMIN: any; others: own)' })
   update(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() updateDto: UpdateEventDto,
   ) {
     return this.eventsService.update(id, req.user, updateDto);
@@ -82,7 +89,7 @@ export class EventsController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete an event (ADMIN: any; others: own)' })
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.eventsService.remove(id, req.user);
   }
 }

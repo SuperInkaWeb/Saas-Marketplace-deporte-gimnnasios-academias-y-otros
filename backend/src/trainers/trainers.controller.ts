@@ -20,6 +20,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('trainers')
 @Controller('trainers')
@@ -32,7 +33,7 @@ export class TrainersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear o actualizar mi perfil de entrenador' })
   upsertProfile(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() updateTrainerProfileDto: UpdateTrainerProfileDto,
   ) {
     return this.trainersService.upsertProfile(user.id, updateTrainerProfileDto);
@@ -45,7 +46,7 @@ export class TrainersController {
   @ApiOperation({ summary: 'Asignar un entrenador a un gimnasio (Dueño)' })
   assignToGym(
     @Param('gymId') gymId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() assignTrainerDto: AssignTrainerDto,
   ) {
     return this.trainersService.assignToGym(
@@ -69,7 +70,10 @@ export class TrainersController {
     description:
       'Público. El email del entrenador solo se incluye para el dueño del gimnasio o un ADMIN.',
   })
-  getGymTrainers(@Param('gymId') gymId: string, @CurrentUser() user: any) {
+  getGymTrainers(
+    @Param('gymId') gymId: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ) {
     return this.trainersService.getGymTrainers(gymId, user);
   }
 
@@ -81,7 +85,7 @@ export class TrainersController {
   unassignTrainer(
     @Param('gymId') gymId: string,
     @Param('trainerId') trainerId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.trainersService.unassignTrainer(gymId, user.id, trainerId);
   }
@@ -91,7 +95,10 @@ export class TrainersController {
   @Roles(UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Solicitar vinculación a un gimnasio (Entrenador)' })
-  requestLink(@Param('gymId') gymId: string, @CurrentUser() user: any) {
+  requestLink(
+    @Param('gymId') gymId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.trainersService.requestLinkToGym(gymId, user.id);
   }
 
@@ -102,7 +109,7 @@ export class TrainersController {
   @ApiOperation({
     summary: 'Obtener postulaciones pendientes para mis gimnasios',
   })
-  getOwnerRequests(@CurrentUser() user: any) {
+  getOwnerRequests(@CurrentUser() user: AuthenticatedUser) {
     return this.trainersService.getPendingRequestsForOwner(user.id);
   }
 
@@ -111,7 +118,7 @@ export class TrainersController {
   @Roles(UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener mis postulaciones enviadas' })
-  getMyRequests(@CurrentUser() user: any) {
+  getMyRequests(@CurrentUser() user: AuthenticatedUser) {
     return this.trainersService.getPendingRequestsForTrainer(user.id);
   }
 
@@ -125,7 +132,7 @@ export class TrainersController {
   respondRequest(
     @Param('requestId') requestId: string,
     @Body() dto: RespondLinkRequestDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.trainersService.respondToRequest(requestId, user, dto.approve);
   }

@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GymsService } from '../gyms/gyms.service';
 import { UserRole } from '@prisma/client';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @Controller('invoices')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,13 +22,16 @@ export class InvoicesController {
   }
 
   @Get('user')
-  async getUserInvoices(@Request() req) {
+  async getUserInvoices(@Request() req: AuthenticatedRequest) {
     return this.invoicesService.getUserInvoices(req.user.id);
   }
 
   @Get('gym/:gymId')
   @Roles('ADMIN', 'GYM_OWNER')
-  async getGymInvoices(@Param('gymId') gymId: string, @Request() req) {
+  async getGymInvoices(
+    @Param('gymId') gymId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     if (req.user.role !== UserRole.ADMIN) {
       await this.gymsService.validateOwnership(gymId, req.user);
     }
@@ -35,7 +39,10 @@ export class InvoicesController {
   }
 
   @Get(':id')
-  async getInvoiceDetails(@Param('id') id: string, @Request() req) {
+  async getInvoiceDetails(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.invoicesService.getInvoiceById(id, req.user.id, req.user.role);
   }
 }

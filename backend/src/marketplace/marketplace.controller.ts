@@ -27,6 +27,7 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('marketplace')
 @Controller('marketplace')
@@ -40,7 +41,7 @@ export class MarketplaceController {
   @ApiOperation({ summary: 'Añadir un producto a la tienda (Dueño)' })
   createProduct(
     @Param('gymId') gymId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateProductDto,
   ) {
     return this.marketplaceService.createProduct(gymId, user.id, dto);
@@ -50,7 +51,10 @@ export class MarketplaceController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Listar productos disponibles' })
   @ApiQuery({ name: 'gymId', required: false })
-  findAllProducts(@Query('gymId') gymId?: string, @CurrentUser() user?: any) {
+  findAllProducts(
+    @Query('gymId') gymId?: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
     return this.marketplaceService.findAllProducts(gymId, user);
   }
 
@@ -59,7 +63,10 @@ export class MarketplaceController {
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar un producto de la tienda' })
-  deleteProduct(@Param('id') id: string, @CurrentUser() user: any) {
+  deleteProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.marketplaceService.deleteProduct(id, user.id);
   }
 
@@ -70,7 +77,7 @@ export class MarketplaceController {
   @ApiOperation({ summary: 'Actualizar un producto de la tienda' })
   updateProduct(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateProductDto,
   ) {
     return this.marketplaceService.updateProduct(id, user.id, dto);
@@ -81,7 +88,10 @@ export class MarketplaceController {
   @Roles(UserRole.USER, UserRole.TRAINER, UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Realizar un pedido en la tienda' })
-  createOrder(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
+  createOrder(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateOrderDto,
+  ) {
     return this.marketplaceService.createOrder(user.id, dto);
   }
 
@@ -89,7 +99,7 @@ export class MarketplaceController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ver mis pedidos' })
-  getMyOrders(@CurrentUser() user: any) {
+  getMyOrders(@CurrentUser() user: AuthenticatedUser) {
     return this.marketplaceService.getMyOrders(user.id);
   }
 }

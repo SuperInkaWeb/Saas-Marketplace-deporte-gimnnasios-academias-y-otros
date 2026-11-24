@@ -21,6 +21,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @ApiTags('Professionals (Marketplace Services)')
 @Controller('professionals')
@@ -32,7 +33,10 @@ export class ProfessionalsController {
   @Roles(UserRole.TRAINER, UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List a new professional service' })
-  create(@Request() req, @Body() createDto: CreateProfessionalDto) {
+  create(
+    @Request() req: AuthenticatedRequest,
+    @Body() createDto: CreateProfessionalDto,
+  ) {
     return this.professionalsService.create(req.user.id, createDto);
   }
 
@@ -46,7 +50,7 @@ export class ProfessionalsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my bookings' })
-  getMyBookings(@Request() req) {
+  getMyBookings(@Request() req: AuthenticatedRequest) {
     return this.professionalsService.getMyBookings(req.user.id);
   }
 
@@ -54,7 +58,7 @@ export class ProfessionalsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get bookings received by the provider' })
-  getProviderBookings(@Request() req) {
+  getProviderBookings(@Request() req: AuthenticatedRequest) {
     return this.professionalsService.getProviderBookings(req.user.id);
   }
 
@@ -70,7 +74,7 @@ export class ProfessionalsController {
   @ApiOperation({ summary: 'Update status of a professional booking' })
   updateBookingStatus(
     @Param('bookingId') bookingId: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateBookingStatusDto,
   ) {
     const isAdmin = req.user.role === UserRole.ADMIN;
@@ -89,7 +93,10 @@ export class ProfessionalsController {
     summary:
       'El cliente cancela su propia reserva (solo pendiente y no pagada)',
   })
-  cancelOwnBooking(@Param('bookingId') bookingId: string, @Request() req) {
+  cancelOwnBooking(
+    @Param('bookingId') bookingId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.professionalsService.cancelOwnBooking(bookingId, req.user.id);
   }
 
@@ -99,7 +106,7 @@ export class ProfessionalsController {
   @ApiOperation({ summary: 'Update a professional service' })
   update(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() updateDto: UpdateProfessionalDto,
   ) {
     const isAdmin = req.user.role === UserRole.ADMIN;
@@ -116,7 +123,7 @@ export class ProfessionalsController {
   @Roles(UserRole.TRAINER, UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete a professional service' })
-  remove(@Param('id') id: string, @Request() req: any) {
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const isAdmin = req.user.role === UserRole.ADMIN;
     return this.professionalsService.remove(id, req.user.id, isAdmin);
   }
@@ -127,7 +134,7 @@ export class ProfessionalsController {
   @ApiOperation({ summary: 'Book a professional service' })
   bookService(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: RequestBookingDto,
   ) {
     return this.professionalsService.bookService(req.user.id, id, dto.notes);

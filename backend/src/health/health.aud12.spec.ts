@@ -9,6 +9,7 @@ import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 // Escenario (AUD-12): 'athlete' tiene membresía activa en un gimnasio donde entrena 'coach'.
 // 'intruder' es otro atleta y 'other-coach' un entrenador de otro gimnasio.
@@ -19,7 +20,9 @@ const USERS = {
   'other-coach': 'TRAINER',
   admin: 'ADMIN',
 };
-const req = (id: keyof typeof USERS) => ({ user: { id, role: USERS[id] } });
+// Usuario falso con solo id y rol: es lo que usan los controladores de salud.
+const req = (id: keyof typeof USERS) =>
+  ({ user: { id, role: USERS[id] } }) as unknown as AuthenticatedRequest;
 
 const build = () => {
   const prisma = {

@@ -22,6 +22,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -75,7 +76,7 @@ export class UsersController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateUserAdminDto,
-    @CurrentUser() current: any,
+    @CurrentUser() current: AuthenticatedUser,
   ) {
     return this.usersService.update(id, dto, current.id);
   }

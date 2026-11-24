@@ -27,6 +27,7 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('memberships')
 @Controller('memberships')
@@ -42,7 +43,7 @@ export class MembershipsController {
   })
   createPlan(
     @Param('gymId') gymId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateMembershipPlanDto,
   ) {
     return this.membershipsService.createPlan(gymId, user.id, dto);
@@ -52,7 +53,10 @@ export class MembershipsController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Listar planes de membresía disponibles' })
   @ApiQuery({ name: 'gymId', required: false })
-  findAllPlans(@Query('gymId') gymId?: string, @CurrentUser() user?: any) {
+  findAllPlans(
+    @Query('gymId') gymId?: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
     return this.membershipsService.findAllPlans(gymId, user);
   }
 
@@ -61,7 +65,7 @@ export class MembershipsController {
   @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Suscribirse a un plan de membresía' })
-  subscribe(@CurrentUser() user: any, @Body() dto: SubscribeDto) {
+  subscribe(@CurrentUser() user: AuthenticatedUser, @Body() dto: SubscribeDto) {
     return this.membershipsService.subscribe(user.id, dto);
   }
 
@@ -69,7 +73,7 @@ export class MembershipsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener mis membresías actuales' })
-  getMyMemberships(@CurrentUser() user: any) {
+  getMyMemberships(@CurrentUser() user: AuthenticatedUser) {
     return this.membershipsService.getUserMemberships(user.id);
   }
 
@@ -92,7 +96,7 @@ export class MembershipsController {
   @ApiOperation({ summary: 'Actualizar un plan de membresía' })
   updatePlan(
     @Param('planId') planId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateMembershipPlanDto,
   ) {
     const isAdmin = user.role === UserRole.ADMIN;
@@ -104,7 +108,10 @@ export class MembershipsController {
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar un plan de membresía' })
-  deletePlan(@Param('planId') planId: string, @CurrentUser() user: any) {
+  deletePlan(
+    @Param('planId') planId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const isAdmin = user.role === UserRole.ADMIN;
     return this.membershipsService.deletePlan(planId, user.id, isAdmin);
   }
