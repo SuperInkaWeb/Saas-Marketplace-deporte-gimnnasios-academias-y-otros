@@ -22,6 +22,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { UserRole } from '@prisma/client';
 import { Throttle } from '@nestjs/throttler';
 import { LIMITS } from '../common/security/throttle';
+import type { AuthenticatedUser } from './types/authenticated-request';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -93,7 +94,7 @@ export class AuthController {
   @ApiBearerAuth()
   @Get('stats')
   @UseGuards(AnyAuthGuard)
-  getDashboardStats(@CurrentUser() user: any) {
+  getDashboardStats(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getDashboardStats(user.id, user.role);
   }
 

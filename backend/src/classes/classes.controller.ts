@@ -24,6 +24,7 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('classes')
 @Controller('classes')
@@ -37,7 +38,7 @@ export class ClassesController {
   @ApiOperation({ summary: 'Crear una nueva clase en un gimnasio' })
   create(
     @Param('gymId') gymId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() createClassDto: CreateClassDto,
   ) {
     return this.classesService.create(gymId, user, createClassDto);
@@ -56,13 +57,14 @@ export class ClassesController {
     @Query('gymId') gymId?: string,
     @Query('myReservations') myReservations?: string,
     @Query('includeInactive') includeInactive?: string,
-    @CurrentUser() user?: any,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
     const userId = myReservations === 'true' && user ? user.id : undefined;
     const ownerId = user?.role === 'GYM_OWNER' ? user.id : undefined;
     const trainerUserId = user?.role === 'TRAINER' ? user.id : undefined;
     // Solo el personal (ADMIN, dueño, entrenador) puede ver clases desactivadas
-    const isStaff = ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user?.role);
+    const isStaff =
+      !!user && ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user.role);
     // El staff ya recibe solo sus clases (ownerId / trainerUserId), así que puede ver a los asistentes
     const canSeeAttendees = isStaff && !userId;
     return this.classesService.findAll(
@@ -88,7 +90,7 @@ export class ClassesController {
   @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reservar un cupo en una clase' })
-  book(@Param('id') id: string, @CurrentUser() user: any) {
+  book(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.classesService.book(user.id, id);
   }
 
@@ -97,7 +99,10 @@ export class ClassesController {
   @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancelar una reserva' })
-  cancelBooking(@Param('id') id: string, @CurrentUser() user: any) {
+  cancelBooking(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.classesService.cancelBooking(user.id, id);
   }
 
@@ -106,7 +111,10 @@ export class ClassesController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Marcar asistencia mediante escaneo de ticket QR' })
-  markAttendance(@Param('id') reservationId: string, @CurrentUser() user: any) {
+  markAttendance(
+    @Param('id') reservationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.classesService.markAttendance(reservationId, user);
   }
 
@@ -117,7 +125,7 @@ export class ClassesController {
   @ApiOperation({ summary: 'Desmarcar asistencia' })
   unmarkAttendance(
     @Param('id') reservationId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.classesService.unmarkAttendance(reservationId, user);
   }
@@ -129,7 +137,7 @@ export class ClassesController {
   @ApiOperation({ summary: 'Eliminar una reserva de la lista' })
   removeReservation(
     @Param('id') reservationId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.classesService.removeReservation(reservationId, user);
   }
@@ -141,7 +149,7 @@ export class ClassesController {
   @ApiOperation({ summary: 'Actualizar una clase' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() updateClassDto: UpdateClassDto,
   ) {
     return this.classesService.update(id, user, updateClassDto);
@@ -152,7 +160,7 @@ export class ClassesController {
   @Roles(UserRole.GYM_OWNER, UserRole.TRAINER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una clase' })
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.classesService.remove(id, user);
   }
 }

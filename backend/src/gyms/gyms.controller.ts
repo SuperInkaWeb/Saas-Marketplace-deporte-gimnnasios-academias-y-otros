@@ -24,6 +24,7 @@ import {
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
 
 @ApiTags('gyms')
 @Controller('gyms')
@@ -36,7 +37,10 @@ export class GymsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear un nuevo gimnasio (Dueño/Admin)' })
   @ApiResponse({ status: 201, description: 'Gimnasio creado exitosamente' })
-  create(@CurrentUser() user: any, @Body() createGymDto: CreateGymDto) {
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createGymDto: CreateGymDto,
+  ) {
     return this.gymsService.create(user.id, createGymDto);
   }
 
@@ -81,14 +85,17 @@ export class GymsController {
   @Roles(UserRole.GYM_OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar mis gimnasios sin importar su estado' })
-  findMine(@CurrentUser() user: any) {
+  findMine(@CurrentUser() user: AuthenticatedUser) {
     return this.gymsService.findMine(user.id);
   }
 
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Obtener detalles de un gimnasio' })
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ) {
     return this.gymsService.findOneForViewer(id, user);
   }
 
@@ -99,7 +106,7 @@ export class GymsController {
   @ApiOperation({
     summary: 'Listar miembros con membresía activa del gimnasio',
   })
-  findMembers(@Param('id') id: string, @CurrentUser() user: any) {
+  findMembers(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const isAdmin = user.role === UserRole.ADMIN;
     return this.gymsService.findMembers(id, user.id, isAdmin);
   }
@@ -111,7 +118,7 @@ export class GymsController {
   @ApiOperation({ summary: 'Actualizar un gimnasio (Dueño/Admin)' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() updateGymDto: UpdateGymDto,
   ) {
     const isAdmin = user.role === UserRole.ADMIN;

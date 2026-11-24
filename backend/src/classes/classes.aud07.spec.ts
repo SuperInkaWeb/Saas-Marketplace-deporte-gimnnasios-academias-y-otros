@@ -5,6 +5,11 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { HealthService } from '../health/health.service';
 import { GymAccessService } from '../common/gym-access/gym-access.service';
 import { AuditService } from '../common/audit/audit.service';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
+
+// Usuario falso con solo los campos que usa la prueba.
+const asUser = (u: { id: string; role: string; name?: string }) =>
+  u as unknown as AuthenticatedUser;
 
 // Dos atletas con reserva en la misma clase (AUD-07).
 const athlete = (id: string) => ({
@@ -93,7 +98,7 @@ describe('AUD-07: datos de atletas en clases', () => {
       'gym-1',
       undefined,
       undefined,
-      { id: 'a1', role: 'USER' },
+      asUser({ id: 'a1', role: 'USER' }),
     );
 
     expect(result[0].reservations).toEqual([
@@ -110,7 +115,7 @@ describe('AUD-07: datos de atletas en clases', () => {
       undefined,
       'true',
       undefined,
-      { id: 'a2', role: 'USER' },
+      asUser({ id: 'a2', role: 'USER' }),
     );
 
     expect(result[0].reservations).toEqual([
@@ -126,7 +131,7 @@ describe('AUD-07: datos de atletas en clases', () => {
         undefined,
         undefined,
         undefined,
-        { id: 'staff', role },
+        asUser({ id: 'staff', role }),
       );
 
       const attendees = users(result);

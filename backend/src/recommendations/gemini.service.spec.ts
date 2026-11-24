@@ -20,6 +20,11 @@ import {
 } from './gemini.service';
 import { RecommendationsController } from './recommendations.controller';
 import { RecommendationsService } from './recommendations.service';
+import type { AuthenticatedUser } from '../auth/types/authenticated-request';
+
+// Usuario falso con solo los campos que usa la prueba.
+const asUser = (u: { id: string; role: string; name?: string }) =>
+  u as unknown as AuthenticatedUser;
 
 const config = (values: Record<string, string | undefined>) =>
   ({ get: (key: string) => values[key] }) as unknown as ConfigService;
@@ -183,7 +188,7 @@ describe('Asistente de IA (GeminiService)', () => {
       {} as RecommendationsService,
       service,
     );
-    const user = { id: 'u1', name: 'Ana', role: 'USER' };
+    const user = asUser({ id: 'u1', name: 'Ana', role: 'USER' });
 
     generateContent.mockResolvedValueOnce(reply('Hola'));
     await expect(controller.chat(user, { message: 'Hola' })).resolves.toEqual({

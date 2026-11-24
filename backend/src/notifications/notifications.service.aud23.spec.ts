@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { PrismaService } from '../prisma/prisma.service';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 // Notificación de "victim"; "attacker" conoce o adivina su ID.
 const VICTIM_NOTIFICATION = {
@@ -65,7 +66,7 @@ describe('Notificaciones: marcar como leída solo la propia (AUD-23)', () => {
 
     await controller.markAsRead(VICTIM_NOTIFICATION.id, {
       user: { id: 'attacker' },
-    });
+    } as unknown as AuthenticatedRequest);
 
     expect(markAsRead).toHaveBeenCalledWith(VICTIM_NOTIFICATION.id, 'attacker');
   });

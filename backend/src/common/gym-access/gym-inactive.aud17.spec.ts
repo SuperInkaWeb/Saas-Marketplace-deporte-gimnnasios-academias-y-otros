@@ -5,6 +5,11 @@ import { MarketplaceService } from '../../marketplace/marketplace.service';
 import { MembershipsService } from '../../memberships/memberships.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { GYM_INACTIVE_MESSAGE, visibleGymWhere } from './gym-status';
+import type { AuthenticatedUser } from '../../auth/types/authenticated-request';
+
+// Usuario falso con solo los campos que usa la prueba.
+const asUser = (u: { id: string; role: string; name?: string }) =>
+  u as unknown as AuthenticatedUser;
 
 // AUD-17: desactivar un gimnasio no bloqueaba reservas, ventas ni membresías, y sus
 // clases, planes y productos seguían apareciendo en los listados.
@@ -109,17 +114,21 @@ describe('AUD-17 · clases', () => {
   it('el controlador filtra para atletas y no para el staff', () => {
     const findAll = jest.fn();
     const controller = new ClassesController({ findAll } as any);
-    void controller.findAll('g1', undefined, undefined, {
-      id: 'u1',
-      role: 'USER',
-    });
+    void controller.findAll(
+      'g1',
+      undefined,
+      undefined,
+      asUser({ id: 'u1', role: 'USER' }),
+    );
     expect(findAll.mock.calls[0][6]).toEqual({
       OR: [{ status: 'ACTIVE' }, { ownerId: 'u1' }],
     });
-    void controller.findAll('g1', undefined, undefined, {
-      id: 'o1',
-      role: 'GYM_OWNER',
-    });
+    void controller.findAll(
+      'g1',
+      undefined,
+      undefined,
+      asUser({ id: 'o1', role: 'GYM_OWNER' }),
+    );
     expect(findAll.mock.calls[1][6]).toBeUndefined();
   });
 });
