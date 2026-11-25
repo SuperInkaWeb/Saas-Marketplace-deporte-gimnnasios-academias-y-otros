@@ -40,7 +40,7 @@ export class MarketingService {
 
     // Obtener los destinatarios reales
     let recipients: string[] = [];
-    let usersToNotify: any[] = [];
+    let usersToNotify: { id: string; email: string }[] = [];
 
     // Miembros del gimnasio: membresía activa o reserva confirmada/asistida.
     const isGymMember = {

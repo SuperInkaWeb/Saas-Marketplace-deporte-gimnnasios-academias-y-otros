@@ -13,6 +13,7 @@ import {
   AuthUser,
 } from '../common/gym-access/gym-access.service';
 import { GymStatus, GymLocationSource, UserRole } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { withPublicName } from '../common/utils/normalize-name';
 
 const OWNER_LABEL = 'Dueño de gimnasio';
@@ -61,7 +62,8 @@ export class GymsService {
           'User-Agent': 'HercixPlatform/1.0 (contact@hercix.com)',
         },
       });
-      const data = await response.json();
+      // Nominatim devuelve lat/lon como texto.
+      const data = (await response.json()) as { lat: string; lon: string }[];
       if (Array.isArray(data) && data.length > 0) {
         return {
           latitude: parseFloat(data[0].lat),
@@ -207,7 +209,7 @@ export class GymsService {
 
   async findAll(ownerId?: string, trainerUserId?: string) {
     try {
-      const where: any = { status: GymStatus.ACTIVE };
+      const where: Prisma.GymWhereInput = { status: GymStatus.ACTIVE };
       if (ownerId) where.ownerId = ownerId;
       if (trainerUserId) {
         where.gymTrainers = {
@@ -247,8 +249,11 @@ export class GymsService {
         ...gym,
         owner: withPublicName(gym.owner, OWNER_LABEL)!,
       }));
-    } catch (err: any) {
-      this.logger.error(`Error in findAll gyms: ${err.message}`, err.stack);
+    } catch (err) {
+      this.logger.error(
+        `Error in findAll gyms: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
       throw err;
     }
   }
@@ -377,8 +382,10 @@ export class GymsService {
     }
 
     // 3a: reemplaza la línea "const updatedData: any = { ...updateGymDto };"
-    const { status: _ignored, ...safeDto } = updateGymDto as any;
-    const updatedData: any = { ...safeDto };
+    const { status: _ignored, ...safeDto } = updateGymDto as UpdateGymDto & {
+      status?: unknown;
+    };
+    const updatedData: Prisma.GymUpdateInput = { ...safeDto };
 
     if (
       updateGymDto.latitude !== undefined &&

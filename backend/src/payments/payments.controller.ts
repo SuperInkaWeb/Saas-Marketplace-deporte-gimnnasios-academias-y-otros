@@ -23,6 +23,14 @@ import {
 } from './dto/payments.dto';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
+// Campos que leemos de la notificación de Mercado Pago (body y query).
+// Es un tipo y no una clase a propósito: así el ValidationPipe no la valida (ver webhook()).
+interface MpWebhookBody {
+  type?: string;
+  data?: { id?: string | number };
+}
+type MpWebhookQuery = Record<string, string | undefined>;
+
 @Controller('payments')
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
@@ -107,7 +115,10 @@ export class PaymentsController {
   @UseGuards(MercadoPagoSignatureGuard)
   @Post('mercadopago/webhook')
   @HttpCode(200)
-  async webhook(@Body() body: any, @Query() query: any) {
+  async webhook(
+    @Body() body: MpWebhookBody | undefined,
+    @Query() query: MpWebhookQuery | undefined,
+  ) {
     const type = body?.type ?? query?.type ?? query?.topic;
     const id = String(body?.data?.id ?? query?.['data.id'] ?? query?.id ?? '');
     if (type === 'payment' && /^\d{1,20}$/.test(id)) {

@@ -339,7 +339,7 @@ export class EmailService {
       this.logger.log(`Email enviado | ID: ${data?.id}`);
       return true;
     } catch (err) {
-      this.logger.error(`Excepción al enviar email: ${err.message}`);
+      this.logger.error(`Excepción al enviar email: ${(err as Error).message}`);
       return false;
     }
   }

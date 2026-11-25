@@ -16,7 +16,9 @@ export class CreateRoleRequestDto {
   requestedRole!: UserRole;
 
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MaxLength(500)
   reason?: string;
@@ -25,7 +27,9 @@ export class CreateRoleRequestDto {
 // Nota opcional del administrador al aprobar o rechazar una solicitud.
 export class ReviewRoleRequestDto {
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MaxLength(1000)
   adminNote?: string;

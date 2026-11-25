@@ -394,7 +394,9 @@ export class PaymentsService {
         );
       }
 
-      const planId = mpPayment.metadata?.plan_id;
+      // metadata llega tal como la enviamos al crear la preferencia (plan_id, user_id).
+      const planId = (mpPayment.metadata as { plan_id?: string } | undefined)
+        ?.plan_id;
       if (!planId) return { status: 'MISMATCH' };
       try {
         await this.memberships.activateFromPayment(
