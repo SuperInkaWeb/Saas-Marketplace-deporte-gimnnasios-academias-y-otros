@@ -13,7 +13,7 @@ import { UserRole } from '@prisma/client';
 export const INVITABLE_ROLES = [UserRole.GYM_OWNER, UserRole.TRAINER] as const;
 
 export class InviteUserDto {
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
   @IsEmail({}, { message: 'El correo no es válido' })

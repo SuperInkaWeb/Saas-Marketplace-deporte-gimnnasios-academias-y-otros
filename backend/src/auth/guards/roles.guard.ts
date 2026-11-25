@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import type { AuthenticatedRequest } from '../types/authenticated-request';
 
 /**
  * RolesGuard — checks that the authenticated user has one of the required roles.
@@ -31,7 +32,9 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const { user } = context
+      .switchToHttp()
+      .getRequest<Partial<AuthenticatedRequest>>();
 
     const hasRole = requiredRoles.some((role) => user?.role === role);
     if (!hasRole) {

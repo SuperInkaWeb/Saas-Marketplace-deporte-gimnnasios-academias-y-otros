@@ -5,6 +5,14 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
 import * as https from 'https';
+import type { Request } from 'express';
+
+// Campos que usamos de la respuesta de Auth0 /userinfo.
+interface Auth0UserInfo {
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+}
 
 export interface Auth0JwtPayload {
   sub: string; // Auth0 user ID e.g. "auth0|abc123"
@@ -59,7 +67,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
     });
   }
 
-  private fetchUserInfo(domain: string, token: string): Promise<any> {
+  private fetchUserInfo(domain: string, token: string): Promise<Auth0UserInfo> {
     return new Promise((resolve, reject) => {
       const options = {
         hostname: domain,
@@ -77,7 +85,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
         res.on('end', () => {
           if (res.statusCode === 200) {
             try {
-              resolve(JSON.parse(body));
+              resolve(JSON.parse(body) as Auth0UserInfo);
             } catch {
               reject(new Error('Invalid JSON from userinfo'));
             }
@@ -97,7 +105,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0') {
    * Finds or creates the user in our Prisma DB.
    * Return value is attached to request.user
    */
-  async validate(req: any, payload: Auth0JwtPayload) {
+  async validate(req: Pick<Request, 'headers'>, payload: Auth0JwtPayload) {
     const { sub, picture } = payload;
     let email = payload.email;
     let emailVerified = payload.email_verified;
