@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
+import type { Request } from 'express';
 
 /**
  * Valida la cabecera x-signature de los webhooks de Mercado Pago.
@@ -34,7 +35,7 @@ export class MercadoPagoSignatureGuard implements CanActivate {
       return true;
     }
 
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<Request>();
     const signature = req.headers['x-signature'];
     const requestId = req.headers['x-request-id'];
     if (typeof signature !== 'string' || typeof requestId !== 'string') {
@@ -49,7 +50,9 @@ export class MercadoPagoSignatureGuard implements CanActivate {
     const { ts, v1 } = parts;
     if (!ts || !v1) throw new UnauthorizedException();
 
-    const dataId = String(req.query?.['data.id'] ?? '').toLowerCase();
+    const dataId = String(
+      (req.query?.['data.id'] as string | undefined) ?? '',
+    ).toLowerCase();
     const manifest =
       (dataId ? `id:${dataId};` : '') + `request-id:${requestId};ts:${ts};`;
 

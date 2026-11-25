@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
 import {
@@ -95,7 +96,7 @@ export class EventsService {
       'No tienes permiso para actualizar este evento',
     );
 
-    const updateData: any = { ...updateDto };
+    const updateData: Prisma.EventUpdateInput = { ...updateDto };
     if (updateDto.date) updateData.date = new Date(updateDto.date);
 
     return this.prisma.event.update({

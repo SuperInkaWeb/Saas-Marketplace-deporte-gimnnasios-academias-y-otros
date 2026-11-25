@@ -63,7 +63,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('Usuario no encontrado.');
 
     // Datos específicos según el rol
-    let roleData: any = {};
+    let roleData: Record<string, unknown> = {};
 
     if (user.role === 'GYM_OWNER') {
       const gyms = await this.prisma.gym.findMany({

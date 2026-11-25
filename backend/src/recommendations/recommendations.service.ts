@@ -11,6 +11,18 @@ export interface Recommendation {
   data: any;
 }
 
+// Perfil del usuario que se calcula a partir de sus reservas y membresías.
+export interface RecommendationUserProfile {
+  totalReservations: number;
+  avgPrice: number;
+  preferredHour: number;
+  preferredCity: string | undefined;
+  preferredGymId: string | undefined;
+  topKeywords: string[];
+  isNewUser: boolean;
+  hasActiveMembership: boolean;
+}
+
 @Injectable()
 export class RecommendationsService {
   constructor(private prisma: PrismaService) {}
@@ -18,7 +30,7 @@ export class RecommendationsService {
   async getPersonalizedRecommendations(userId: string): Promise<{
     recommendations: Recommendation[];
     insights: string[];
-    userProfile: any;
+    userProfile: RecommendationUserProfile;
   }> {
     // Gather user data in parallel
     const [reservations, userMemberships, allClasses, allGyms, allEvents] =

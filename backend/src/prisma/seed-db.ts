@@ -38,7 +38,7 @@ async function main() {
       console.error(
         `❌ Error executing statement: ${statement.substring(0, 50)}...`,
       );
-      console.error(error.message);
+      console.error((error as Error).message);
     }
   }
 

@@ -41,9 +41,9 @@ export class AuditService {
           metadata: entry.metadata,
         },
       });
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(
-        `No se pudo registrar auditoría (${entry.action} en gym ${entry.gymId}): ${err.message}`,
+        `No se pudo registrar auditoría (${entry.action} en gym ${entry.gymId}): ${(err as Error).message}`,
       );
     }
   }

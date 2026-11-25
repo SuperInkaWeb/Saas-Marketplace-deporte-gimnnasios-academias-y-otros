@@ -67,7 +67,7 @@ export class ServiceCheckoutDto {
 
 // paymentId = id del pago de Mercado Pago (payment_id o collection_id en la URL de retorno)
 export class ConfirmPaymentDto {
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: string | number | null | undefined }) =>
     value === undefined || value === null ? value : String(value),
   )
   @IsNumberString({ no_symbols: true })
