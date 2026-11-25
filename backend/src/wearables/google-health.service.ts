@@ -6,6 +6,24 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+// Respuesta de https://oauth2.googleapis.com/token (solo los campos que usamos).
+interface GoogleTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  scope?: string;
+}
+
+// Respuesta de Google Fit dataset:aggregate (solo los campos que usamos).
+interface GoogleFitAggregateResponse {
+  bucket?: {
+    dataset: {
+      dataSourceId: string;
+      point?: { value: { intVal?: number; fpVal?: number }[] }[];
+    }[];
+  }[];
+}
+
 @Injectable()
 export class GoogleHealthService {
   private readonly logger = new Logger(GoogleHealthService.name);
@@ -43,7 +61,11 @@ export class GoogleHealthService {
     userId: string,
     code: string,
     redirectUri: string,
-  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn: number;
+  }> {
     const clientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_HEALTH_CLIENT_SECRET;
 
@@ -70,14 +92,14 @@ export class GoogleHealthService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData: unknown = await response.json().catch(() => ({}));
       this.logger.error('Google token exchange failed', errorData);
       throw new BadRequestException(
         `Error de autenticación con Google: ${JSON.stringify(errorData)}`,
       );
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as GoogleTokenResponse;
     const expiresAt = new Date(Date.now() + data.expires_in * 1000);
 
     await this.prisma.wearableConnection.upsert({
@@ -137,7 +159,7 @@ export class GoogleHealthService {
       );
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as GoogleTokenResponse;
     const expiresAt = new Date(Date.now() + data.expires_in * 1000);
 
     await this.prisma.wearableConnection.update({
@@ -213,7 +235,7 @@ export class GoogleHealthService {
       );
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as GoogleFitAggregateResponse;
 
     let steps = 0;
     let calories = 0;
