@@ -6,11 +6,34 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateHealthMetricDto } from './dto/create-health-metric.dto';
 import { UpdateGoalDto, UpsertMetDto } from './dto/health.dto';
-import { HealthMetricType } from '@prisma/client';
+import { HealthMetricType, Prisma } from '@prisma/client';
 import {
   AuthUser,
   isGlobalAdmin,
 } from '../common/gym-access/gym-access.service';
+
+// Datos del atleta que necesita la vista del coach (getCoachAthletes).
+const coachAthleteSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  weight: true,
+  avatarUrl: true,
+  healthMetrics: {
+    orderBy: { date: 'desc' },
+    take: 60,
+  },
+  coachRecommendations: {
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    include: { coach: { select: { name: true } } },
+  },
+} satisfies Prisma.UserSelect;
+
+type CoachAthlete = Prisma.UserGetPayload<{
+  select: typeof coachAthleteSelect;
+}>;
 
 @Injectable()
 export class HealthService {
@@ -210,7 +233,7 @@ export class HealthService {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    let athletes: any[];
+    let athletes: CoachAthlete[];
 
     if (trainerProfile && trainerProfile.gymTrainers.length > 0) {
       // 2a. Coach asignado a gym(s): buscar atletas con membresía activa en esos gyms
@@ -222,25 +245,7 @@ export class HealthService {
           plan: { gymId: { in: gymIds } },
         },
         include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              weight: true,
-              avatarUrl: true,
-              healthMetrics: {
-                orderBy: { date: 'desc' },
-                take: 60,
-              },
-              coachRecommendations: {
-                orderBy: { createdAt: 'desc' },
-                take: 1,
-                include: { coach: { select: { name: true } } },
-              },
-            },
-          },
+          user: { select: coachAthleteSelect },
         },
       });
 
@@ -263,45 +268,39 @@ export class HealthService {
     return athletes.map((ath) => {
       const metrics = ath.healthMetrics || [];
 
-      const todayMetrics = metrics.filter((m: any) => {
+      const todayMetrics = metrics.filter((m) => {
         const d =
           m.date instanceof Date ? m.date.toISOString() : String(m.date);
         return d.startsWith(todayStr);
       });
 
       const todaySteps =
-        todayMetrics.find((m: any) => m.type === HealthMetricType.STEPS)
-          ?.value || 0;
+        todayMetrics.find((m) => m.type === HealthMetricType.STEPS)?.value || 0;
       const todayCalories =
-        todayMetrics.find(
-          (m: any) => m.type === HealthMetricType.CALORIES_BURNED,
-        )?.value || 0;
-      const todayWater =
-        todayMetrics.find((m: any) => m.type === HealthMetricType.WATER)
+        todayMetrics.find((m) => m.type === HealthMetricType.CALORIES_BURNED)
           ?.value || 0;
+      const todayWater =
+        todayMetrics.find((m) => m.type === HealthMetricType.WATER)?.value || 0;
       const trainedToday = todayMetrics.length > 0;
 
       const allCalories = metrics.filter(
-        (m: any) => m.type === HealthMetricType.CALORIES_BURNED,
+        (m) => m.type === HealthMetricType.CALORIES_BURNED,
       );
-      const allSteps = metrics.filter(
-        (m: any) => m.type === HealthMetricType.STEPS,
-      );
+      const allSteps = metrics.filter((m) => m.type === HealthMetricType.STEPS);
 
       const totalCaloriesBurned = allCalories.reduce(
-        (sum: number, c: any) => sum + c.value,
+        (sum, c) => sum + c.value,
         0,
       );
       const averageSteps =
         allSteps.length > 0
           ? Math.round(
-              allSteps.reduce((sum: number, s: any) => sum + s.value, 0) /
-                allSteps.length,
+              allSteps.reduce((sum, s) => sum + s.value, 0) / allSteps.length,
             )
           : 0;
 
       const lastWeight =
-        metrics.find((m: any) => m.type === HealthMetricType.WEIGHT)?.value ||
+        metrics.find((m) => m.type === HealthMetricType.WEIGHT)?.value ||
         ath.weight ||
         70;
 

@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SyncWearableDto } from './dto/wearables.dto';
 
 @Injectable()
 export class WearablesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async syncData(userId: string, data: any) {
+  async syncData(userId: string, data: SyncWearableDto) {
     // Using upsert to handle daily tracking per device
     const today = new Date();
     today.setHours(0, 0, 0, 0);
