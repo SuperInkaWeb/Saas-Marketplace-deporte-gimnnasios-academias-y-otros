@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import type { AuthenticatedUser } from '../types/authenticated-request';
 
 /**
  * AnyAuthGuard — acepta tokens tanto de JWT propio como de Auth0.
@@ -8,13 +9,16 @@ import { AuthGuard } from '@nestjs/passport';
  */
 @Injectable()
 export class AnyAuthGuard extends AuthGuard(['auth0', 'jwt']) {
-  handleRequest(err: any, user: any) {
+  handleRequest<TUser = AuthenticatedUser>(
+    err: Error | null,
+    user: AuthenticatedUser | false,
+  ): TUser {
     if (err || !user) {
       throw err || new UnauthorizedException('Token inválido o expirado');
     }
     if (user.isActive === false) {
       throw new UnauthorizedException('Cuenta desactivada');
     }
-    return user;
+    return user as TUser;
   }
 }

@@ -8,7 +8,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -432,7 +432,13 @@ export class AuthService {
         });
       });
 
-      const recentActivities: any[] = [];
+      const recentActivities: {
+        id: string;
+        type: string;
+        title: string;
+        description: string;
+        date: Date;
+      }[] = [];
       gyms.forEach((gym) => {
         gym.classes.forEach((cls) => {
           cls.reservations.forEach((res) => {
@@ -791,14 +797,15 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.config.get<string>('JWT_SECRET')!,
-        expiresIn: (this.config.get<string>('JWT_EXPIRES_IN') || '15m') as any,
+        expiresIn: (this.config.get<string>('JWT_EXPIRES_IN') ||
+          '15m') as JwtSignOptions['expiresIn'],
       }),
       this.jwtService.signAsync(
         { sub: userId, jti, type: 'refresh' },
         {
           secret: this.refreshSecret(),
           expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ||
-            '7d') as any,
+            '7d') as JwtSignOptions['expiresIn'],
         },
       ),
     ]);

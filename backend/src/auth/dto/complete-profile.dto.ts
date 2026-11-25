@@ -10,7 +10,7 @@ import { Transform } from 'class-transformer';
 import { normalizeName } from '../../common/utils/normalize-name';
 
 export class CompleteProfileDto {
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? normalizeName(value) : value,
   )
   @IsString()
