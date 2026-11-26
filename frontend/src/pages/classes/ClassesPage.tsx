@@ -18,19 +18,47 @@ import CreateClassModal from './CreateClassModal';
 import { QrTicketModal } from '../../components/classes/QrTicketModal';
 import AttendanceListModal from '../../components/classes/AttendanceListModal';
 import type { ApiError } from '../../types/api';
+import type { ClassItem, Reservation } from '../../types/class';
+import type { User } from '../../context/auth-context';
 
-const ClassCard: React.FC<{ 
-  classItem: any; 
+// Cita del atleta con un profesional (GET /professionals/my-bookings)
+interface ProfessionalBooking {
+  id: string;
+  status: string; // PENDING | CONFIRMED | COMPLETED | CANCELLED
+  bookedAt: string;
+  canCancel: boolean;
+  service: {
+    title: string;
+    description?: string | null;
+    serviceType: string;
+    durationMin: number;
+    price: number | string;
+    provider?: { name: string };
+  };
+}
+
+// Datos que se pasan al modal del ticket QR
+interface TicketModalConfig {
+  reservationId: string;
+  classTitle: string;
+  gymName: string;
+  date: string;
+  time: string;
+  userName?: string;
+}
+
+const ClassCard: React.FC<{
+  classItem: ClassItem;
   onBook: (id: string) => void;
-  onViewTicket: (res: any, classItem: any) => void;
-  onAttendanceModal: (classItem: any) => void;
-  onEdit: (classItem: any) => void;
+  onViewTicket: (res: Reservation, classItem: ClassItem) => void;
+  onAttendanceModal: (classItem: ClassItem) => void;
+  onEdit: (classItem: ClassItem) => void;
   onDelete: (id: string) => void;
-  user: any;
+  user: User | null;
 }> = ({ classItem, onBook, onViewTicket, onAttendanceModal, onEdit, onDelete, user }) => {
   const isOnline = classItem.classType === 'ONLINE';
-  
-  const userReservation = classItem.reservations?.find((r: any) => r.userId === user?.id);
+
+  const userReservation = classItem.reservations?.find((r) => r.userId === user?.id);
   const isTrainerAssigned = user?.role === 'TRAINER' && classItem.trainer?.user?.name === user?.name;
   const isOwnerClass = user?.role === 'ADMIN' || (user?.role === 'GYM_OWNER' && classItem.gym?.ownerId === user?.id);
   const canManageAttendance = isOwnerClass || isTrainerAssigned;
@@ -159,7 +187,7 @@ const ClassCard: React.FC<{
   );
 };
 
-const ProfessionalBookingCard: React.FC<{ booking: any; onCancel: (id: string) => void }> = ({ booking, onCancel }) => {
+const ProfessionalBookingCard: React.FC<{ booking: ProfessionalBooking; onCancel: (id: string) => void }> = ({ booking, onCancel }) => {
   const service = booking.service;
   const provider = service?.provider;
   const serviceTypeLabels: Record<string, string> = {
@@ -227,19 +255,19 @@ const ProfessionalBookingCard: React.FC<{ booking: any; onCancel: (id: string) =
 };
 
 const ClassesPage: React.FC = () => {
-  const [classes, setClasses] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [bookings, setBookings] = useState<ProfessionalBooking[]>([]);
   const [activeTab, setActiveTab] = useState<'classes' | 'professionals'>('classes');
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingClass, setEditingClass] = useState<any>(null);
+  const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const { user } = useAuth();
 
   // Modal states
-  const [ticketModalConfig, setTicketModalConfig] = useState<any>(null);
-  const [attendanceClass, setAttendanceClass] = useState<any>(null);
+  const [ticketModalConfig, setTicketModalConfig] = useState<TicketModalConfig | null>(null);
+  const [attendanceClass, setAttendanceClass] = useState<ClassItem | null>(null);
 
   const fetchClasses = async () => {
     try {
@@ -306,7 +334,7 @@ const ClassesPage: React.FC = () => {
     }
   };
 
-  const handleOpenTicket = (reservation: any, classItem: any) => {
+  const handleOpenTicket = (reservation: Reservation, classItem: ClassItem) => {
     if (reservation.status === 'ATTENDED') return;
     setTicketModalConfig({
       reservationId: reservation.id,
@@ -318,7 +346,7 @@ const ClassesPage: React.FC = () => {
     });
   };
 
-  const handleOpenScanner = (classItem: any) => {
+  const handleOpenScanner = (classItem: ClassItem) => {
     setAttendanceClass(classItem);
   };
 
@@ -353,7 +381,7 @@ const ClassesPage: React.FC = () => {
   const ownerGymClasses = classes.filter(c => c.gym?.ownerId === user?.id);
   const uniqueAthletes = new Set();
   ownerGymClasses.forEach(c => {
-    c.reservations?.forEach((r: any) => {
+    c.reservations?.forEach((r) => {
       if (r.userId) uniqueAthletes.add(r.userId);
     });
   });

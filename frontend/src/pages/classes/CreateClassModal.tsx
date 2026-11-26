@@ -5,11 +5,18 @@ import { X, Loader2, Calendar, MapPin, Plus, Video, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/auth-context';
 import type { ApiError } from '../../types/api';
+import type { ClassItem } from '../../types/class';
+import type { Gym } from '../../types/gym';
+
+// Entrenador vinculado a un gimnasio (GET /trainers/gym/:gymId)
+interface GymTrainerOption {
+  trainer: { id: string; user: { name: string; email?: string | null } };
+}
 
 interface CreateClassModalProps {
   onClose: () => void;
   onCreated: () => void;
-  initialData?: any;
+  initialData?: ClassItem | null;
 }
 
 const toLocalInputValue = (iso: string) => {
@@ -21,8 +28,8 @@ const toLocalInputValue = (iso: string) => {
 
 const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated, initialData }) => {
   const { user } = useAuth();
-  const [gyms, setGyms] = useState<any[]>([]);
-  const [trainers, setTrainers] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [trainers, setTrainers] = useState<GymTrainerOption[]>([]);
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     description: initialData?.description || '',

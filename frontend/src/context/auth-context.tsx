@@ -13,7 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Superadmin',
 };
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;

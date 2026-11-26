@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import type { ApiError } from '../../types/api';
+import type { ClassItem, Reservation } from '../../types/class';
 
 // Lo mínimo que la planilla necesita de cada clase y reserva
 interface PlanillaReservation {
@@ -36,9 +37,9 @@ interface PlanillaClass {
 interface AttendanceListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  classItem: any;
+  classItem: ClassItem | null; // null mientras el modal está cerrado
   onSuccess: () => void;
-  allClasses?: any[];
+  allClasses?: ClassItem[];
 }
 
 const AttendanceListModal: React.FC<AttendanceListModalProps> = ({ 
@@ -49,7 +50,7 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
   allClasses = []
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [localReservations, setLocalReservations] = useState<any[]>([]);
+  const [localReservations, setLocalReservations] = useState<Reservation[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'list' | 'planilla' | 'scan'>('planilla'); // Default to Planilla to wow the manager!
   const [selectedWeekDate, setSelectedWeekDate] = useState<Date>(new Date());
@@ -238,7 +239,7 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
   weekEnd.setHours(23, 59, 59, 999);
 
   // Fetch actual classes scheduled in this same week for this academy
-  const weekClasses = allClasses.filter((c: any) => {
+  const weekClasses = allClasses.filter((c) => {
     const schedDate = new Date(c.scheduledAt);
     return (
       c.gymId === classItem?.gymId &&
@@ -248,7 +249,8 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
   });
 
   // If no other classes were fetched or found, fallback to the current classItem so it remains functional
-  const activeWeekClasses = weekClasses.length > 0 ? weekClasses : [classItem];
+  // Con el modal cerrado classItem es null; los recorridos de abajo ya lo toleran (c && ..., c?.).
+  const activeWeekClasses = weekClasses.length > 0 ? weekClasses : [classItem as PlanillaClass];
 
   // Lunes = 1 ... Domingo = 7
   const getDayIndex = (d: Date) => (d.getDay() === 0 ? 7 : d.getDay());
@@ -285,11 +287,11 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
   };
 
   const getWeekReservations = () => {
-    const weekRes: any[] = [];
+    const weekRes: Reservation[] = [];
     const seenUserIds = new Set<string>();
-    
-    weekClasses.forEach((c: any) => {
-      c.reservations?.forEach((r: any) => {
+
+    weekClasses.forEach((c) => {
+      c.reservations?.forEach((r) => {
         const isAthlete = !r.user?.role || r.user?.role === 'USER';
         if (r.userId && isAthlete && !seenUserIds.has(r.userId)) {
           seenUserIds.add(r.userId);
