@@ -17,6 +17,7 @@ import { motion } from 'framer-motion';
 import CreateClassModal from './CreateClassModal';
 import { QrTicketModal } from '../../components/classes/QrTicketModal';
 import AttendanceListModal from '../../components/classes/AttendanceListModal';
+import type { ApiError } from '../../types/api';
 
 const ClassCard: React.FC<{ 
   classItem: any; 
@@ -286,8 +287,8 @@ const ClassesPage: React.FC = () => {
       await api.post(`/classes/${id}/book`);
       setMessage({ type: 'success', text: '¡Reserva confirmada exitosamente!' });
       fetchClasses();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al reservar' });
+    } catch (err) {
+      setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error al reservar' });
     }
     setTimeout(() => setMessage(null), 3000);
   };
@@ -298,8 +299,8 @@ const ClassesPage: React.FC = () => {
         await api.delete(`/classes/${id}`);
         setMessage({ type: 'success', text: 'Clase eliminada exitosamente.' });
         fetchClasses();
-      } catch (err: any) {
-        setMessage({ type: 'error', text: err.response?.data?.message || 'Error al eliminar.' });
+      } catch (err) {
+        setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error al eliminar.' });
       }
       setTimeout(() => setMessage(null), 3000);
     }

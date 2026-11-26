@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, Loader2 } from 'lucide-react';
 import api from '../../api/api-client';
+import type { ApiError } from '../../types/api';
 
 interface AddPlanModalProps {
   isOpen: boolean;
@@ -57,8 +58,8 @@ export const AddPlanModal: React.FC<AddPlanModalProps> = ({ isOpen, onClose, onS
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error al guardar el plan de membresía');
+    } catch (err) {
+      alert((err as ApiError).response?.data?.message || 'Error al guardar el plan de membresía');
     } finally {
       setLoading(false);
     }

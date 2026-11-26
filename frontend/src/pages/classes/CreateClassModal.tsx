@@ -4,6 +4,7 @@ import { X, Loader2, Calendar, MapPin, Plus, Video, Save } from 'lucide-react';
 
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/auth-context';
+import type { ApiError } from '../../types/api';
 
 interface CreateClassModalProps {
   onClose: () => void;
@@ -97,8 +98,8 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onCreated,
 
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear la clase');
+    } catch (err) {
+      setError((err as ApiError).response?.data?.message || 'Error al crear la clase');
     } finally {
       setLoading(false);
     }

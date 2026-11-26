@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
+import type { ApiError } from '../../types/api';
 
 const ProductCard: React.FC<{ 
   product: any; 
@@ -127,8 +128,8 @@ export const MarketplacePage: React.FC = () => {
       setMessage('¡Producto eliminado correctamente!');
       fetchProducts();
       setTimeout(() => setMessage(null), 3000);
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error al eliminar el producto');
+    } catch (err) {
+      setMessage((err as ApiError).response?.data?.message || 'Error al eliminar el producto');
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -157,8 +158,8 @@ const handleCheckoutClick = async () => {
       items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
     });
     window.location.href = data.checkoutUrl;
-  } catch (err: any) {
-    const msg = err.response?.data?.message;
+  } catch (err) {
+    const msg = (err as ApiError).response?.data?.message;
     alert(Array.isArray(msg) ? msg.join('\n') : msg || 'No se pudo iniciar el pago.');
     setCheckingOut(false);
   }

@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import api from '../../api/api-client';
 import { toast } from 'sonner';
+import type { ApiError } from '../../types/api';
 
 interface Metric {
   id: string;
@@ -381,10 +382,10 @@ const HealthView: React.FC = () => {
         console.error('Error fetching coach recommendations', err);
       }
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      const msg = err.response?.data?.message;
-      toast.error(msg || err.message || 'Error al cargar datos de salud');
+      const msg = (err as ApiError).response?.data?.message;
+      toast.error(msg || (err as ApiError).message || 'Error al cargar datos de salud');
     } finally {
       setLoading(false);
     }
@@ -413,8 +414,8 @@ const HealthView: React.FC = () => {
       // Reset form value
       setNewMetric(prev => ({ ...prev, value: '' }));
       fetchData();
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
+    } catch (err) {
+      const msg = (err as ApiError).response?.data?.message;
       toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Error al guardar métrica');
     }
   };
@@ -427,8 +428,8 @@ const HealthView: React.FC = () => {
       toast.success('Metas de salud actualizadas');
       setShowManageModal(false);
       fetchData();
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
+    } catch (err) {
+      const msg = (err as ApiError).response?.data?.message;
       toast.error(msg || 'Error al actualizar metas');
     }
   };
@@ -444,8 +445,8 @@ const HealthView: React.FC = () => {
       });
       toast.success('💧 Hidratación de hoy reiniciada a 0 vasos.');
       fetchData();
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
+    } catch (err) {
+      const msg = (err as ApiError).response?.data?.message;
       toast.error(msg || 'Error al reiniciar agua');
     }
   };
@@ -466,8 +467,8 @@ const HealthView: React.FC = () => {
       });
       toast.success('+1 Vaso de agua registrado 💧');
       fetchData();
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
+    } catch (err) {
+      const msg = (err as ApiError).response?.data?.message;
       toast.error(msg || 'Error al registrar agua');
     }
   };

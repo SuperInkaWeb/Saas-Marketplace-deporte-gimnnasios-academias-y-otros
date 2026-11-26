@@ -12,6 +12,7 @@ import {
 import { motion } from 'framer-motion';
 import RecommendationsPanel from '../../components/ai/RecommendationsPanel';
 import { toast } from 'sonner';
+import type { ApiError } from '../../types/api';
 
 /* ─────────────────────────── Sub-components ─────────────────────────── */
 
@@ -240,8 +241,8 @@ const Dashboard: React.FC = () => {
       setShowRoleRequestModal(false);
       setReqReason('');
       toast.success('✅ Solicitud de rol enviada con éxito.');
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Error al enviar la solicitud';
+    } catch (err) {
+      const msg = (err as ApiError).response?.data?.message || 'Error al enviar la solicitud';
       toast.error(`❌ ${msg}`);
     } finally {
       setSubmittingRoleReq(false);
@@ -323,8 +324,8 @@ const Dashboard: React.FC = () => {
         setOwnerGyms(data);
         fetchGymTrainers(data);
       }).catch(console.error);
-    } catch (err: any) {
-      toast.error(`Error: ${err.response?.data?.message || err.message}`);
+    } catch (err) {
+      toast.error(`Error: ${(err as ApiError).response?.data?.message || (err as ApiError).message}`);
     }
   };
 
@@ -811,8 +812,8 @@ const Dashboard: React.FC = () => {
                                   await api.delete(`/trainers/${item.gymId}/trainer/${item.trainerId}`);
                                   toast.success('¡Entrenador desvinculado con éxito!');
                                   fetchGymTrainers(ownerGyms);
-                                } catch (err: any) {
-                                  toast.error(`Error al desvincular: ${err.response?.data?.message || err.message}`);
+                                } catch (err) {
+                                  toast.error(`Error al desvincular: ${(err as ApiError).response?.data?.message || (err as ApiError).message}`);
                                 }
                               }
                             }}
@@ -1264,8 +1265,8 @@ const Dashboard: React.FC = () => {
                       toast.success('¡Entrenador contratado y vinculado con éxito!');
                       setActiveModal(null);
                       fetchGymTrainers(ownerGyms);
-                    } catch (err: any) {
-                      toast.error(`Error al vincular: ${err.response?.data?.message || err.message}`);
+                    } catch (err) {
+                      toast.error(`Error al vincular: ${(err as ApiError).response?.data?.message || (err as ApiError).message}`);
                     }
                   }} 
                   className="flex-grow py-2.5 bg-primary hover:bg-primary-light text-white rounded-xl text-sm font-bold transition-all shadow-lg"

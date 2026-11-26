@@ -8,6 +8,7 @@ import {
   Search, RefreshCw, Shield,
   Trash2
 } from 'lucide-react';
+import type { ApiError } from '../../types/api';
 
 const STATUS_CONFIG: Record<string, any> = {
   OPEN:      { label: 'Abierto',    color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
@@ -267,8 +268,8 @@ const UserTicketsPanel: React.FC = () => {
       setShowForm(false);
       setForm({ subject: '', description: '', category: 'GENERAL' });
       fetchMine();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al enviar el ticket');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al enviar el ticket');
     } finally { setSubmitting(false); }
   };
 

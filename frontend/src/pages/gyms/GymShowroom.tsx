@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
+import type { ApiError } from '../../types/api';
 
 const GymShowroom: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -73,8 +74,8 @@ const GymShowroom: React.FC = () => {
       const { data } = await api.patch(`/gyms/${id}/status`, { status: 'ACTIVE' });
       setGym((prev: any) => ({ ...prev, status: data.status }));
       toast.success('Negocio reactivado correctamente ✅');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'No se pudo reactivar el negocio.');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'No se pudo reactivar el negocio.');
     } finally {
       setReactivating(false);
     }
@@ -102,8 +103,8 @@ const GymShowroom: React.FC = () => {
         planId: plan.id,
       });
       window.location.href = data.checkoutUrl;
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'No se pudo iniciar el pago.');
       setPayingPlanId(null);
     }
   };
@@ -124,8 +125,8 @@ const GymShowroom: React.FC = () => {
         items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
       });
       window.location.href = data.checkoutUrl;
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'No se pudo iniciar el pago.');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'No se pudo iniciar el pago.');
       setPayingCart(false);
     }
   };
@@ -136,8 +137,8 @@ const GymShowroom: React.FC = () => {
       await api.delete(`/memberships/plans/${planId}`);
       toast.success('Plan de membresía eliminado correctamente');
       setPlans(prev => prev.filter(p => p.id !== planId));
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al eliminar el plan');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al eliminar el plan');
     }
   };
 
@@ -222,8 +223,8 @@ const GymShowroom: React.FC = () => {
 
       // Clase de pago: redirige a Mercado Pago
       window.location.href = data.checkoutUrl;
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al reservar la clase');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al reservar la clase');
     } finally {
       setBookingId(null);
     }
@@ -236,8 +237,8 @@ const GymShowroom: React.FC = () => {
       await api.delete(`/marketplace/products/${productId}`);
       toast.success('Producto eliminado correctamente');
       setProducts(prev => prev.filter(p => p.id !== productId));
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al eliminar producto');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al eliminar producto');
     } finally {
       setDeletingProductId(null);
     }

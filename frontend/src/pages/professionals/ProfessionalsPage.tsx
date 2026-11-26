@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CreateProfessionalModal from './CreateProfessionalModal';
+import type { ApiError } from '../../types/api';
 
 
 const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; isBooking: boolean; isOwner: boolean; onEdit: (p: any) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isBooking, isOwner, onEdit, onDelete }) => (
@@ -119,8 +120,8 @@ const ProfessionalsPage: React.FC = () => {
       const label = newStatus === 'CONFIRMED' ? 'Confirmada' : newStatus === 'COMPLETED' ? 'Completada' : 'Cancelada';
       setMessage({ type: 'success', text: `Reserva actualizada a ${label}` });
       fetchReceivedBookings();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: 'Error al actualizar reserva: ' + (err.response?.data?.message || 'Servidor no disponible') });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error al actualizar reserva: ' + ((err as ApiError).response?.data?.message || 'Servidor no disponible') });
     } finally {
       setTimeout(() => setMessage(null), 3000);
     }
@@ -156,10 +157,10 @@ const confirmBooking = async () => {
 
     // Servicio de pago: redirige a Mercado Pago
     window.location.href = data.checkoutUrl;
-  } catch (err: any) {
+  } catch (err) {
     setMessage({
       type: 'error',
-      text: 'Error al reservar: ' + (err.response?.data?.message || 'Servidor no disponible'),
+      text: 'Error al reservar: ' + ((err as ApiError).response?.data?.message || 'Servidor no disponible'),
     });
     setTimeout(() => setMessage(null), 4000);
   } finally {
@@ -174,8 +175,8 @@ const confirmBooking = async () => {
         setMessage({ type: 'success', text: 'Servicio eliminado' });
         const { data } = await api.get('/professionals');
         setProfessionals(data);
-      } catch (err: any) {
-        setMessage({ type: 'error', text: err.response?.data?.message || 'Error' });
+      } catch (err) {
+        setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error' });
       }
       setTimeout(() => setMessage(null), 3000);
     }

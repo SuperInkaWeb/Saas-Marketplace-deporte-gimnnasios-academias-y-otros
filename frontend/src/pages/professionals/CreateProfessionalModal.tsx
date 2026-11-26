@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../../api/api-client';
 import { X, Loader2, User, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import type { ApiError } from '../../types/api';
 
 interface CreateProfessionalModalProps {
   onClose: () => void;
@@ -42,8 +43,8 @@ const CreateProfessionalModal: React.FC<CreateProfessionalModalProps> = ({ onClo
       }
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el servicio');
+    } catch (err) {
+      setError((err as ApiError).response?.data?.message || 'Error al guardar el servicio');
     } finally {
       setLoading(false);
     }
