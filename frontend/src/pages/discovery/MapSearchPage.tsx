@@ -12,6 +12,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useAuth } from '../../context/auth-context';
 import { DARK_TILES, SATELLITE_TILES, DARK_THUMBNAIL, SATELLITE_THUMBNAIL } from '../../components/maps/mapTiles';
+import type { ApiError } from '../../types/api';
 
 // ─── Tipos de Movilidad Comercial ────────────────────────────────────────────
 interface MobilityData {
@@ -479,8 +480,8 @@ const initiateBooking = async (cls: any) => {
 
     // Clase de pago: redirige a Checkout Pro de Mercado Pago
     window.location.href = data.checkoutUrl;
-  } catch (err: any) {
-    toast.error(`❌ ${err.response?.data?.message || 'No se pudo iniciar el pago'}`);
+  } catch (err) {
+    toast.error(`❌ ${(err as ApiError).response?.data?.message || 'No se pudo iniciar el pago'}`);
   } finally {
     setBookingId(null);
   }

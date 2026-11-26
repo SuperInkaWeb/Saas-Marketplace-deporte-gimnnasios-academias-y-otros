@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { DARK_TILES } from '../../components/maps/mapTiles';
+import type { ApiError } from '../../types/api';
 
 const redPinIcon = L.divIcon({
   html: `
@@ -269,8 +270,8 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
 
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el gimnasio');
+    } catch (err) {
+      setError((err as ApiError).response?.data?.message || 'Error al guardar el gimnasio');
     } finally {
       setLoading(false);
     }

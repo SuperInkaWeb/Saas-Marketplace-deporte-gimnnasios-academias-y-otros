@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import api from '../api/api-client';
+import type { ApiError } from '../types/api';
 
 // 'ADMIN' es el valor interno del rol; en pantalla se muestra como "Superadmin"
 export type Role = 'USER' | 'TRAINER' | 'GYM_OWNER' | 'ADMIN';
@@ -47,7 +48,7 @@ const PORTAL_ROLE_KEY = 'portalRole';
 
 // Contingencia local: si el backend no devolvió 'roles', se calcula en el cliente.
 // (Antes estaba repetido en 4 lugares.)
-const withRoles = (data: any): User => {
+const withRoles = (data: User): User => {
   if (Array.isArray(data.roles) && data.roles.length > 0) return data;
   const roles: string[] = ['USER'];
   if (['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(data.role)) {
@@ -133,9 +134,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!checked) return; // cerrando sesión por perfil incorrecto
 
           setUser(checked);
-        } catch (error: any) {
-          console.error('Error sincronizando usuario:', error.response?.data || error.message);
-          if (error.response?.status === 401) {
+        } catch (error) {
+          console.error('Error sincronizando usuario:', (error as ApiError).response?.data || (error as ApiError).message);
+          if ((error as ApiError).response?.status === 401) {
             console.warn('Backend rechazó el token. Verificando configuración...');
           }
           setUser(null);
@@ -150,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setBackendLoading(true);
           try {
             setUser(await fetchProfile());
-          } catch (error: any) {
+          } catch (error) {
             console.error('Error al restaurar perfil desde localStorage:', error);
             setUser(null);
             localStorage.removeItem('token');
@@ -186,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           screen_hint: options?.screenHint ?? 'login',
         },
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al redirigir a Auth0:', error);
     }
   };

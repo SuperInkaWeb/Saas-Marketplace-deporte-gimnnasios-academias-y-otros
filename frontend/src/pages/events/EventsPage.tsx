@@ -23,6 +23,7 @@ import {
   Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { ApiError } from '../../types/api';
 
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   TOURNAMENT: { label: 'Torneo', icon: Swords, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
@@ -160,8 +161,8 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
       await api.delete(`/events/${initialData.id}`);
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al eliminar el evento');
+    } catch (err) {
+      setError((err as ApiError).response?.data?.message || 'Error al eliminar el evento');
     } finally {
       setLoading(false);
     }
@@ -186,8 +187,8 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
       }
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || `Error al ${initialData ? 'actualizar' : 'crear'} el evento`);
+    } catch (err) {
+      setError((err as ApiError).response?.data?.message || `Error al ${initialData ? 'actualizar' : 'crear'} el evento`);
     } finally {
       setLoading(false);
     }

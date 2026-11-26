@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CreateGymModal from './CreateGymModal';
+import type { ApiError } from '../../types/api';
 
 const getGymCardBanner = (gym: any) => {
   if (gym.logoUrl) return gym.logoUrl;
@@ -233,8 +234,8 @@ const GymsPage: React.FC = () => {
       setMessage({ type: 'success', text: '¡Solicitud de postulación enviada exitosamente!' });
       fetchMyRequests();
       setTimeout(() => setMessage(null), 3000);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al enviar solicitud.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error al enviar solicitud.' });
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -251,8 +252,8 @@ const GymsPage: React.FC = () => {
         setMessage({ type: 'success', text: 'Gimnasio eliminado exitosamente.' });
         fetchGyms();
         setTimeout(() => setMessage(null), 3000);
-      } catch (err: any) {
-        setMessage({ type: 'error', text: err.response?.data?.message || 'Error al eliminar.' });
+      } catch (err) {
+        setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error al eliminar.' });
         setTimeout(() => setMessage(null), 3000);
       }
     }
@@ -270,8 +271,8 @@ const GymsPage: React.FC = () => {
       setGyms(prev => prev.map(g => (g.id === gym.id ? { ...g, status: data.status } : g)));
       setMessage({ type: 'success', text: next === 'ACTIVE' ? 'Gimnasio reactivado.' : 'Gimnasio desactivado. Sus datos se conservan.' });
       setTimeout(() => setMessage(null), 3000);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al cambiar el estado.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: (err as ApiError).response?.data?.message || 'Error al cambiar el estado.' });
       setTimeout(() => setMessage(null), 3000);
     }
   };

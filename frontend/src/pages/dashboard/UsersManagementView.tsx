@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import type { ApiError } from '../../types/api';
 
 const ROLE_KEYS = ['ALL', 'USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] as const;
 const STATUS_KEYS = ['ALL', 'ACTIVE', 'INACTIVE'] as const;
@@ -124,8 +125,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
         await api.delete(`/users/${id}`);
         toast.success('Usuario eliminado exitosamente');
         setUsersList(usersList.filter(u => u.id !== id));
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Error al eliminar usuario');
+      } catch (err) {
+        toast.error((err as ApiError).response?.data?.message || 'Error al eliminar usuario');
       }
     }
   };
@@ -139,8 +140,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
        });
        setUsersList(prev => prev.map(x => x.id === u.id ? { ...x, isActive: data.isActive } : x));
        toast.success(data.isActive ? 'Usuario activado' : 'Usuario desactivado');
-     } catch (err: any) {
-       toast.error(err.response?.data?.message || 'Error al cambiar el estado');
+     } catch (err) {
+       toast.error((err as ApiError).response?.data?.message || 'Error al cambiar el estado');
      }
    };
 
@@ -153,8 +154,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       setShowModal(false);
       setFormData({ name: '', email: '', password: '', role: 'GYM_OWNER', phone: '' });
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al crear usuario');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al crear usuario');
     } finally {
       setIsSubmitting(false);
     }
@@ -188,8 +189,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       toast.success('Usuario actualizado exitosamente');
       setShowEditModal(false);
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al actualizar usuario');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al actualizar usuario');
     } finally {
       setIsEditing(false);
     }
@@ -201,8 +202,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       toast.success('✅ Solicitud aprobada. Rol asignado al usuario.');
       fetchRoleRequests();
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al aprobar solicitud');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al aprobar solicitud');
     }
   };
 
@@ -212,8 +213,8 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
       await api.patch(`/users/role-requests/${id}/reject`, { adminNote: note });
       toast.success('Solicitud rechazada.');
       fetchRoleRequests();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al rechazar solicitud');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al rechazar solicitud');
     }
   };
 

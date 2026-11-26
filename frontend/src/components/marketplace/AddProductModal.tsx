@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Package, Loader2, Link } from 'lucide-react';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
+import type { ApiError } from '../../types/api';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -77,8 +78,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error al crear producto');
+    } catch (err) {
+      alert((err as ApiError).response?.data?.message || 'Error al crear producto');
     } finally {
       setLoading(false);
     }

@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import type { ApiError } from '../../types/api';
 
 // Lo mínimo que la planilla necesita de cada clase y reserva
 interface PlanillaReservation {
@@ -110,8 +111,8 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
                 );
                 toast.success(`¡Asistencia marcada para ${res.user?.name}!`);
                 onSuccess();
-              } catch (err: any) {
-                toast.error(err.response?.data?.message || 'Error al registrar asistencia');
+              } catch (err) {
+                toast.error((err as ApiError).response?.data?.message || 'Error al registrar asistencia');
               } finally {
                 setLoadingId(null);
               }
@@ -164,8 +165,8 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
       
       toast.success('¡Asistencia marcada!');
       onSuccess(); // Refresh parent
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al marcar asistencia');
+    } catch (err) {
+      toast.error((err as ApiError).response?.data?.message || 'Error al marcar asistencia');
     } finally {
       setLoadingId(null);
     }
@@ -764,8 +765,8 @@ const AttendanceListModal: React.FC<AttendanceListModalProps> = ({
                                   if (inputEl) inputEl.value = '';
                                   onSuccess();
                                   setActiveTab('planilla');
-                                } catch (err: any) {
-                                  toast.error(err.response?.data?.message || 'Error al registrar asistencia');
+                                } catch (err) {
+                                  toast.error((err as ApiError).response?.data?.message || 'Error al registrar asistencia');
                                 } finally {
                                   setLoadingId(null);
                                 }
