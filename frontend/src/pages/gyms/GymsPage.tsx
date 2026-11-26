@@ -16,9 +16,16 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CreateGymModal from './CreateGymModal';
+import type { NavigateFunction } from 'react-router-dom';
 import type { ApiError } from '../../types/api';
+import type { Gym } from '../../types/gym';
 
-const getGymCardBanner = (gym: any) => {
+// Solicitud de vinculación del entrenador (GET /trainers/my-requests); aquí solo se usa gymId
+interface MyLinkRequest {
+  gymId: string;
+}
+
+const getGymCardBanner = (gym: Gym) => {
   if (gym.logoUrl) return gym.logoUrl;
   if (gym.bannerUrl) return gym.bannerUrl;
   if (gym.imageUrl) return gym.imageUrl;
@@ -34,17 +41,17 @@ const getGymCardBanner = (gym: any) => {
 };
 
 const GymCard: React.FC<{
-  gym: any;
+  gym: Gym;
   isOwner: boolean;
   isAdmin?: boolean;
   userRole?: string;
   userId?: string;
   hasPendingRequest?: boolean;
   onRequestLink?: (gymId: string) => void;
-  onEdit: (gym: any) => void;
+  onEdit: (gym: Gym) => void;
   onDelete: (id: string) => void;
-  onToggleStatus: (gym: any) => void;
-  navigate: any;
+  onToggleStatus: (gym: Gym) => void;
+  navigate: NavigateFunction;
 }> = ({ gym, isOwner, isAdmin, userRole, userId, hasPendingRequest, onRequestLink, onEdit, onDelete, onToggleStatus, navigate }) => {
   const isInactive = gym.status !== 'ACTIVE';
 
@@ -102,7 +109,7 @@ const GymCard: React.FC<{
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {userRole === 'TRAINER' && (
               <>
-                {gym.gymTrainers?.some((gt: any) => gt.trainer?.userId === userId) ? (
+                {gym.gymTrainers?.some((gt) => gt.trainer?.userId === userId) ? (
                   <span className="text-green-400 font-bold text-xs bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Vinculado
                   </span>
@@ -174,12 +181,12 @@ const GymCard: React.FC<{
 
 const GymsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [gyms, setGyms] = useState<any[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<MyLinkRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingGym, setEditingGym] = useState<any>(null);
+  const [editingGym, setEditingGym] = useState<Gym | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [selectedSport, setSelectedSport] = useState('');
@@ -259,7 +266,7 @@ const GymsPage: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = async (gym: any) => {
+  const handleToggleStatus = async (gym: Gym) => {
     const next = gym.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     if (
       next === 'INACTIVE' &&
@@ -277,7 +284,7 @@ const GymsPage: React.FC = () => {
     }
   };
 
-  const getGymSports = (g: any): string[] => {
+  const getGymSports = (g: Gym): string[] => {
     if (!g.description || !g.description.includes('[Categorías: ')) return [];
     try {
       const parts = g.description.split('[Categorías: ');
@@ -298,7 +305,7 @@ const GymsPage: React.FC = () => {
 
   const availableDistricts = Array.from(
     new Set(
-      gyms.map(g => g.district).filter(Boolean)
+      gyms.map(g => g.district).filter(Boolean) as string[] // filter(Boolean) quita los vacíos
     )
   ).sort();
 

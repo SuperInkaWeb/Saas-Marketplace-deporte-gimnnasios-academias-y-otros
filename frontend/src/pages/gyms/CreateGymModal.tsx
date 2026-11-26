@@ -8,6 +8,13 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { DARK_TILES } from '../../components/maps/mapTiles';
 import type { ApiError } from '../../types/api';
+import type { Gym } from '../../types/gym';
+
+// Lo único que el mapa cambia del formulario: las coordenadas del pin
+interface FormCoords {
+  latitude?: number;
+  longitude?: number;
+}
 
 const redPinIcon = L.divIcon({
   html: `
@@ -33,20 +40,20 @@ const MapController = ({ position }: { position: [number, number] | null }) => {
   return null;
 };
 
-const LocationMarker = ({ 
-  position, 
-  setPosition, 
-  setFormData 
-}: { 
-  position: [number, number] | null; 
-  setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>; 
-  setFormData: React.Dispatch<React.SetStateAction<any>>; 
+const LocationMarker = <T extends FormCoords>({
+  position,
+  setPosition,
+  setFormData
+}: {
+  position: [number, number] | null;
+  setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>;
+  setFormData: React.Dispatch<React.SetStateAction<T>>;
 }) => {
   useMapEvents({
     click(e) {
       const { lat, lng } = e.latlng;
       setPosition([lat, lng]);
-      setFormData((prev: any) => ({ ...prev, latitude: lat, longitude: lng }));
+      setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
     },
   });
 
@@ -59,7 +66,7 @@ const LocationMarker = ({
           const marker = e.target;
           const { lat, lng } = marker.getLatLng();
           setPosition([lat, lng]);
-          setFormData((prev: any) => ({ ...prev, latitude: lat, longitude: lng }));
+          setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
         }
       }}
       icon={redPinIcon}
@@ -84,7 +91,7 @@ const TIME_OPTIONS = [
 interface CreateGymModalProps {
   onClose: () => void;
   onCreated: () => void;
-  initialData?: any;
+  initialData?: Gym | null;
 }
 
 const AVAILABLE_SPORTS = [
@@ -249,7 +256,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
       description: finalDescription,
       address: finalAddress,
     };
-    delete (payload as any).urbanization;
+    delete (payload as Partial<typeof payload>).urbanization;
 
     try {
       const { data: savedGym } = initialData
@@ -504,7 +511,7 @@ const CreateGymModal: React.FC<CreateGymModalProps> = ({ onClose, onCreated, ini
                     type="button"
                     onClick={() => {
                       setPosition(null);
-                      setFormData((prev: any) => ({ ...prev, latitude: undefined, longitude: undefined }));
+                      setFormData((prev) => ({ ...prev, latitude: undefined, longitude: undefined }));
                     }}
                     className="text-red-400 hover:text-red-300 font-bold uppercase tracking-wider text-[9px]"
                   >

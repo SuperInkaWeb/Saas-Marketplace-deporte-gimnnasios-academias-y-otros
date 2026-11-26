@@ -29,31 +29,35 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
 import type { ApiError } from '../../types/api';
+import type { CartItem, Gym, MembershipPlan, Product } from '../../types/gym';
+import type { ClassItem } from '../../types/class';
+
+type ShowroomTab = 'products' | 'plans' | 'classes';
 
 const GymShowroom: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [gym, setGym] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [gym, setGym] = useState<Gym | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'products' | 'plans' | 'classes'>('products');
+  const [activeTab, setActiveTab] = useState<ShowroomTab>('products');
   const [bookingId, setBookingId] = useState<string | null>(null);
 
   // Shopping cart state
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
 
   // Owner product management state
   const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   // Owner membership plan state
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
 
   // Payment integration state
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
@@ -72,7 +76,8 @@ const GymShowroom: React.FC = () => {
     try {
       setReactivating(true);
       const { data } = await api.patch(`/gyms/${id}/status`, { status: 'ACTIVE' });
-      setGym((prev: any) => ({ ...prev, status: data.status }));
+      // El botón de reactivar solo aparece con el gimnasio ya cargado, así que prev no es null.
+      setGym((prev) => ({ ...prev, status: data.status }) as Gym);
       toast.success('Negocio reactivado correctamente ✅');
     } catch (err) {
       toast.error((err as ApiError).response?.data?.message || 'No se pudo reactivar el negocio.');
@@ -87,7 +92,7 @@ const GymShowroom: React.FC = () => {
     setPlans(data);
   };
 
-  const handleSubscribe = async (plan: any) => {
+  const handleSubscribe = async (plan: MembershipPlan) => {
     if (isInactive) {
       toast.error('Este negocio está inactivo temporalmente.');
       return;
@@ -142,7 +147,7 @@ const GymShowroom: React.FC = () => {
     }
   };
 
-  const handleEditPlan = (plan: any) => {
+  const handleEditPlan = (plan: MembershipPlan) => {
     setEditingPlan(plan);
     setShowPlanModal(true);
   };
@@ -203,7 +208,7 @@ const GymShowroom: React.FC = () => {
     fetchData();
   }, [id]);
 
-  const handleBook = async (c: any) => {
+  const handleBook = async (c: ClassItem) => {
     if (isInactive) {
       toast.error('Este negocio está inactivo temporalmente.');
       return;
@@ -244,7 +249,7 @@ const GymShowroom: React.FC = () => {
     }
   };
 
-  const handleEditProduct = (product: any) => {
+  const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setShowProductModal(true);
   };
@@ -261,7 +266,7 @@ const GymShowroom: React.FC = () => {
   };
 
   // Cart functions
-  const addToCart = (product: any) => {
+  const addToCart = (product: Product) => {
     if (isInactive) {
       toast.error('Este negocio está inactivo temporalmente.');
       return;
@@ -497,7 +502,7 @@ const GymShowroom: React.FC = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as ShowroomTab)}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
                     activeTab === tab.id 
                       ? 'bg-primary text-white shadow-lg' 

@@ -4,18 +4,20 @@ import { X, Package, Loader2, Link } from 'lucide-react';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import type { ApiError } from '../../types/api';
+import type { Gym, Product } from '../../types/gym';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialData?: any;
+  // gymId puede faltar: la vitrina lo toma de la URL (useParams)
+  initialData?: Omit<Product, 'gymId'> & { gymId?: string };
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [gyms, setGyms] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
   const [formData, setFormData] = useState({
     gymId: initialData?.gymId || '',
     name: initialData?.name || '',

@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, Loader2 } from 'lucide-react';
 import api from '../../api/api-client';
 import type { ApiError } from '../../types/api';
+import type { MembershipPlan } from '../../types/gym';
 
 interface AddPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   gymId: string;
-  initialData?: any;
+  initialData?: MembershipPlan | null;
 }
 
 export const AddPlanModal: React.FC<AddPlanModalProps> = ({ isOpen, onClose, onSuccess, gymId, initialData }) => {
