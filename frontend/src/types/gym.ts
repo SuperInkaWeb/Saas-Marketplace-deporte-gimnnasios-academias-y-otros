@@ -41,6 +41,7 @@ export interface MembershipPlan {
   durationDays: number;
   maxClasses?: number | null;
   includesMarketplace: boolean;
+  gym?: { name: string }; // solo en el listado general de planes
 }
 
 export interface Product {
@@ -52,6 +53,7 @@ export interface Product {
   stock: number;
   category?: string | null;
   imageUrl?: string | null;
+  gym?: { id: string; name: string; ownerId: string; status: GymStatus }; // GET /marketplace/products
 }
 
 // Producto dentro del carrito, con la cantidad elegida.

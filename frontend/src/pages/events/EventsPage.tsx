@@ -23,9 +23,25 @@ import {
   Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import type { ApiError } from '../../types/api';
+import type { User } from '../../context/auth-context';
 
-const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+// Evento deportivo (GET /events y /events/manage). Base: modelo Event del schema.prisma.
+interface SportEvent {
+  id: string;
+  organizerId: string;
+  title: string;
+  description?: string | null;
+  eventType: string; // TOURNAMENT | MASTERCLASS | WORKSHOP | ...
+  price: number | string; // Decimal: llega como texto
+  date: string;
+  location?: string | null;
+  capacity?: number | null;
+  organizer?: { name?: string | null };
+}
+
+const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   TOURNAMENT: { label: 'Torneo', icon: Swords, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
   MASTERCLASS: { label: 'Masterclass', icon: BookOpen, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
   WORKSHOP: { label: 'Workshop', icon: Layers, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
@@ -41,7 +57,7 @@ const toLocalInputValue = (iso: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const EventCard: React.FC<{ event: any; onRegister: (e: any) => void; onEdit: (e: any) => void; user: any }> = ({ event, onRegister, onEdit, user }) => {
+const EventCard: React.FC<{ event: SportEvent; onRegister: (e: SportEvent) => void; onEdit: (e: SportEvent) => void; user: User | null }> = ({ event, onRegister, onEdit, user }) => {
   const config = EVENT_TYPE_CONFIG[event.eventType] || EVENT_TYPE_CONFIG.TOURNAMENT;
   const Icon = config.icon;
   const eventDate = new Date(event.date);
@@ -141,7 +157,7 @@ const EventCard: React.FC<{ event: any; onRegister: (e: any) => void; onEdit: (e
 };
 
 // Modal para crear evento
-const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; initialData?: any }> = ({ onClose, onCreated, initialData }) => {
+const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; initialData?: SportEvent | null }> = ({ onClose, onCreated, initialData }) => {
   const [form, setForm] = useState({
     title: initialData?.title || '',
     description: initialData?.description || '',
@@ -158,7 +174,8 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
     if (!window.confirm('¿Estás seguro de que deseas eliminar este evento?')) return;
     setLoading(true);
     try {
-      await api.delete(`/events/${initialData.id}`);
+      // El botón Eliminar solo aparece al editar, así que initialData existe.
+      await api.delete(`/events/${initialData!.id}`);
       onCreated();
       onClose();
     } catch (err) {
@@ -284,7 +301,7 @@ const CreateEventModal: React.FC<{ onClose: () => void; onCreated: () => void; i
 };
 
 interface PaymentGatewayModalProps {
-  event: any;
+  event: SportEvent;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -547,14 +564,14 @@ const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({ event, onClos
 };
 
 const EventsPage: React.FC = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<SportEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [editingEvent, setEditingEvent] = useState<SportEvent | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-const [payingEvent, setPayingEvent] = useState<any>(null);
+const [payingEvent, setPayingEvent] = useState<SportEvent | null>(null);
 const [showPast, setShowPast] = useState(false);
 const { user } = useAuth();
 const isStaff = !!user && ['ADMIN', 'GYM_OWNER', 'TRAINER'].includes(user.role);
@@ -574,7 +591,7 @@ const fetchEvents = async () => {
 
 useEffect(() => { fetchEvents(); }, [user?.id, showPast]);
 
-  const handleRegister = (event: any) => {
+  const handleRegister = (event: SportEvent) => {
     if (Number(event.price) > 0) {
       setPayingEvent(event);
     } else {

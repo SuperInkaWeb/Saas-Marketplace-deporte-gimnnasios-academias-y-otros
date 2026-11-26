@@ -59,7 +59,11 @@ const SPORTS_STORE_PRODUCTS = [
   { id: 's28', name: 'Guantes Portero Pro', price: 55, category: 'futbol', store: 'Gol Total Sport', rating: 4.7, img: '🧤', desc: 'Látex negativo para máximo agarre. Cierre con doble velcro regulable.' },
 ];
 
-const ProductCard: React.FC<{ product: any; onAdd: (p: any) => void }> = ({ product, onAdd }) => (
+// Producto de la tienda de demostración y su versión en el carrito
+type StoreProduct = typeof SPORTS_STORE_PRODUCTS[number];
+type StoreCartItem = StoreProduct & { qty: number };
+
+const ProductCard: React.FC<{ product: StoreProduct; onAdd: (p: StoreProduct) => void }> = ({ product, onAdd }) => (
   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
     whileHover={{ y: -3 }}
     className="glass-card border border-white/5 hover:border-primary/30 transition-all flex flex-col overflow-hidden group">
@@ -89,7 +93,7 @@ const ProductCard: React.FC<{ product: any; onAdd: (p: any) => void }> = ({ prod
 const SportStorePage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<StoreCartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
 
   const filtered = SPORTS_STORE_PRODUCTS.filter(p => {
@@ -98,7 +102,7 @@ const SportStorePage: React.FC = () => {
     return matchSearch && matchCat;
   });
 
-  const addToCart = (product: any) => {
+  const addToCart = (product: StoreProduct) => {
     setCart(prev => {
       const exists = prev.find(i => i.id === product.id);
       if (exists) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);

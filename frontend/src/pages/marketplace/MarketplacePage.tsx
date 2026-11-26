@@ -15,13 +15,18 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddProductModal } from '../../components/marketplace/AddProductModal';
 import type { ApiError } from '../../types/api';
+import type { Product } from '../../types/gym';
+import type { User } from '../../context/auth-context';
 
-const ProductCard: React.FC<{ 
-  product: any; 
-  onAddToCart: (p: any) => void;
-  onEdit?: (p: any) => void;
+// Producto en el carrito del marketplace (aquí la cantidad se llama quantity)
+type MarketCartItem = Product & { quantity: number };
+
+const ProductCard: React.FC<{
+  product: Product;
+  onAddToCart: (p: Product) => void;
+  onEdit?: (p: Product) => void;
   onDelete?: (id: string) => void;
-  user: any;
+  user: User | null;
 }> = ({ product, onAddToCart, onEdit, onDelete, user }) => {
   const isOwner = user?.id === product.gym?.ownerId;
 
@@ -94,13 +99,13 @@ const ProductCard: React.FC<{
 };
 
 export const MarketplacePage: React.FC = () => {
-  const [products, setProducts] = useState<any[]>([]);
-  const [cart, setCart] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<MarketCartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [message, setMessage] = useState<string | null>(null);
@@ -134,7 +139,7 @@ export const MarketplacePage: React.FC = () => {
     }
   };
 
-  const addToCart = (product: any) => {
+  const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -171,7 +176,8 @@ const handleCheckoutClick = async () => {
     const matchesCategory = selectedCategory === 'ALL' || (p.category || 'Deportes') === selectedCategory;
     return matchesSearch && matchesCategory;
   });
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // price puede llegar como texto ("49.90"); la multiplicación lo convierte a número.
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price as number) * item.quantity, 0);
 
   return (
     <div className="space-y-8 relative">
@@ -229,7 +235,7 @@ const handleCheckoutClick = async () => {
           >
             Todas las categorías
           </button>
-          {uniqueCategories.map((cat: any) => (
+          {uniqueCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}

@@ -11,7 +11,7 @@ interface AddProductModalProps {
   onClose: () => void;
   onSuccess: () => void;
   // gymId puede faltar: la vitrina lo toma de la URL (useParams)
-  initialData?: Omit<Product, 'gymId'> & { gymId?: string };
+  initialData?: (Omit<Product, 'gymId'> & { gymId?: string }) | null;
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
