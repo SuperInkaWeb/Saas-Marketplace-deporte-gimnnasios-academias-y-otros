@@ -10,7 +10,19 @@ import {
 } from 'lucide-react';
 import type { ApiError } from '../../types/api';
 
-const STATUS_CONFIG: Record<string, any> = {
+// Ticket de soporte (GET /tickets y /tickets/mine). Base: modelo SupportTicket del schema.prisma.
+interface SupportTicket {
+  id: string;
+  subject: string;
+  description: string;
+  category: string;
+  status: string; // OPEN | IN_REVIEW | RESOLVED | CLOSED
+  adminReply?: string | null;
+  createdAt: string;
+  user?: { name?: string | null; email?: string | null };
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   OPEN:      { label: 'Abierto',    color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
   IN_REVIEW: { label: 'En Revisión',color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
   RESOLVED:  { label: 'Resuelto',   color: 'text-green-400 bg-green-500/10 border-green-500/20' },
@@ -24,7 +36,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // ── Admin Panel ────────────────────────────────────────────────────────────────
 const AdminTicketsPanel: React.FC = () => {
-  const [tickets, setTickets] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [replyingId, setReplyingId] = useState<string | null>(null);
@@ -83,7 +95,7 @@ const AdminTicketsPanel: React.FC = () => {
   return matchesSearch && matchesStatus;
 });
 
-  const counts = { OPEN: 0, IN_REVIEW: 0, RESOLVED: 0, CLOSED: 0 } as any;
+  const counts = { OPEN: 0, IN_REVIEW: 0, RESOLVED: 0, CLOSED: 0 } as Record<string, number>;
   tickets.forEach(t => counts[t.status]++);
 
   return (
@@ -242,7 +254,7 @@ const AdminTicketsPanel: React.FC = () => {
 
 // ── User Ticket Panel ──────────────────────────────────────────────────────────
 const UserTicketsPanel: React.FC = () => {
-  const [tickets, setTickets] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);

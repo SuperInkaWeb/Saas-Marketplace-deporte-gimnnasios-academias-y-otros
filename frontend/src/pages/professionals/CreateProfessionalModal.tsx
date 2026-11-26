@@ -3,11 +3,12 @@ import api from '../../api/api-client';
 import { X, Loader2, User, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ApiError } from '../../types/api';
+import type { ProfessionalService } from '../../types/professional';
 
 interface CreateProfessionalModalProps {
   onClose: () => void;
   onCreated: () => void;
-  initialData?: any;
+  initialData?: ProfessionalService | null;
 }
 
 const CreateProfessionalModal: React.FC<CreateProfessionalModalProps> = ({ onClose, onCreated, initialData }) => {

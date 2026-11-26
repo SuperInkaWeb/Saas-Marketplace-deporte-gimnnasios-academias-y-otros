@@ -13,9 +13,20 @@ import {
 import { motion } from 'framer-motion';
 import CreateProfessionalModal from './CreateProfessionalModal';
 import type { ApiError } from '../../types/api';
+import type { ProfessionalService } from '../../types/professional';
+
+// Reserva que recibe el profesional (GET /professionals/provider/bookings)
+interface ReceivedBooking {
+  id: string;
+  status: string; // PENDING | CONFIRMED | COMPLETED | CANCELLED
+  bookedAt: string;
+  notes?: string | null;
+  service: { title: string; serviceType: string };
+  user: { name: string; email: string; phone?: string | null };
+}
 
 
-const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; isBooking: boolean; isOwner: boolean; onEdit: (p: any) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isBooking, isOwner, onEdit, onDelete }) => (
+const ProfessionalCard: React.FC<{ professional: ProfessionalService; onBook: (p: ProfessionalService) => void; isBooking: boolean; isOwner: boolean; onEdit: (p: ProfessionalService) => void; onDelete: (id: string) => void; }> = ({ professional, onBook, isBooking, isOwner, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -5 }}
     className="glass-card overflow-hidden border-white/5 hover:border-accent/30 transition-all group p-5 flex flex-col items-center text-center relative"
@@ -38,7 +49,7 @@ const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; 
         NUTRITION_PLAN: '🥗 Nutrición',
         PHYSIOTHERAPY: '🏥 Fisioterapia',
         CONSULTATION: '📋 Consulta',
-      } as any)[professional.serviceType] || professional.serviceType}
+      } as Record<string, string>)[professional.serviceType] || professional.serviceType}
     </span>
 
     <h3 className="text-lg font-bold text-white mb-1 line-clamp-1">{professional.title}</h3>
@@ -70,20 +81,20 @@ const ProfessionalCard: React.FC<{ professional: any; onBook: (p: any) => void; 
 );
 
 const ProfessionalsPage: React.FC = () => {
-  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<ProfessionalService[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingProf, setEditingProf] = useState(null);
+  const [editingProf, setEditingProf] = useState<ProfessionalService | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [bookingServiceId, setBookingServiceId] = useState<string | null>(null);
-  const [profToBook, setProfToBook] = useState<any>(null);
+  const [profToBook, setProfToBook] = useState<ProfessionalService | null>(null);
   const [bookingNotes, setBookingNotes] = useState('');
   
   // New States for Trainer / Received Bookings
   const [activeViewTab, setActiveViewTab] = useState<'catalog' | 'received_bookings'>('catalog');
-  const [receivedBookings, setReceivedBookings] = useState<any[]>([]);
+  const [receivedBookings, setReceivedBookings] = useState<ReceivedBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
 
   const { user } = useAuth();
@@ -127,7 +138,7 @@ const ProfessionalsPage: React.FC = () => {
     }
   };
 
-const handleBookClick = (prof: any) => {
+const handleBookClick = (prof: ProfessionalService) => {
   setBookingNotes('');
   setProfToBook(prof);
 };
@@ -300,7 +311,7 @@ const confirmBooking = async () => {
                         NUTRITION_PLAN: '🥗 Nutrición',
                         PHYSIOTHERAPY: '🏥 Fisioterapia',
                         CONSULTATION: '📋 Consulta',
-                      } as any)[b.service.serviceType] || b.service.serviceType}
+                      } as Record<string, string>)[b.service.serviceType] || b.service.serviceType}
                     </span>
                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
                       b.status === 'CONFIRMED' 

@@ -21,6 +21,20 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AddPlanModal } from '../../components/gyms/AddPlanModal';
+import type { Gym, MembershipPlan } from '../../types/gym';
+
+// Membresía de un atleta, con sus pagos (GET /memberships/all, solo admin)
+interface UserMembership {
+  id: string;
+  userId: string;
+  status: string; // ACTIVE | EXPIRED | CANCELLED ...
+  startedAt: string;
+  expiresAt: string;
+  createdAt: string;
+  user?: { name?: string | null; email?: string | null };
+  plan?: MembershipPlan;
+  payments?: { status: string; amount: number | string; gatewayTxId?: string | null }[];
+}
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return 'N/A';
@@ -36,7 +50,7 @@ const formatDate = (dateStr: string) => {
 };
 
 // Componente Tarjeta de Plan Individual para Clientes
-const PlanCard: React.FC<{ plan: any; onSubscribe: (id: string) => void }> = ({ plan, onSubscribe }) => (
+const PlanCard: React.FC<{ plan: MembershipPlan; onSubscribe: (id: string) => void }> = ({ plan, onSubscribe }) => (
   <motion.div 
     whileHover={{ scale: 1.02 }}
     className={`glass-card p-8 flex flex-col border-white/5 relative overflow-hidden transition-all ${
@@ -102,9 +116,9 @@ export const MembershipsPage: React.FC = () => {
   const isAdmin = user?.role === 'ADMIN';
 
   // State
-  const [plans, setPlans] = useState<any[]>([]);
-  const [allMemberships, setAllMemberships] = useState<any[]>([]);
-  const [gyms, setGyms] = useState<any[]>([]);
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [allMemberships, setAllMemberships] = useState<UserMembership[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   
@@ -119,7 +133,7 @@ const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
 
   // Modal control for Admin
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
   const [targetGymId, setTargetGymId] = useState<string>('');
 
   const fetchPlans = async () => {
@@ -183,7 +197,7 @@ const handleOpenPayMe = async (planId: string) => {
 };
 
   // Admin Plan Management
-  const handleEditPlan = (plan: any) => {
+  const handleEditPlan = (plan: MembershipPlan) => {
     setEditingPlan(plan);
     setTargetGymId(plan.gymId);
     setIsAddPlanOpen(true);
@@ -205,7 +219,7 @@ const handleOpenPayMe = async (planId: string) => {
   const activeMembershipsCount = allMemberships.filter(m => m.status === 'ACTIVE').length;
   const expiredMembershipsCount = allMemberships.filter(m => m.status === 'EXPIRED').length;
   const totalRevenue = allMemberships.reduce((sum, m) => {
-    const paymentSum = m.payments?.reduce((s: number, p: any) => p.status === 'COMPLETED' ? s + Number(p.amount) : s, 0) || 0;
+    const paymentSum = m.payments?.reduce((s: number, p) => p.status === 'COMPLETED' ? s + Number(p.amount) : s, 0) || 0;
     return sum + paymentSum;
   }, 0);
   const totalAthletesCount = new Set(allMemberships.map(m => m.userId)).size;
@@ -397,8 +411,8 @@ const handleOpenPayMe = async (planId: string) => {
                   </thead>
                   <tbody className="divide-y divide-white/5 text-sm">
                     {filteredMemberships.map((m) => {
-                      const totalPaid = m.payments?.reduce((s: number, p: any) => p.status === 'COMPLETED' ? s + Number(p.amount) : s, 0) || 0;
-                      const hasPaid = m.payments?.some((p: any) => p.status === 'COMPLETED');
+                      const totalPaid = m.payments?.reduce((s: number, p) => p.status === 'COMPLETED' ? s + Number(p.amount) : s, 0) || 0;
+                      const hasPaid = m.payments?.some((p) => p.status === 'COMPLETED');
                       const txId = m.payments?.[0]?.gatewayTxId || 'N/A';
                       
                       return (
