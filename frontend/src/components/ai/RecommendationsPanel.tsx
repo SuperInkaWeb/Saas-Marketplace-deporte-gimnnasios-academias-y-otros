@@ -10,10 +10,28 @@ import {
   Bot,
   Loader2,
   Star,
+  type LucideIcon,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const TYPE_CONFIG: Record<string, { icon: any; color: string; route: string }> = {
+// GET /recommendations (ver recommendations.controller.ts del backend).
+interface Recommendation {
+  type: 'CLASS' | 'GYM' | 'EVENT' | 'PROFESSIONAL';
+  id: string;
+  title: string;
+  subtitle: string;
+  reason: string;
+  score: number;
+}
+
+interface RecommendationsResponse {
+  aiMessage?: string | null;
+  aiEnabled: boolean;
+  insights?: string[];
+  recommendations: Recommendation[];
+}
+
+const TYPE_CONFIG: Record<string, { icon: LucideIcon; color: string; route: string }> = {
   CLASS: { icon: Calendar, color: 'text-primary-light bg-primary/10', route: '/classes' },
   GYM: { icon: Dumbbell, color: 'text-secondary-light bg-secondary/10', route: '/gyms' },
   EVENT: { icon: Trophy, color: 'text-yellow-400 bg-yellow-500/10', route: '/events' },
@@ -22,7 +40,7 @@ const TYPE_CONFIG: Record<string, { icon: any; color: string; route: string }> =
 
 const RecommendationsPanel: React.FC = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -85,7 +103,7 @@ const RecommendationsPanel: React.FC = () => {
 
       {/* Recommendation Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {data.recommendations.slice(0, 6).map((rec: any, i: number) => {
+        {data.recommendations.slice(0, 6).map((rec, i) => {
           const config = TYPE_CONFIG[rec.type] || TYPE_CONFIG.CLASS;
           const Icon = config.icon;
           return (

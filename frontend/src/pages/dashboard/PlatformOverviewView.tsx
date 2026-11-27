@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-import { ArrowLeft, Users, Building, TrendingUp, UserPlus, Loader2, ShieldCheck, Dumbbell, Star } from 'lucide-react';
+import { ArrowLeft, Users, Building, TrendingUp, UserPlus, Loader2, ShieldCheck, Dumbbell, Star, type LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 
-const StatCard: React.FC<{ label: string; value: string | number; icon: any; color?: string; subValue?: string }> = ({ label, value, icon: Icon, color = 'primary', subValue }) => {
+// GET /analytics/platform/overview (getPlatformStats en analytics.service.ts).
+interface PlatformStats {
+  totalUsers: number;
+  usersByRole: { role: string; count: number }[];
+  totalGyms: number;
+  totalRevenue: number;
+  newUsersLast30Days: number;
+}
+
+const StatCard: React.FC<{ label: string; value: string | number; icon: LucideIcon; color?: string; subValue?: string }> = ({ label, value, icon: Icon, color = 'primary', subValue }) => {
   const colorMap: Record<string, string> = {
     primary: 'bg-primary/10 text-primary-light border-primary/20',
     secondary: 'bg-secondary/10 text-secondary-light border-secondary/20',
@@ -34,7 +43,7 @@ const StatCard: React.FC<{ label: string; value: string | number; icon: any; col
 const PlatformOverviewView: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -83,7 +92,7 @@ const PlatformOverviewView: React.FC = () => {
     USER: 'Atletas / Usuarios'
   };
 
-  const roleIcons: Record<string, any> = {
+  const roleIcons: Record<string, LucideIcon> = {
     ADMIN: ShieldCheck,
     GYM_OWNER: Building,
     TRAINER: Star,
@@ -136,7 +145,7 @@ const PlatformOverviewView: React.FC = () => {
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl mt-8">
         <h3 className="text-xl font-bold text-white mb-6">Distribución de Usuarios</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.usersByRole.map((roleInfo: any) => {
+          {stats.usersByRole.map((roleInfo) => {
             const Icon = roleIcons[roleInfo.role] || Users;
             return (
               <div key={roleInfo.role} className="bg-slate-800/50 p-4 rounded-xl border border-white/5 flex items-center justify-between">

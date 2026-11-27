@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import InvoiceModal from './components/InvoiceModal';
+import type { Invoice } from '../../types/invoice';
+import type { Gym } from '../../types/gym';
 
 const InvoicesView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -22,8 +24,8 @@ const InvoicesView: React.FC = () => {
           const { data } = await api.get('/invoices');
           setInvoices(data);
         } else if (user.role === 'GYM_OWNER') {
-          const { data: gyms } = await api.get('/gyms');
-          const ownerGyms = gyms.filter((g: any) => g.ownerId === user.id);
+          const { data: gyms } = await api.get<Gym[]>('/gyms');
+          const ownerGyms = gyms.filter((g) => g.ownerId === user.id);
           const currentGymId = ownerGyms.length > 0 ? ownerGyms[0].id : gyms[0]?.id;
 
           if (currentGymId) {
@@ -45,6 +47,8 @@ const InvoicesView: React.FC = () => {
     fetchInvoices();
   }, [user]);
 
+  // inv.total llega como texto ("49.90"); Intl.NumberFormat lo convierte solo,
+  // por eso abajo se pasa con `as number` sin cambiar el comportamiento.
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -186,7 +190,7 @@ const InvoicesView: React.FC = () => {
                         ? inv.user?.name || inv.user?.email || 'Membresía General' 
                         : inv.gym?.name || 'Suscripción'}
                     </td>
-                    <td className="px-6 py-4 font-bold text-white">{formatCurrency(inv.total)}</td>
+                    <td className="px-6 py-4 font-bold text-white">{formatCurrency(inv.total as number)}</td>
                     <td className="px-6 py-4">
                       <span className="bg-green-500/10 text-green-400 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-max">
                         <CheckCircle2 className="w-3 h-3" /> {inv.status === 'PAID' ? 'Pagado' : inv.status === 'ISSUED' ? 'Emitida' : inv.status}

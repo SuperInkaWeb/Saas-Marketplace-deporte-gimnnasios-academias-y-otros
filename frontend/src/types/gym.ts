@@ -22,6 +22,9 @@ export interface Gym {
   closeTime?: string | null;
   openDays?: string | null;
   status: GymStatus;
+  // Cómo se obtuvo la ubicación (EXACT | MANUAL | aproximada). El mapa marca en ámbar
+  // las que no son EXACT ni MANUAL.
+  locationSource?: string | null;
   // No existen en la base de datos; las pantallas los revisan por si llegan.
   bannerUrl?: string | null;
   imageUrl?: string | null;

@@ -17,15 +17,27 @@ import {
   Activity,
   Bell,
   Building2,
-  MessageSquare
+  MessageSquare,
+  type LucideIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIChatWidget from '../ai/AIChatWidget';
 import { CompleteProfileModal } from '../auth/CompleteProfileModal';
+import type { MembershipPlan } from '../../types/gym';
+
+// GET /notifications (modelo Notification de schema.prisma).
+interface AppNotification {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+}
 
 interface SidebarItemProps {
   to: string;
-  icon: any;
+  icon: LucideIcon;
   label: string;
   active: boolean;
   onClick?: () => void;
@@ -52,9 +64,9 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const prevNotificationsCount = useRef(0);
-  const [activePlan, setActivePlan] = useState<any | null>(null);
+  const [activePlan, setActivePlan] = useState<MembershipPlan | null>(null);
 
   // El panel de Superadmin solo se abre desde /admin: "Administrador" aparece en el selector
   // únicamente mientras ya es la vista activa (para poder salir de ella), nunca para entrar.
@@ -62,7 +74,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const fetchActivePlan = async () => {
     try {
-      const { data } = await api.get('/memberships/me');
+      const { data } = await api.get<{ plan: MembershipPlan }[]>('/memberships/me');
       if (data && data.length > 0) {
         setActivePlan(data[0].plan);
       }
@@ -73,12 +85,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const fetchNotifications = async (isInitial = false) => {
     try {
-      const { data } = await api.get('/notifications');
+      const { data } = await api.get<AppNotification[]>('/notifications');
 
       // Si hay más notificaciones de las que había antes y no es la carga inicial
       if (!isInitial && data.length > prevNotificationsCount.current) {
-        const newOnes = data.filter((n: any) => !n.isRead).slice(0, data.length - prevNotificationsCount.current);
-        newOnes.forEach((n: any) => {
+        const newOnes = data.filter((n) => !n.isRead).slice(0, data.length - prevNotificationsCount.current);
+        newOnes.forEach((n) => {
           toast.success(n.title, {
             description: n.description,
             duration: 5000,

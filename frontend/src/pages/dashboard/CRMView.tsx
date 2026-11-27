@@ -4,6 +4,26 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import { toast } from 'sonner';
+import type { Gym } from '../../types/gym';
+
+// Campaña de marketing (modelo MarketingCampaign de schema.prisma).
+interface Campaign {
+  id: string;
+  title: string;
+  subject?: string | null;
+  content: string;
+  status: string;
+  sentCount: number;
+  createdAt: string;
+  gym?: { name: string } | null; // solo en /marketing/all-campaigns
+}
+
+// Atleta al que se le puede escribir (GET /gyms/:id/members o /users?role=USER).
+interface CrmMember {
+  id: string;
+  name: string;
+  email: string;
+}
 
 const CRMView: React.FC = () => {
   const navigate = useNavigate();
@@ -11,9 +31,9 @@ const CRMView: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [gyms, setGyms] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [members, setMembers] = useState<CrmMember[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
   const [selectedGymId, setSelectedGymId] = useState<string>('');
   const [gymId, setGymId] = useState<string | null>(null);
 
@@ -32,7 +52,7 @@ const CRMView: React.FC = () => {
         setLoading(true);
         // Si es Admin, cargamos todos los gimnasios del sistema. Si es dueño, solo los suyos.
         const url = user.role === 'ADMIN' ? '/gyms' : `/gyms?ownerId=${user.id}`;
-        const { data: ownerGyms } = await api.get(url);
+        const { data: ownerGyms } = await api.get<Gym[]>(url);
         setGyms(ownerGyms);
         
         if (ownerGyms && ownerGyms.length > 0) {

@@ -21,10 +21,37 @@ import {
   UserCheck,
   Edit2,
   Power,
+  type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import type { ApiError } from '../../types/api';
+import type { RoleRequest } from '../../types/role-request';
+
+// Usuario del listado de administración (GET /users, findAll en users.service.ts).
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string | null;
+  dni?: string | null;
+  avatarUrl?: string | null;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string;
+}
+
+// GET /users/role-requests: la solicitud trae los datos básicos de quien la pidió.
+type AdminRoleRequest = RoleRequest & {
+  user?: { id: string; name: string; email: string; role: string; avatarUrl?: string | null } | null;
+};
+
+interface BadgeConfig {
+  color: string;
+  bg: string;
+  label: string;
+}
 
 const ROLE_KEYS = ['ALL', 'USER', 'GYM_OWNER', 'TRAINER', 'ADMIN'] as const;
 const STATUS_KEYS = ['ALL', 'ACTIVE', 'INACTIVE'] as const;
@@ -33,8 +60,8 @@ type StatusFilter = typeof STATUS_KEYS[number];
 
 const UsersManagementView: React.FC = () => {
   const { user } = useAuth();
-  const [usersList, setUsersList] = useState<any[]>([]);
-  const [roleRequests, setRoleRequests] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<AdminUser[]>([]);
+  const [roleRequests, setRoleRequests] = useState<AdminRoleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [search, setSearch] = useState('');
@@ -131,7 +158,7 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
     }
   };
 
-  const handleToggleActive = async (u: any) => {
+  const handleToggleActive = async (u: AdminUser) => {
      try {
        const { data } = await api.patch(`/users/${u.id}`, {
          name: u.name, email: u.email,
@@ -161,7 +188,7 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
     }
   };
 
-  const handleEditClick = (user: any) => {
+  const handleEditClick = (user: AdminUser) => {
     setEditFormData({
       id: user.id,
       name: user.name || '',
@@ -230,9 +257,9 @@ const updateFilter = (key: 'role' | 'status', value: string) => {
     );
   };
 
-const isUserActive = (u: any) => u.isActive !== false;
-const matchesRole = (u: any, role: string) => role === 'ALL' || u.role === role;
-const matchesStatus = (u: any, status: string) =>
+const isUserActive = (u: AdminUser) => u.isActive !== false;
+const matchesRole = (u: AdminUser, role: string) => role === 'ALL' || u.role === role;
+const matchesStatus = (u: AdminUser, status: string) =>
   status === 'ALL' || (status === 'ACTIVE' ? isUserActive(u) : !isUserActive(u));
 
 const filteredUsers = usersList.filter(u => {
@@ -258,7 +285,7 @@ const statusCount = (key: string) =>
   const pendingCount = roleRequests.filter(r => r.status === 'PENDING').length;
 
   const RoleBadge = ({ role }: { role: string }) => {
-    const roleConfig: any = {
+    const roleConfig: Record<string, BadgeConfig & { icon: LucideIcon }> = {
       ADMIN: { icon: ShieldCheck, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Admin' },
       GYM_OWNER: { icon: Building, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', label: 'Dueño' },
       TRAINER: { icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: 'Coach' },
@@ -275,7 +302,7 @@ const statusCount = (key: string) =>
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
-    const cfg: any = {
+    const cfg: Record<string, BadgeConfig> = {
       PENDING: { color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: 'Pendiente' },
       APPROVED: { color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', label: 'Aprobado' },
       REJECTED: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Rechazado' },
