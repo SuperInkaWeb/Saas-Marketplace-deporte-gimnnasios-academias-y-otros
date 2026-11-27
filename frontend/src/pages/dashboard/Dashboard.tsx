@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/auth-context';
+import { useAuth, type User } from '../../context/auth-context';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 import { ROLE_REQUEST_EVENT } from '../../api/role-requests';
@@ -7,17 +7,117 @@ import {
   Users, Dumbbell, Calendar, TrendingUp, Clock, AlertCircle,
   ShoppingBag, Trophy, CreditCard, ArrowRight, Star, Activity,
   CheckCircle2, BarChart, Mail, Receipt, ShieldCheck,
-  Building2
+  Building2, type LucideIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import RecommendationsPanel from '../../components/ai/RecommendationsPanel';
 import { toast } from 'sonner';
 import type { ApiError } from '../../types/api';
+import type { Gym } from '../../types/gym';
+import type { ClassItem } from '../../types/class';
+import type { RoleRequest } from '../../types/role-request';
+
+/* ─────────────────────────── Tipos ─────────────────────────── */
+
+// GET /auth/stats. Cada rol recibe solo algunos de estos campos
+// (ver getDashboardStats en backend/src/auth/auth.service.ts).
+interface DashboardActivity {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  date: string;
+}
+
+interface DashboardStats {
+  gyms?: number;
+  classes?: number;
+  members?: number;
+  revenue?: number;
+  services?: number;
+  reservations?: number;
+  points?: number;
+  months?: number;
+  gymDetails?: { id: string; name: string }[]; // solo TRAINER
+  activities?: DashboardActivity[];
+  isAdmin?: boolean;
+  isTrainer?: boolean;
+}
+
+// Clase del dueño. reservationsCount no existe en el backend (manda _count.reservations),
+// así que siempre llega vacío y la pantalla muestra 0 reservas.
+type OwnerClass = ClassItem & { reservationsCount?: number };
+
+// Membresía del atleta (GET /memberships/me).
+interface MyMembership {
+  id: string;
+  status: string; // ACTIVE | EXPIRED | CANCELLED ...
+  expiresAt: string;
+  plan: { name: string; gym?: { name: string } | null };
+}
+
+// Entrenador vinculado a un gimnasio (GET /trainers/gym/:gymId).
+interface GymTrainerLink {
+  canCreateClasses: boolean;
+  trainer: {
+    id: string;
+    user?: { name?: string | null; email?: string | null; avatarUrl?: string | null };
+  };
+}
+
+// Fila de la tabla de staff (se arma en fetchGymTrainers).
+interface GymTrainerRow {
+  gymId: string;
+  gymName: string;
+  trainerId: string;
+  trainerName: string;
+  trainerEmail: string;
+  trainerAvatar: string;
+  canCreateClasses: boolean;
+}
+
+// Entrenador de la plataforma (GET /trainers).
+interface PlatformTrainer {
+  id: string;
+  specialties?: string[];
+  user: { id: string; name: string; avatarUrl?: string | null };
+}
+
+// Solicitud de un entrenador para unirse a un gimnasio (GET /trainers/owner/requests).
+interface LinkRequest {
+  id: string;
+  gymId: string;
+  gymName: string;
+  trainerUserId: string;
+  trainerName: string;
+  trainerEmail: string;
+  status: string;
+  createdAt: string;
+}
+
+// Atleta del CRM del dueño. Solo se guarda en el navegador (localStorage), no en la API.
+interface CrmMembership {
+  planName: string;
+  dateCompra: string;
+  dateFin: string;
+  price: number;
+  status: string;
+}
+
+interface CrmClient {
+  id: string;
+  name: string;
+  dni: string;
+  birthDate: string;
+  healthStatus: string;
+  healthDetails: string;
+  history: CrmMembership[];
+}
 
 /* ─────────────────────────── Sub-components ─────────────────────────── */
 
 const StatCard: React.FC<{
-  label: string; value: string | number; icon: any;
+  label: string; value: string | number; icon: LucideIcon;
   trend?: string; color?: string; delay?: number;
 }> = ({ label, value, icon: Icon, trend, color = 'primary', delay = 0 }) => {
   const colorMap: Record<string, string> = {
@@ -49,7 +149,7 @@ const StatCard: React.FC<{
 };
 
 const AdminActionCard: React.FC<{
-  label: string; icon: any; to: string; desc: string; color?: string; delay?: number;
+  label: string; icon: LucideIcon; to: string; desc: string; color?: string; delay?: number;
 }> = ({ label, icon: Icon, to, desc, color = 'primary', delay = 0 }) => {
   const navigate = useNavigate();
   const colorMap: Record<string, string> = {
@@ -78,7 +178,7 @@ const AdminActionCard: React.FC<{
   );
 };
 
-const QuickAction: React.FC<{ label: string; icon: any; to: string; desc: string }> = ({ label, icon: Icon, to, desc }) => {
+const QuickAction: React.FC<{ label: string; icon: LucideIcon; to: string; desc: string }> = ({ label, icon: Icon, to, desc }) => {
   const navigate = useNavigate();
   return (
     <motion.button
@@ -99,7 +199,7 @@ const QuickAction: React.FC<{ label: string; icon: any; to: string; desc: string
 
 /* ─────────────────────────── Admin Dashboard ─────────────────────────── */
 
-const AdminDashboard: React.FC<{ stats: any; user: any }> = ({ stats, user }) => (
+const AdminDashboard: React.FC<{ stats: DashboardStats | null; user: User | null }> = ({ stats, user }) => (
   <div className="space-y-8">
     {/* Header */}
     <motion.header
@@ -152,7 +252,7 @@ const AdminDashboard: React.FC<{ stats: any; user: any }> = ({ stats, user }) =>
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest">🔔 Actividad Reciente en la Plataforma</h2>
         <div className="space-y-2">
           {stats?.activities && stats.activities.length > 0 ? (
-            stats.activities.map((act: any, i: number) => (
+            stats.activities.map((act, i) => (
               <motion.div
                 key={act.id}
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
@@ -202,24 +302,24 @@ const AdminDashboard: React.FC<{ stats: any; user: any }> = ({ stats, user }) =>
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<any>(null);
-  const [memberships, setMemberships] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [memberships, setMemberships] = useState<MyMembership[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ── Owner Suite de Control states ──
   const [activeView, setActiveView] = useState<'dashboard' | 'suite'>('dashboard');
   const [suiteTab, setSuiteTab] = useState<'clients' | 'classes' | 'crm' | 'staff'>('clients');
-  const [ownerClasses, setOwnerClasses] = useState<any[]>([]);
-  const [ownerGyms, setOwnerGyms] = useState<any[]>([]);
-  const [gymTrainers, setGymTrainers] = useState<any[]>([]);
-  const [allPlatformTrainers, setAllPlatformTrainers] = useState<any[]>([]);
+  const [ownerClasses, setOwnerClasses] = useState<OwnerClass[]>([]);
+  const [ownerGyms, setOwnerGyms] = useState<Gym[]>([]);
+  const [gymTrainers, setGymTrainers] = useState<GymTrainerRow[]>([]);
+  const [allPlatformTrainers, setAllPlatformTrainers] = useState<PlatformTrainer[]>([]);
   const [assignGymId, setAssignGymId] = useState('');
   const [assignTrainerUserId, setAssignTrainerUserId] = useState('');
   const [assignCanCreateClasses, setAssignCanCreateClasses] = useState(true);
-  const [pendingLinkRequests, setPendingLinkRequests] = useState<any[]>([]);
+  const [pendingLinkRequests, setPendingLinkRequests] = useState<LinkRequest[]>([]);
 
   // ── Role Request states ──
-  const [activeRoleRequest, setActiveRoleRequest] = useState<any>(null);
+  const [activeRoleRequest, setActiveRoleRequest] = useState<RoleRequest | null>(null);
   const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
   const [reqRole, setReqRole] = useState<'GYM_OWNER' | 'TRAINER'>('GYM_OWNER');
   const [reqReason, setReqReason] = useState('');
@@ -251,7 +351,7 @@ const Dashboard: React.FC = () => {
   
   // Custom Modals states
   const [activeModal, setActiveModal] = useState<'history' | 'edit' | 'message' | 'register' | 'assignTrainer' | null>(null);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<CrmClient | null>(null);
   const [editedDni, setEditedDni] = useState('');
   const [editedBirthDate, setEditedBirthDate] = useState('');
   const [editedName, setEditedName] = useState('');
@@ -259,7 +359,7 @@ const Dashboard: React.FC = () => {
   const [editedHealthDetails, setEditedHealthDetails] = useState('');
   const [customMessage, setCustomMessage] = useState('');
 
-  const [clients, setClients] = useState<any[]>(() => {
+  const [clients, setClients] = useState<CrmClient[]>(() => {
     const saved = localStorage.getItem(`hercix_owner_crm_${user?.id}`);
     if (saved) {
       try {
@@ -275,13 +375,13 @@ const Dashboard: React.FC = () => {
   const isTrainer = user?.role === 'TRAINER';
   const isAdmin = user?.role === 'ADMIN';
 
-  const fetchGymTrainers = async (gymsList: any[]) => {
+  const fetchGymTrainers = async (gymsList: Gym[]) => {
     try {
       const promises = gymsList.map((g) => api.get(`/trainers/gym/${g.id}`));
       const responses = await Promise.all(promises);
       const assignments = responses.flatMap((res, index) => {
         const gym = gymsList[index];
-        return res.data.map((item: any) => ({
+        return res.data.map((item: GymTrainerLink) => ({
           gymId: gym.id,
           gymName: gym.name,
           trainerId: item.trainer.id,
@@ -338,7 +438,7 @@ const Dashboard: React.FC = () => {
     if (isOwner) {
       fetchPendingLinkRequests();
       api.get('/classes').then(({ data }) => {
-        const filtered = data.filter((c: any) => c.gym?.ownerId === user?.id);
+        const filtered = data.filter((c: ClassItem) => c.gym?.ownerId === user?.id);
         setOwnerClasses(filtered);
       }).catch(console.error);
       api.get(`/gyms?ownerId=${user.id}`).then(({ data }) => {
@@ -387,8 +487,8 @@ const Dashboard: React.FC = () => {
   // ── Layout de la Suite de Control Premium (Dueño) ──
   if (isOwner && activeView === 'suite') {
     const totalAthletes = clients.length;
-    const classesReachedLimit = ownerClasses.filter((c: any) => (c.reservationsCount || 0) >= c.capacity).length;
-    const totalSpotsMissing = ownerClasses.reduce((acc: number, c: any) => acc + Math.max(0, c.capacity - (c.reservationsCount || 0)), 0);
+    const classesReachedLimit = ownerClasses.filter((c) => (c.reservationsCount || 0) >= c.capacity).length;
+    const totalSpotsMissing = ownerClasses.reduce((acc: number, c) => acc + Math.max(0, c.capacity - (c.reservationsCount || 0)), 0);
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -573,7 +673,7 @@ const Dashboard: React.FC = () => {
               <div className="glass-card p-12 text-center text-slate-500">No hay clases activas en tus gimnasios para analizar.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {ownerClasses.map((c: any) => {
+                {ownerClasses.map((c) => {
                   const fillPercentage = Math.min(100, Math.round(((c.reservationsCount || 0) / c.capacity) * 100));
                   const isFull = (c.reservationsCount || 0) >= c.capacity;
                   return (
@@ -717,7 +817,7 @@ const Dashboard: React.FC = () => {
                   setAssignTrainerUserId('');
                   setAssignCanCreateClasses(true);
                   await fetchAllPlatformTrainers();
-                  setActiveModal('assignTrainer' as any);
+                  setActiveModal('assignTrainer');
                 }}
                 className="bg-primary hover:bg-primary-light text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg"
               >
@@ -864,7 +964,7 @@ const Dashboard: React.FC = () => {
                 {selectedClient.history.length === 0 ? (
                   <p className="text-slate-500 text-sm text-center py-6">Este atleta no tiene membresías registradas aún.</p>
                 ) : (
-                  selectedClient.history.map((h: any, i: number) => (
+                  selectedClient.history.map((h, i) => (
                     <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center">
                       <div>
                         <p className="text-white font-bold text-sm">{h.planName}</p>
@@ -1207,7 +1307,7 @@ const Dashboard: React.FC = () => {
                     className="w-full mt-1.5 bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary-light outline-none"
                   >
                     <option value="">-- Elige un Gimnasio --</option>
-                    {ownerGyms.map((g: any) => (
+                    {ownerGyms.map((g) => (
                       <option key={g.id} value={g.id}>{g.name} ({g.district})</option>
                     ))}
                   </select>
@@ -1221,7 +1321,7 @@ const Dashboard: React.FC = () => {
                     className="w-full mt-1.5 bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary-light outline-none"
                   >
                     <option value="">-- Elige un Entrenador --</option>
-                    {allPlatformTrainers.map((t: any) => (
+                    {allPlatformTrainers.map((t) => (
                       <option key={t.id} value={t.user.id}>
                         {t.user.name}
                         {t.specialties?.length ? ` · ${t.specialties.slice(0, 3).join(', ')}` : ''}
@@ -1344,7 +1444,7 @@ const Dashboard: React.FC = () => {
         ) : (
           <>
             <StatCard label="Clases Reservadas" value={stats?.reservations ?? 0} icon={Calendar} color="primary" delay={0.05} />
-            <StatCard label="Membresías Activas" value={memberships.filter((m: any) => m.status === 'ACTIVE').length} icon={Dumbbell} color="secondary" delay={0.1} />
+            <StatCard label="Membresías Activas" value={memberships.filter((m) => m.status === 'ACTIVE').length} icon={Dumbbell} color="secondary" delay={0.1} />
             <StatCard label="Puntos Reward" value={(stats?.points ?? 0).toLocaleString()} icon={Star} color="accent" trend="🏅 Activo" delay={0.15} />
             <StatCard label="Meses Activo" value={stats?.months ?? 1} icon={Clock} color="green" delay={0.2} />
           </>
@@ -1393,7 +1493,7 @@ const Dashboard: React.FC = () => {
           </h2>
           <div className="space-y-3">
             {stats?.activities && stats.activities.length > 0 ? (
-              stats.activities.map((act: any, i: number) => (
+              stats.activities.map((act, i) => (
                 <motion.div
                   key={act.id}
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
@@ -1456,7 +1556,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-3xl border border-white/5 space-y-4">
                   <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">Sedes Vinculadas</span>
                   <div className="space-y-3 mt-2">
-                    {stats.gymDetails.map((gym: any) => (
+                    {stats.gymDetails.map((gym) => (
                       <div key={gym.id} className="flex items-center gap-2 border-b border-white/5 pb-2 last:border-0 last:pb-0">
                         <Building2 className="w-4 h-4 text-accent" />
                         <span className="text-white text-sm font-medium">{gym.name}</span>
@@ -1470,9 +1570,9 @@ const Dashboard: React.FC = () => {
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-3xl border border-white/5 space-y-4">
               <div>
                 <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">Membresía & Locales</span>
-                {memberships.filter((m: any) => m.status === 'ACTIVE').length > 0 ? (
+                {memberships.filter((m) => m.status === 'ACTIVE').length > 0 ? (
                   <div className="space-y-4 mt-3">
-                    {memberships.filter((m: any) => m.status === 'ACTIVE').map((m: any) => (
+                    {memberships.filter((m) => m.status === 'ACTIVE').map((m) => (
                       <div key={m.id} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
                         <h4 className="text-white font-bold text-sm">{m.plan.name}</h4>
                         <p className="text-primary-light text-xs font-semibold flex items-center gap-1 mt-0.5">
@@ -1498,7 +1598,7 @@ const Dashboard: React.FC = () => {
               <button onClick={() => navigate('/memberships')}
                 className="btn-primary w-full py-2.5 mt-3 text-sm flex items-center justify-center gap-2">
                 <CreditCard className="w-4 h-4" />
-                <span>{memberships.filter((m: any) => m.status === 'ACTIVE').length > 0 ? 'Ver Más Planes' : 'Adquirir Plan'}</span>
+                <span>{memberships.filter((m) => m.status === 'ACTIVE').length > 0 ? 'Ver Más Planes' : 'Adquirir Plan'}</span>
               </button>
             </div>
           )}
