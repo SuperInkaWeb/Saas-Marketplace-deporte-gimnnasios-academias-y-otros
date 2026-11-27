@@ -5,14 +5,28 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/api-client';
 import { useAuth } from '../../context/auth-context';
 import { toast } from 'sonner';
+import type { Gym } from '../../types/gym';
+
+// GET /analytics/gym/:gymId/dashboard (ver analytics.service.ts del backend).
+// Si no hay gimnasios, la pantalla guarda solo { hasGyms: false }.
+interface GymAnalytics {
+  hasGyms?: boolean;
+  activeMembers?: number;
+  monthlyRecurringRevenue: number;
+  totalClasses?: number;
+  reservationsCount: number;
+  retentionRate: number;
+  mrrGrowth: number;
+  chartData?: { name: string; MRR: number; attendees: number; newMembers: number }[];
+}
 
 const AnalyticsView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [gyms, setGyms] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
   const [selectedGymId, setSelectedGymId] = useState<string>('');
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<GymAnalytics | null>(null);
 
   const fetchAnalytics = async (gymId: string) => {
     try {
@@ -34,7 +48,7 @@ const AnalyticsView: React.FC = () => {
         setLoading(true);
         // Admin ve todos los gimnasios; Dueño solo los suyos
         const url = user.role === 'ADMIN' ? '/gyms' : `/gyms?ownerId=${user.id}`;
-        const { data } = await api.get(url);
+        const { data } = await api.get<Gym[]>(url);
         setGyms(data);
         
         if (data && data.length > 0) {
@@ -42,7 +56,7 @@ const AnalyticsView: React.FC = () => {
           const { data: analyticsData } = await api.get(`/analytics/gym/${data[0].id}/dashboard`);
           setStats(analyticsData);
         } else {
-          setStats({ hasGyms: false });
+          setStats({ hasGyms: false } as GymAnalytics);
         }
       } catch (error) {
         console.error('Error fetching gyms or analytics:', error);
@@ -190,7 +204,7 @@ const AnalyticsView: React.FC = () => {
             <Tooltip 
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
               itemStyle={{ color: '#fff' }}
-              formatter={(value: any) => [formatCurrency(value), 'MRR']}
+              formatter={(value) => [formatCurrency(value as number), 'MRR']}
             />
             <Area type="monotone" dataKey="MRR" stroke="#818cf8" fillOpacity={1} fill="url(#colorMRR)" />
           </AreaChart>

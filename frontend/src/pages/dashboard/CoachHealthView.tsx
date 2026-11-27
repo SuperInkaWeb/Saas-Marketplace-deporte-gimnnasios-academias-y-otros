@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/api-client';
 import { toast } from 'sonner';
+import type { HealthMetric, HealthGoal, CoachRecommendation } from '../../types/health';
 
 interface Athlete {
   id: string;
@@ -34,9 +35,9 @@ const CoachHealthView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'recs'>('today');
 
-  const [athleteMetrics, setAthleteMetrics] = useState<any[]>([]);
-  const [athleteGoal, setAthleteGoal] = useState<any>(null);
-  const [athleteRecs, setAthleteRecs] = useState<any[]>([]);
+  const [athleteMetrics, setAthleteMetrics] = useState<HealthMetric[]>([]);
+  const [athleteGoal, setAthleteGoal] = useState<HealthGoal | null>(null);
+  const [athleteRecs, setAthleteRecs] = useState<CoachRecommendation[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [filterType, setFilterType] = useState<string>('ALL');
 
@@ -441,7 +442,7 @@ const CoachHealthView: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {filteredMetrics.map((m: any) => (
+                          {filteredMetrics.map((m) => (
                             <tr key={m.id} className="hover:bg-white/5 transition-colors">
                               <td className="py-2.5 px-3 text-slate-300">{formatLocalDate(m.date)}</td>
                               <td className="py-2.5 px-3 font-bold text-white capitalize">
@@ -478,7 +479,7 @@ const CoachHealthView: React.FC = () => {
                   {/* Lista de recomendaciones previas */}
                   {athleteRecs.length > 0 ? (
                     <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-                      {athleteRecs.map((rec: any, i: number) => (
+                      {athleteRecs.map((rec, i) => (
                         <div key={i} className="p-3.5 bg-white/5 rounded-xl border border-white/5">
                           <p className="text-slate-300 text-sm italic">"{rec.observation}"</p>
                           <div className="mt-2 flex justify-between text-[10px] text-slate-500 font-bold">

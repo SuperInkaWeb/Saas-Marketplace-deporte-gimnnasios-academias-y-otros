@@ -3,7 +3,7 @@ import api from '../../../api/api-client';
 import {
   X, User, Mail, Phone, CreditCard, Shield, Building, Dumbbell, Star, Clock,
   Calendar, MapPin, CheckCircle, XCircle, Package, BookOpen,
-  Award, Loader2, Activity, Home, ShoppingBag,
+  Award, Loader2, Activity, Home, ShoppingBag, type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,7 +12,82 @@ interface UserProfileModalProps {
   onClose: () => void;
 }
 
-const ROLE_CFG: Record<string, any> = {
+// GET /users/:id/profile (getUserProfile en users.service.ts). roleData cambia según el rol.
+// Ojo: varios nombres que usa esta pantalla no coinciden con lo que manda el backend
+// (marcados abajo con "no llega"); en pantalla salen vacíos o con "—".
+interface ProfileGym {
+  id: string;
+  name: string;
+  city?: string | null;
+  district?: string | null;
+  _count?: { classes: number; orders: number };
+}
+
+interface ProfileService {
+  id: string;
+  title: string;
+  price: number | string;
+  type?: string; // no llega: el backend lo manda como serviceType
+  district?: string; // no llega
+  maxClients?: number; // no llega
+}
+
+interface ProfileMembership {
+  status: string;
+  startDate?: string; // no llega: el backend manda startedAt
+  endDate?: string; // no llega: el backend manda expiresAt
+  plan?: { name: string; gym?: { name: string } | null } | null;
+}
+
+interface ProfileReservation {
+  id: string;
+  status: string;
+  createdAt?: string; // no llega: el backend manda bookedAt
+  class?: { title: string; gym?: { name: string; district?: string | null } | null } | null;
+}
+
+interface ProfileTrainer {
+  bio?: string | null;
+  specialties?: string[];
+  experienceYears?: number;
+  hourlyRate?: number | string | null;
+  // Decimal en la BD: llega como texto ("4.50"), no como número.
+  rating?: number | string;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
+  phone?: string | null;
+  dni?: string | null;
+  avatarUrl?: string | null;
+  isActive?: boolean;
+  emailVerified?: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string;
+  // Cada lista solo llega para su rol (gyms: dueño, services: coach,
+  // memberships/reservations: atleta) y la pantalla solo la lee en la sección de ese rol.
+  roleData: {
+    gyms: ProfileGym[];
+    services: ProfileService[];
+    memberships: ProfileMembership[];
+    reservations: ProfileReservation[];
+    profile?: ProfileTrainer | null;
+    stats?: {
+      totalGyms?: number;
+      totalOrders?: number;
+      totalServices?: number;
+      bookings?: number;
+      orders?: number;
+      totalReservations?: number;
+      usersCreated?: number;
+      gymsTotal?: number;
+    };
+  };
+}
+
+const ROLE_CFG: Record<string, { label: string; icon: LucideIcon; color: string; bg: string }> = {
   ADMIN:     { label: 'Administrador', icon: Shield,   color: 'text-red-400',    bg: 'bg-red-500/10 border-red-500/30' },
   GYM_OWNER: { label: 'Dueño',         icon: Building, color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/30' },
   TRAINER:   { label: 'Coach',          icon: Star,     color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
@@ -52,15 +127,15 @@ const StatCard: React.FC<{ icon: React.ElementType; label: string; value: string
 );
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) => {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
     setLoading(true);
     setProfile(null);
-    api.get(`/users/${userId}/profile`)
-      .then(({ data }: any) => setProfile(data))
+    api.get<UserProfile>(`/users/${userId}/profile`)
+      .then(({ data }) => setProfile(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [userId]);
@@ -192,7 +267,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                         {profile.roleData.gyms?.length > 0 && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Locales Registrados</p>
-                            {profile.roleData.gyms.map((g: any) => (
+                            {profile.roleData.gyms.map((g) => (
                               <div key={g.id} className="flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3">
                                 <div>
                                   <p className="text-white font-semibold text-sm">{g.name}</p>
@@ -229,7 +304,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                             </div>
                             <div className="grid grid-cols-3 gap-2 mt-3">
                               <div className="text-center">
-                                <p className="text-yellow-400 font-bold text-lg">{profile.roleData.profile.rating?.toFixed(1) ?? '0.0'}</p>
+                                <p className="text-yellow-400 font-bold text-lg">{/* OJO: rating llega como texto y el texto no tiene toFixed (ver PR F5d-2) */}
+                                {(profile.roleData.profile.rating as number | undefined)?.toFixed(1) ?? '0.0'}</p>
                                 <p className="text-slate-500 text-xs">Rating</p>
                               </div>
                               <div className="text-center">
@@ -250,7 +326,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                         {profile.roleData.services?.length > 0 && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Servicios Ofrecidos</p>
-                            {profile.roleData.services.map((s: any) => (
+                            {profile.roleData.services.map((s) => (
                               <div key={s.id} className="flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3">
                                 <div>
                                   <p className="text-white font-semibold text-sm">{s.title}</p>
@@ -280,7 +356,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                         {profile.roleData.memberships?.length > 0 && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Membresías</p>
-                            {profile.roleData.memberships.map((m: any, i: number) => (
+                            {profile.roleData.memberships.map((m, i) => (
                               <div key={i} className="flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3">
                                 <div>
                                   <p className="text-white font-semibold text-sm">{m.plan?.name}</p>
@@ -299,7 +375,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                         {profile.roleData.reservations?.length > 0 && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Últimas Clases Reservadas</p>
-                            {profile.roleData.reservations.map((r: any) => (
+                            {profile.roleData.reservations.map((r) => (
                               <div key={r.id} className="flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3">
                                 <div>
                                   <p className="text-white font-semibold text-sm">{r.class?.title}</p>

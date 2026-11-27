@@ -1,9 +1,10 @@
 import React from 'react';
 import { X, Printer, MapPin, Globe, Mail, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Invoice } from '../../../types/invoice';
 
 interface InvoiceModalProps {
-  invoice: any;
+  invoice: Invoice | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -35,7 +36,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onClose })
 
   // Safe user display name
   const hasRealName = invoice.user?.name && !invoice.user.name.includes('@');
-  const displayName = hasRealName ? invoice.user.name : "Atleta Registrado";
+  const displayName = hasRealName ? invoice.user!.name : "Atleta Registrado";
 
   // Dynamic Status Badge Style
   const getStatusBadge = (status: string) => {

@@ -13,6 +13,14 @@ import L from 'leaflet';
 import { useAuth } from '../../context/auth-context';
 import { DARK_TILES, SATELLITE_TILES, DARK_THUMBNAIL, SATELLITE_THUMBNAIL } from '../../components/maps/mapTiles';
 import type { ApiError } from '../../types/api';
+import type { Gym } from '../../types/gym';
+import type { ClassItem } from '../../types/class';
+
+// Paso de la ruta que devuelve OSRM (router.project-osrm.org), solo lo que se usa.
+interface OsrmStep {
+  name?: string;
+  maneuver: { modifier?: string };
+}
 
 // ─── Tipos de Movilidad Comercial ────────────────────────────────────────────
 interface MobilityData {
@@ -131,7 +139,7 @@ const calculateCommercialMobility = (
   };
 };
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -153,7 +161,7 @@ const userLocationIcon = L.divIcon({
 });
 
 // Custom Icons with Glow Effect (Google Maps style red teardrop pin)
-const isApproximateLocation = (gym: any): boolean =>
+const isApproximateLocation = (gym: Gym): boolean =>
   gym.locationSource !== 'EXACT' && gym.locationSource !== 'MANUAL';
 
 const getCustomIcon = (sportLabel: string, approximate: boolean = false) => {
@@ -199,7 +207,7 @@ const SPORT_FILTERS = [
   { label: '🏃 Atletismo', value: 'Atletismo' },
 ];
 
-const getGymSports = (gym: any): string[] => {
+const getGymSports = (gym: Gym): string[] => {
   // 1. Intentar extraer de la descripción si contiene el marcador de categorías manuales
   if (gym.description) {
     const marker = '[Categorías: ';
@@ -260,7 +268,7 @@ const getGymSports = (gym: any): string[] => {
   return Array.from(new Set(sports));
 };
 
-const getGymDisplaySport = (gym: any, activeFilter: string): { label: string; value: string } => {
+const getGymDisplaySport = (gym: Gym, activeFilter: string): { label: string; value: string } => {
   const sports = getGymSports(gym);
   if (activeFilter && sports.includes(activeFilter)) {
     const match = SPORT_FILTERS.find(f => f.value === activeFilter);
@@ -279,14 +287,14 @@ const getGymDisplaySport = (gym: any, activeFilter: string): { label: string; va
 
 const MapSearchPage: React.FC = () => {
   const { user } = useAuth();
-  const [gyms, setGyms] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<Gym[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingLocation, setUsingLocation] = useState(false);
   const [centerMap, setCenterMap] = useState<[number, number]>([-12.085, -77.03]); // Por defecto en centro de San Isidro
   const [search, setSearch] = useState('');
   const [sportFilter, setSportFilter] = useState('');
-  const [selectedGym, setSelectedGym] = useState<any>(null);
-  const [gymClasses, setGymClasses] = useState<any[]>([]);
+  const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
+  const [gymClasses, setGymClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [map, setMap] = useState<L.Map | null>(null);
   const [mapLayer, setMapLayer] = useState<'dark' | 'satellite'>('dark');
@@ -297,20 +305,20 @@ const MapSearchPage: React.FC = () => {
   const [loadingRoute, setLoadingRoute] = useState(false);
 
   useEffect(() => {
-    let activeGyms: any[] = [];
+    let activeGyms: Gym[] = [];
     
     const loadGyms = async (isPoll = false) => {
       try {
-        const { data } = await api.get('/gyms');
+        const { data } = await api.get<Gym[]>('/gyms');
         const parsedData = data;
 
         // Verificar en tiempo real si hay un nuevo gimnasio creado por dueños/admins
         if (isPoll && activeGyms.length > 0) {
           const existingIds = new Set(activeGyms.map(g => g.id));
-          const newGyms = parsedData.filter((g: any) => !existingIds.has(g.id));
+          const newGyms = parsedData.filter((g) => !existingIds.has(g.id));
           
           if (newGyms.length > 0) {
-            newGyms.forEach((newGym: any) => {
+            newGyms.forEach((newGym) => {
               toast.success(`✨ ¡Nueva academia detectada en tiempo real: "${newGym.name}"!`, {
                 description: `Ubicación: ${newGym.address || 'Hercix Suite'}`,
                 icon: '📍',
@@ -374,8 +382,8 @@ const MapSearchPage: React.FC = () => {
         let stepText = 'Avanzar recto hacia el destino.';
         if (route.legs?.[0]?.steps?.length > 1) {
           const named = route.legs[0].steps
-            .filter((s: any) => s.name?.trim())
-            .map((s: any) => {
+            .filter((s: OsrmStep) => s.name?.trim())
+            .map((s: OsrmStep) => {
               const mod = s.maneuver.modifier;
               const dir = mod === 'right' ? 'derecha' : mod === 'left' ? 'izquierda' : '';
               return dir ? `Girar a la ${dir} por ${s.name}` : `Continuar por ${s.name}`;
@@ -383,7 +391,7 @@ const MapSearchPage: React.FC = () => {
           if (named.length) stepText = named.slice(0, 3).join('. ') + '.';
         }
 
-        const coords = route.geometry.coordinates.map((c: any) => [c[1], c[0]] as [number, number]);
+        const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
         const commercial = calculateCommercialMobility(distKm, baseETA, gyms.length, gymLat, gymLng);
 
         setMobilityData({
@@ -460,7 +468,7 @@ const MapSearchPage: React.FC = () => {
 
 const [bookingId, setBookingId] = useState<string | null>(null);
 
-const initiateBooking = async (cls: any) => {
+const initiateBooking = async (cls: ClassItem) => {
   if (String(cls.id).startsWith('injected-')) {
     toast.info('Esta es una clase de demostración.');
     return;
@@ -487,7 +495,7 @@ const initiateBooking = async (cls: any) => {
   }
 };
 
-  const loadClassesForGym = async (gym: any) => {
+  const loadClassesForGym = async (gym: Gym) => {
     setLoadingClasses(true);
     try {
       const { data } = await api.get(`/classes?gymId=${gym.id}`);
@@ -499,7 +507,7 @@ const initiateBooking = async (cls: any) => {
     }
   };
 
-  const handleSelectGym = async (gym: any) => {
+  const handleSelectGym = async (gym: Gym) => {
     setSelectedGym(gym);
     if (map && gym.latitude && gym.longitude) {
       map.flyTo([gym.latitude, gym.longitude], 15);
@@ -606,7 +614,7 @@ const initiateBooking = async (cls: any) => {
             zoom={13} 
             style={{ width: '100%', height: '100%' }} 
             className="z-0"
-            ref={setMap as any}
+            ref={setMap}
           >
             <TileLayer
               key={mapLayer}
@@ -643,7 +651,8 @@ const initiateBooking = async (cls: any) => {
               return (
                 <Marker
                   key={gym.id}
-                  position={[gym.latitude, gym.longitude]}
+                  // el filter de arriba ya descarta los locales sin coordenadas
+                  position={[gym.latitude!, gym.longitude!]}
                   icon={getCustomIcon(displaySport.label, approx)}
                   eventHandlers={{
                     click: () => handleSelectGym(gym)

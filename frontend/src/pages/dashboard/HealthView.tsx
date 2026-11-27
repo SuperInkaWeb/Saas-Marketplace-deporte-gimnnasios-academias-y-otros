@@ -32,6 +32,7 @@ import {
 import api from '../../api/api-client';
 import { toast } from 'sonner';
 import type { ApiError } from '../../types/api';
+import type { CoachRecommendation } from '../../types/health';
 
 interface Metric {
   id: string;
@@ -60,7 +61,19 @@ function formatLocalDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function StatCard({ icon, title, value, unit, goal, color, trend, description, onClick }: any) {
+interface StatCardProps {
+  icon: React.ReactNode;
+  title: string;
+  value: number;
+  unit: string;
+  goal?: number;
+  color: string;
+  trend?: string;
+  description?: React.ReactNode;
+  onClick?: () => void;
+}
+
+function StatCard({ icon, title, value, unit, goal, color, trend, description, onClick }: StatCardProps) {
   const percentage = goal ? Math.min((value / goal) * 100, 100) : 100;
   
   return (
@@ -114,9 +127,9 @@ const HealthView: React.FC = () => {
   const [manageModalTab, setManageModalTab] = useState<'log' | 'goal'>('log');
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('ALL');
-  const [coachComments, setCoachComments] = useState<any[]>([]);
+  const [coachComments, setCoachComments] = useState<CoachRecommendation[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationInterval, setSimulationInterval] = useState<any>(null);
+  const [simulationInterval, setSimulationInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [simulationSeconds, setSimulationSeconds] = useState(0);
   const [activeTab, setActiveTab] = useState<'hoy' | 'dashboard' | 'historial'>('hoy');
 
@@ -224,7 +237,7 @@ const HealthView: React.FC = () => {
       
       // Sintetizar sonido sutil de burbuja de agua mediante AudioContext nativo
       try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioCtx = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         oscillator.connect(gainNode);
@@ -1137,7 +1150,7 @@ const HealthView: React.FC = () => {
             </h4>
             <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2">
               {coachComments.length > 0 ? (
-                coachComments.map((rec: any, idx: number) => (
+                coachComments.map((rec, idx) => (
                   <div key={idx} className="p-3 bg-white/5 rounded-xl border border-white/5 text-xs">
                     <p className="text-slate-300 italic">"{rec.observation}"</p>
                     <div className="mt-2 text-[10px] text-primary-light font-bold flex justify-between">
@@ -1338,7 +1351,7 @@ const HealthView: React.FC = () => {
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #ffffff10', borderRadius: '12px' }}
                     labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}
-                    formatter={(v: any) => [`${v} kg`, 'Peso']}
+                    formatter={(v) => [`${v} kg`, 'Peso']}
                   />
                   <Line
                     type="monotone"

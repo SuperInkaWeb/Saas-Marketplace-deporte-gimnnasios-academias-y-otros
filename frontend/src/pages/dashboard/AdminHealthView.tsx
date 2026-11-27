@@ -13,6 +13,22 @@ import {
 } from 'lucide-react';
 import api from '../../api/api-client';
 import { toast } from 'sonner';
+import type { HealthMetric, HealthGoal } from '../../types/health';
+
+// Atleta tomado de GET /users (findAll en users.service.ts). Ojo: ese endpoint no
+// manda calorías, pasos, peso ni observación, así que esos campos llegan vacíos y la
+// pantalla muestra sus valores por defecto (0 kcal, 0 pasos, 70 kg, "Sin observaciones").
+interface AuditedAthlete {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatarUrl?: string | null;
+  totalCaloriesBurned?: number;
+  averageSteps?: number;
+  weight?: number | null;
+  lastObservation?: string | null;
+}
 
 interface METConfig {
   id: string;
@@ -31,10 +47,10 @@ const AdminHealthView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'met' | 'athletes'>('met');
 
   // Estados para auditar el historial de salud de atletas
-  const [athletes, setAthletes] = useState<any[]>([]);
-  const [selectedAthlete, setSelectedAthlete] = useState<any | null>(null);
-  const [athleteMetrics, setAthleteMetrics] = useState<any[]>([]);
-  const [athleteGoal, setAthleteGoal] = useState<any>(null);
+  const [athletes, setAthletes] = useState<AuditedAthlete[]>([]);
+  const [selectedAthlete, setSelectedAthlete] = useState<AuditedAthlete | null>(null);
+  const [athleteMetrics, setAthleteMetrics] = useState<HealthMetric[]>([]);
+  const [athleteGoal, setAthleteGoal] = useState<HealthGoal | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [search, setSearch] = useState('');
@@ -73,8 +89,8 @@ const AdminHealthView: React.FC = () => {
     try {
       setLoading(true);
       // Admin: fetch all users and filter athletes (role USER)
-      const { data } = await api.get('/users');
-      const athletes = data.filter((u: any) => u.role === 'USER');
+      const { data } = await api.get<AuditedAthlete[]>('/users');
+      const athletes = data.filter((u) => u.role === 'USER');
       setAthletes(athletes);
       if (athletes.length > 0) {
         setSelectedAthlete(athletes[0]);
@@ -106,7 +122,7 @@ const AdminHealthView: React.FC = () => {
     }
   };
 
-  const handleSelectAthlete = (ath: any) => {
+  const handleSelectAthlete = (ath: AuditedAthlete) => {
     setSelectedAthlete(ath);
     fetchAthleteDetails(ath.id);
   };
@@ -123,7 +139,7 @@ const AdminHealthView: React.FC = () => {
     return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const getMetricDisplayInfo = (m: any) => {
+  const getMetricDisplayInfo = (m: HealthMetric) => {
     const targetSteps = athleteGoal?.targetSteps || 10000;
     const targetCalories = athleteGoal?.targetCalories || 600;
     const targetWater = athleteGoal?.targetWater || 8;
