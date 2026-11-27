@@ -304,8 +304,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                             </div>
                             <div className="grid grid-cols-3 gap-2 mt-3">
                               <div className="text-center">
-                                <p className="text-yellow-400 font-bold text-lg">{/* OJO: rating llega como texto y el texto no tiene toFixed (ver PR F5d-2) */}
-                                {(profile.roleData.profile.rating as number | undefined)?.toFixed(1) ?? '0.0'}</p>
+                                <p className="text-yellow-400 font-bold text-lg">{Number(profile.roleData.profile.rating ?? 0).toFixed(1)}</p>
                                 <p className="text-slate-500 text-xs">Rating</p>
                               </div>
                               <div className="text-center">
