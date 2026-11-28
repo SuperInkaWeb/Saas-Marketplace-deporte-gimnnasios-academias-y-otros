@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/auth-context';
+import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/auth-context';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import LandingPage from './pages/landing/LandingPage';
